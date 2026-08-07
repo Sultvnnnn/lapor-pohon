@@ -1,0 +1,17 @@
+# Web (frontend)
+web/node_modules/
+web/.next/
+web/out/
+web/.env*.local
+web/.vercel
+
+# Api (backend)
+api/venv/
+api/__pycache__/
+api/.pytest_cache/
+api/.env
+
+# os & editor
+.DS_Store
+.vscode/
+*.log
