@@ -28,26 +28,36 @@ export const reportForm = () => {
       //! upload foto ke Supabase Storage
       const imageUrl = await uploadReportImage(data.image[0]);
 
-      //! kirim data ke FastAPI
-      // TODO: Ganti bagian ini dengan fungsi fetch() ke endpoint FastAPI nanti
-      console.info("[INFO] Mengirim tautan gambar ke layanan AI FastAPI.");
-      const mockAiMetrics = {
-        risk_score: 0.85,
-        canopy_volume: 12.5,
-        biomass_estimate: 350.0,
-      };
+      //! kirim data ke backend
+      console.info("[INFO] Mengirim URL image ke backend.");
+      const aiResponse = await fetch("http://localhost:8000/api/analyze", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ image_url: imageUrl }),
+      });
+
+      if (!aiResponse.ok) {
+        throw new Error(
+          `[ERROR] Layanan AI merespons dengan status: ${aiResponse.status}`,
+        );
+      }
+
+      const aiData = await aiResponse.json();
+      console.log(
+        `[SUCCESS] Menerima metrik AI:\n${JSON.stringify(aiData, null, 2)}`,
+      );
 
       //! save all data ke table 'reports' di Supabase
       console.info("[INFO] Menyimpan data pelaporan dan metrik AI");
       const { error: dbError } = await supabaseClient.from("reports").insert({
-        // Mengabaikan reporter_id untuk MVP jika warga belum diwajibkan login
         image_url: imageUrl,
         description: data.description,
-        // PostGIS menerima format string WKT (Well-Known Text) untuk koordinat
         location: `POINT(${data.longitude} ${data.latitude})`,
-        risk_score: mockAiMetrics.risk_score,
-        canopy_volume: mockAiMetrics.canopy_volume,
-        biomass_estimate: mockAiMetrics.biomass_estimate,
+        risk_score: aiData.risk_score,
+        canopy_volume: aiData.canopy_volume,
+        biomass_estimate: aiData.biomass_estimate,
         status: "pending",
       });
 
