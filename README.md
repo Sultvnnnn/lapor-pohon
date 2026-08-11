@@ -44,7 +44,7 @@ bun run dev
 ```bash
 cd api
 python -m venv .venv
-source venv/Scripts/activate
+source .venv/Scripts/activate
 pip install -r requirements.txt
 uvicorn main:app --reload
 # Dokumentasi API interaktif (Swagger UI) akan tersedia di http://localhost:8000/docs
