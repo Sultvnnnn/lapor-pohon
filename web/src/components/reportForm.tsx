@@ -35,7 +35,12 @@ export const reportForm = () => {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ image_url: imageUrl }),
+        body: JSON.stringify({
+          image_url: imageUrl,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          description: data.description,
+        }),
       });
 
       if (!aiResponse.ok) {
