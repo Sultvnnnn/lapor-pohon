@@ -5,12 +5,12 @@
 """
 
 from fastapi import APIRouter, HTTPException
-from schemas.report_schema import ReportRequest
+from schemas.report_schema import ReportRequest, AnalyzeResponse
 from services.yolo_service import run_inference
 
 router = APIRouter()
 
-@router.post("/analyze")
+@router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze_tree(request: ReportRequest):
     print(f"[INFO] Menerima permintaan analisis. Tautan gambar: {request.image_url}")
     print(f"[INFO] Lokasi laporan: ({request.latitude}, {request.longitude})")

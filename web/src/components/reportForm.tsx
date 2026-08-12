@@ -6,9 +6,26 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { reportSchema, ReportFormValues } from "@/lib/validations/reportSchema";
 import { uploadReportImage } from "@/lib/storageUtils";
 import { supabaseClient } from "@/lib/supabaseClient";
+import { TreeImageWithBoundingBox } from "@/components/TreeImageWithBoundingBox";
+
+type BoundingBox = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  confidence: number;
+};
+
+type SubmittedReport = {
+  imageUrl: string;
+  boundingBoxes: BoundingBox[];
+  riskScore: number;
+};
 
 export const reportForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submittedReport, setSubmittedReport] =
+    useState<SubmittedReport | null>(null);
 
   // init logic form
   const formLogic = useForm<ReportFormValues>({
@@ -21,6 +38,7 @@ export const reportForm = () => {
   // main function for handling the data transmission flow
   const submitHandler: SubmitHandler<ReportFormValues> = async (data) => {
     setIsSubmitting(true);
+    setSubmittedReport(null);
 
     try {
       console.info("[INFO] Memulai proses unggah foto pelaporan ke server.");
@@ -63,6 +81,7 @@ export const reportForm = () => {
         risk_score: aiData.risk_score,
         canopy_volume: aiData.canopy_volume,
         biomass_estimate: aiData.biomass_estimate,
+        bounding_box: aiData.bounding_boxes,
         status: "pending",
       });
 
@@ -74,7 +93,13 @@ export const reportForm = () => {
       }
 
       console.log("[SUCCESS] Laporan pohon berhasil diproses dan disimpan.");
-      alert("[SUCCESS] Laporan Anda berhasil dikirim!");
+
+      // simpan hasil untuk ditampilkan sebagai preview
+      setSubmittedReport({
+        imageUrl,
+        boundingBoxes: aiData.bounding_boxes,
+        riskScore: aiData.risk_score,
+      });
 
       formLogic.reset();
     } catch (error) {
@@ -94,79 +119,95 @@ export const reportForm = () => {
   };
 
   return (
-    <form
-      onSubmit={formLogic.handleSubmit(submitHandler)}
-      className="space-y-4 max-w-md mx-auto p-4 border rounded"
-    >
-      <div>
-        <label htmlFor="image">[INFO] Foto Pohon</label>
-        <input
-          id="image"
-          type="file"
-          accept="image/*"
-          {...formLogic.register("image")}
-          className="block w-full"
-        />
-        {formLogic.formState.errors.image && (
-          <p className="text-red-500 text-sm">
-            {formLogic.formState.errors.image.message}
-          </p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor="latitude">[INFO] Latitude</label>
-        <input
-          id="latitude"
-          type="number"
-          step="any"
-          {...formLogic.register("latitude")}
-          className="block w-full border"
-        />
-        {formLogic.formState.errors.latitude && (
-          <p className="text-red-500 text-sm">
-            {formLogic.formState.errors.latitude.message}
-          </p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor="longitude">[INFO] Longitude</label>
-        <input
-          id="longitude"
-          type="number"
-          step="any"
-          {...formLogic.register("longitude")}
-          className="block w-full border"
-        />
-        {formLogic.formState.errors.longitude && (
-          <p className="text-red-500 text-sm">
-            {formLogic.formState.errors.longitude.message}
-          </p>
-        )}
-      </div>
-
-      <div>
-        <label htmlFor="description">[INFO] Deskripsi Laporan</label>
-        <textarea
-          id="description"
-          {...formLogic.register("description")}
-          className="block w-full border"
-        />
-        {formLogic.formState.errors.description && (
-          <p className="text-red-500 text-sm">
-            {formLogic.formState.errors.description.message}
-          </p>
-        )}
-      </div>
-
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+    <div className="max-w-md mx-auto p-4 space-y-6">
+      <form
+        onSubmit={formLogic.handleSubmit(submitHandler)}
+        className="space-y-4 border rounded p-4"
       >
-        {isSubmitting ? "Mengirim..." : "Kirim Laporan"}
-      </button>
-    </form>
+        <div>
+          <label htmlFor="image">[INFO] Foto Pohon</label>
+          <input
+            id="image"
+            type="file"
+            accept="image/*"
+            {...formLogic.register("image")}
+            className="block w-full"
+          />
+          {formLogic.formState.errors.image && (
+            <p className="text-red-500 text-sm">
+              {formLogic.formState.errors.image.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="latitude">[INFO] Latitude</label>
+          <input
+            id="latitude"
+            type="number"
+            step="any"
+            {...formLogic.register("latitude")}
+            className="block w-full border"
+          />
+          {formLogic.formState.errors.latitude && (
+            <p className="text-red-500 text-sm">
+              {formLogic.formState.errors.latitude.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="longitude">[INFO] Longitude</label>
+          <input
+            id="longitude"
+            type="number"
+            step="any"
+            {...formLogic.register("longitude")}
+            className="block w-full border"
+          />
+          {formLogic.formState.errors.longitude && (
+            <p className="text-red-500 text-sm">
+              {formLogic.formState.errors.longitude.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="description">[INFO] Deskripsi Laporan</label>
+          <textarea
+            id="description"
+            {...formLogic.register("description")}
+            className="block w-full border"
+          />
+          {formLogic.formState.errors.description && (
+            <p className="text-red-500 text-sm">
+              {formLogic.formState.errors.description.message}
+            </p>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
+        >
+          {isSubmitting ? "Mengirim..." : "Kirim Laporan"}
+        </button>
+      </form>
+
+      {submittedReport && (
+        <div className="border rounded p-4 space-y-2">
+          <h3 className="font-semibold">[INFO] Hasil Analisis AI</h3>
+          <TreeImageWithBoundingBox
+            imageUrl={submittedReport.imageUrl}
+            boundingBoxes={submittedReport.boundingBoxes}
+            alt="Foto pohon yang baru dilaporkan"
+          />
+          <p className="text-sm text-gray-600">
+            Risk Score: {submittedReport.riskScore}
+          </p>
+        </div>
+      )}
+    </div>
   );
 };
