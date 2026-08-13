@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+
 import { reportSchema, ReportFormValues } from "@/lib/validations/reportSchema";
 import { uploadReportImage } from "@/lib/storageUtils";
 import { supabaseClient } from "@/lib/supabaseClient";
 import { TreeImageWithBoundingBox } from "@/components/TreeImageWithBoundingBox";
+import { getRiskLevel, riskLevelConfig } from "@/lib/riskLevel";
 
 type BoundingBox = {
   x: number;
@@ -20,10 +22,23 @@ type SubmittedReport = {
   imageUrl: string;
   boundingBoxes: BoundingBox[];
   riskScore: number;
+  canopyVolume: number;
+  biomassEstimate: number;
+  detections: number;
+};
+
+type SubmitStep = "idle" | "uploading" | "analyzing" | "saving";
+
+const submitStepLabels: Record<SubmitStep, string> = {
+  idle: "",
+  uploading: "Mengunggah foto...",
+  analyzing: "Menganalisis pohon dengan AI...",
+  saving: "Menyimpan laporan...",
 };
 
 export const reportForm = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitStep, setSubmitStep] = useState<SubmitStep>("idle");
   const [submittedReport, setSubmittedReport] =
     useState<SubmittedReport | null>(null);
 
@@ -41,13 +56,12 @@ export const reportForm = () => {
     setSubmittedReport(null);
 
     try {
-      console.info("[INFO] Memulai proses unggah foto pelaporan ke server.");
-
+      setSubmitStep("uploading");
       //! upload foto ke Supabase Storage
       const imageUrl = await uploadReportImage(data.image[0]);
 
       //! kirim data ke backend
-      console.info("[INFO] Mengirim URL image ke backend.");
+      setSubmitStep("analyzing");
       const aiResponse = await fetch("http://localhost:8000/api/analyze", {
         method: "POST",
         headers: {
@@ -73,7 +87,7 @@ export const reportForm = () => {
       );
 
       //! save all data ke table 'reports' di Supabase
-      console.info("[INFO] Menyimpan data pelaporan dan metrik AI");
+      setSubmitStep("saving");
       const { error: dbError } = await supabaseClient.from("reports").insert({
         image_url: imageUrl,
         description: data.description,
@@ -92,13 +106,14 @@ export const reportForm = () => {
         throw new Error("[ERROR] Failed to save the report to the database.");
       }
 
-      console.log("[SUCCESS] Laporan pohon berhasil diproses dan disimpan.");
-
-      // simpan hasil untuk ditampilkan sebagai preview
+      // simpan hasil untuk ditampilkan as preview
       setSubmittedReport({
         imageUrl,
         boundingBoxes: aiData.bounding_boxes,
         riskScore: aiData.risk_score,
+        canopyVolume: aiData.canopy_volume,
+        biomassEstimate: aiData.biomass_estimate,
+        detections: aiData.detections,
       });
 
       formLogic.reset();
@@ -115,6 +130,7 @@ export const reportForm = () => {
       );
     } finally {
       setIsSubmitting(false);
+      setSubmitStep("idle");
     }
   };
 
@@ -191,23 +207,54 @@ export const reportForm = () => {
           disabled={isSubmitting}
           className="bg-blue-500 text-white px-4 py-2 rounded disabled:opacity-50"
         >
-          {isSubmitting ? "Mengirim..." : "Kirim Laporan"}
+          {isSubmitting ? submitStepLabels[submitStep] : "Kirim Laporan"}
         </button>
       </form>
 
-      {submittedReport && (
-        <div className="border rounded p-4 space-y-2">
-          <h3 className="font-semibold">[INFO] Hasil Analisis AI</h3>
-          <TreeImageWithBoundingBox
-            imageUrl={submittedReport.imageUrl}
-            boundingBoxes={submittedReport.boundingBoxes}
-            alt="Foto pohon yang baru dilaporkan"
-          />
-          <p className="text-sm text-gray-600">
-            Risk Score: {submittedReport.riskScore}
-          </p>
-        </div>
-      )}
+      {submittedReport &&
+        (() => {
+          const riskLevel = getRiskLevel(submittedReport.riskScore);
+          const config = riskLevelConfig[riskLevel];
+
+          return (
+            <div className="border rounded p-4 space-y-3">
+              <h3 className="font-semibold">[INFO] Hasil Analisis AI</h3>
+
+              <TreeImageWithBoundingBox
+                imageUrl={submittedReport.imageUrl}
+                boundingBoxes={submittedReport.boundingBoxes}
+                alt="Foto pohon yang baru dilaporkan"
+              />
+
+              <div
+                className={`rounded px-3 py-2 border ${config.bgColor} ${config.borderColor}`}
+              >
+                <span className={`font-semibold ${config.textColor}`}>
+                  {config.label}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="border rounded p-2">
+                  <p className="text-gray-500">Volume Kanopi</p>
+                  <p className="font-semibold">
+                    {submittedReport.canopyVolume.toFixed(2)} m³
+                  </p>
+                </div>
+                <div className="border rounded p-2">
+                  <p className="text-gray-500">Estimasi Biomassa</p>
+                  <p className="font-semibold">
+                    {submittedReport.biomassEstimate.toFixed(2)} kg
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs text-gray-500">
+                {submittedReport.detections} objek pohon terdeteksi
+              </p>
+            </div>
+          );
+        })()}
     </div>
   );
 };

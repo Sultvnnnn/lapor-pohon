@@ -16,6 +16,25 @@ type Props = {
   alt?: string;
 };
 
+const getBoxStyle = (confidence: number) => {
+  if (confidence >= 0.7) {
+    return {
+      border: "border-green-500",
+      bg: "bg-green-500",
+    };
+  }
+  if (confidence >= 0.4) {
+    return {
+      border: "border-yellow-500",
+      bg: "bg-yellow-500",
+    };
+  }
+  return {
+    border: "border-red-500",
+    bg: "bg-red-500",
+  };
+};
+
 export const TreeImageWithBoundingBox = ({
   imageUrl,
   boundingBoxes,
@@ -44,22 +63,27 @@ export const TreeImageWithBoundingBox = ({
       />
 
       {renderedSize.width > 0 &&
-        boundingBoxes.map((box, idx) => (
-          <div
-            key={idx}
-            className="absolute border-2 border-red-500"
-            style={{
-              left: box.x * renderedSize.width,
-              top: box.y * renderedSize.height,
-              width: box.width * renderedSize.width,
-              height: box.height * renderedSize.height,
-            }}
-          >
-            <span className="absolute -top-6 left-0 bg-red-500 text-white text-xs px-1 rounded whitespace-nowrap">
-              {Math.round(box.confidence * 100)}%
-            </span>
-          </div>
-        ))}
+        boundingBoxes.map((box, idx) => {
+          const style = getBoxStyle(box.confidence);
+          return (
+            <div
+              key={idx}
+              className={`absolute border-2 ${style.border}`}
+              style={{
+                left: box.x * renderedSize.width,
+                top: box.y * renderedSize.height,
+                width: box.width * renderedSize.width,
+                height: box.height * renderedSize.height,
+              }}
+            >
+              <span
+                className={`absolute -top-6 left-0 ${style.bg} text-white text-xs px-1 rounded whitespace-nowrap`}
+              >
+                {Math.round(box.confidence * 100)}%
+              </span>
+            </div>
+          );
+        })}
     </div>
   );
 };
