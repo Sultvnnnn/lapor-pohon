@@ -1,10 +1,12 @@
-import { supabaseClient } from "./supabaseClient";
+import { createClient } from "./supabase/client";
 
 /**
  * Mengunggah berkas foto ke Supabase Storage
  * dan mengembalikan URL akses publiknya.
  */
 export const uploadReportImage = async (file: File): Promise<string> => {
+  const supabaseClient = createClient();
+
   try {
     console.info("[INFO] Memulai proses unggah foto pelaporan ke server.");
 

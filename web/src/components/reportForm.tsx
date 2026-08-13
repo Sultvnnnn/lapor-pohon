@@ -6,7 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 
 import { reportSchema, ReportFormValues } from "@/lib/validations/reportSchema";
 import { uploadReportImage } from "@/lib/storageUtils";
-import { supabaseClient } from "@/lib/supabaseClient";
+import { createClient } from "@/lib/supabase/client";
 import { TreeImageWithBoundingBox } from "@/components/TreeImageWithBoundingBox";
 import { getRiskLevel, riskLevelConfig } from "@/lib/riskLevel";
 
@@ -41,6 +41,8 @@ export const reportForm = () => {
   const [submitStep, setSubmitStep] = useState<SubmitStep>("idle");
   const [submittedReport, setSubmittedReport] =
     useState<SubmittedReport | null>(null);
+
+  const supabaseClient = createClient();
 
   // init logic form
   const formLogic = useForm<ReportFormValues>({
