@@ -2,7 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 
 // page yg bisa diakses tanpa login
-const PUBLIC_PATHS = ["/", "/login", "/auth/callback"];
+const PUBLIC_PATHS = ["/", "/login", "/register", "/auth/callback"];
+const ONBOARDING_PATH = "/onboarding";
 
 export const middleware = async (request: NextRequest) => {
   let supabaseResponse = NextResponse.next({ request });
@@ -42,18 +43,31 @@ export const middleware = async (request: NextRequest) => {
   const pathname = request.nextUrl.pathname;
   const isPublicPath = PUBLIC_PATHS.includes(pathname);
 
-  //? user blm login -> redirect ke /login
   if (!user && !isPublicPath) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     return NextResponse.redirect(loginUrl);
   }
 
-  //? user sudah login, tapi masih di halaman /login -> redirect ke home
-  if (user && pathname === "/login") {
+  if (user && (pathname === "/login" || pathname === "/register")) {
     const homeUrl = request.nextUrl.clone();
     homeUrl.pathname = "/";
     return NextResponse.redirect(homeUrl);
+  }
+
+  //! Cek apakah user sudah pilih role, kalau belum paksa ke /onboarding
+  if (user && pathname !== ONBOARDING_PATH && !isPublicPath) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile && profile.role === null) {
+      const onboardingUrl = request.nextUrl.clone();
+      onboardingUrl.pathname = ONBOARDING_PATH;
+      return NextResponse.redirect(onboardingUrl);
+    }
   }
 
   return supabaseResponse;
