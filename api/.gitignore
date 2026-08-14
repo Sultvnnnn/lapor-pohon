@@ -13,6 +13,9 @@ env/
 *.pth
 *.onnx
 
+# env files (can opt-in for committing if needed)
+.env*
+
 # OS / Editor Files
 .DS_Store
 .vscode/
