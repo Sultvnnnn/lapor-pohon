@@ -64,10 +64,22 @@ export const reportForm = () => {
 
       //! kirim data ke backend
       setSubmitStep("analyzing");
+
+      const {
+        data: { session },
+      } = await supabaseClient.auth.getSession();
+
+      if (!session) {
+        throw new Error(
+          "[ERROR] Sesi login tidak ditemukan. Silakan login ulang.",
+        );
+      }
+
       const aiResponse = await fetch("http://localhost:8000/api/analyze", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({
           image_url: imageUrl,
