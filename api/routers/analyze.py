@@ -4,14 +4,19 @@
     and returns responses to clients.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from schemas.report_schema import ReportRequest, AnalyzeResponse
 from services.yolo_service import run_inference
+from services.auth_service import verify_token
 
 router = APIRouter()
 
 @router.post("/analyze", response_model=AnalyzeResponse)
-async def analyze_tree(request: ReportRequest):
+async def analyze_tree(
+    request: ReportRequest,
+    user: dict = Depends(verify_token),
+):
+    print(f"[INFO] Permintaan dari user: {user.get('sub')}")
     print(f"[INFO] Menerima permintaan analisis. Tautan gambar: {request.image_url}")
     print(f"[INFO] Lokasi laporan: ({request.latitude}, {request.longitude})")
     

@@ -46,6 +46,7 @@ pydantic_core==2.46.4
 PyJWT==2.13.0
 pyparsing==3.3.2
 python-dateutil==2.9.0.post0
+python-dotenv==1.2.3
 python-jose==3.5.0
 python-multipart==0.0.32
 PyYAML==6.0.3
