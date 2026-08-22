@@ -8,11 +8,6 @@ __pycache__/
 venv/
 env/
 
-# Model AI
-*.pt
-*.pth
-*.onnx
-
 # env files (can opt-in for committing if needed)
 .env*
 
