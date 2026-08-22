@@ -16,11 +16,11 @@ from services.metrics_calculator import calculate_all_metrics
 
 print(f"[INFO] Loading YOLO...")
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "best.onnx")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "best.pt")
 
 try:
-    model = YOLO(MODEL_PATH, task="detect")
-    print(f"[SUCCESS] Model YOLOv8 (LaporPohon, ONNX version) berhasil diload dari {MODEL_PATH}.")
+    model = YOLO(MODEL_PATH)
+    print(f"[SUCCESS] Model YOLOv8 (LaporPohon) berhasil diload dari {MODEL_PATH}.")
 except Exception as e:
     print(f"[ERROR] Gagal meload model YOLOv8: {e}")
     model = None
@@ -41,7 +41,13 @@ def run_inference(image_url: str) -> dict:
     t2 = time.time()
     print(f"[TIMING] Decode gambar ({image_width_px}x{image_height_px}): {t2 - t1:.2f}s")
 
-    results = model.predict(image, conf=0.4, imgsz=640)
+    results = model.predict(
+        image,
+        conf=0.4,
+        imgsz=320,
+        max_det=5,
+        device="cpu",
+    )
     t3 = time.time()
     print(f"[TIMING] Inference YOLO: {t3 - t2:.2f}s")
     print(f"[TIMING] Total: {t3 - t0:.2f}s")
