@@ -43,7 +43,7 @@ export default function LoginPage() {
       }
 
       console.log("[SUCCESS] Login berhasil.");
-      router.push("/");
+      router.push("/dashboard");
       router.refresh();
     } catch (err) {
       console.error("[ERROR] Terjadi kesalahan tidak terduga saat login.", err);
@@ -57,7 +57,7 @@ export default function LoginPage() {
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
       },
     });
 

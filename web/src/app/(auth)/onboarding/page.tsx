@@ -45,20 +45,34 @@ export default function OnboardingPage() {
 
     const { error } = await supabaseClient
       .from("profiles")
-      .update({ role: selectedRole, updated_at: new Date().toISOString() })
-      .eq("id", user.id);
+      .upsert(
+        {
+          id: user.id,
+          role: selectedRole,
+          full_name:
+            user.user_metadata?.full_name ||
+            user.user_metadata?.name ||
+            user.email?.split("@")[0] ||
+            "Pengguna",
+          username:
+            user.user_metadata?.username ||
+            user.email?.split("@")[0] ||
+            `user_${user.id.slice(0, 8)}`,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
 
     setIsLoading(false);
 
     if (error) {
       console.error(`[ERROR] Gagal menyimpan role: ${error.message}`);
-      setErrorMessage("Gagal menyimpan pilihan. Silakan coba lagi.");
+      setErrorMessage(`Gagal menyimpan pilihan: ${error.message}`);
       return;
     }
 
     console.log(`[SUCCESS] Role berhasil diset: ${selectedRole}`);
-    router.push(`/${selectedRole}/dashboard`);
-    router.refresh();
+    window.location.href = "/dashboard";
   };
 
   return (
