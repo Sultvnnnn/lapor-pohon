@@ -5,6 +5,7 @@
     the model will not be loaded repeatedly when the router is called.
 """
 
+import time
 from ultralytics import YOLO
 from io import BytesIO
 from PIL import Image
@@ -15,7 +16,6 @@ from services.metrics_calculator import calculate_all_metrics
 
 print(f"[INFO] Loading YOLO...")
 
-# path ke model
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "best.pt")
 
 try:
@@ -26,23 +26,27 @@ except Exception as e:
     model = None
 
 def run_inference(image_url: str) -> dict:
-    """
-    Run inference on the provided image URL using the YOLO model,
-    then calculate derived metrics from ALL detected bounding boxes.
-    """
     if model is None:
         raise RuntimeError("[ERROR] Model tidak tersedia atau gagal diload.")
 
+    t0 = time.time()
     req = urllib.request.Request(image_url, headers={'User-Agent': 'Mozilla/5.0'})
-    response = urllib.request.urlopen(req)
+    response = urllib.request.urlopen(req, timeout=10)
     image_bytes = response.read()
+    t1 = time.time()
+    print(f"[TIMING] Download gambar: {t1 - t0:.2f}s")
 
     image = Image.open(BytesIO(image_bytes))
     image_width_px, image_height_px = image.width, image.height
+    t2 = time.time()
+    print(f"[TIMING] Decode gambar ({image_width_px}x{image_height_px}): {t2 - t1:.2f}s")
 
     results = model.predict(image, conf=0.4, imgsz=640)
-    boxes = results[0].boxes
+    t3 = time.time()
+    print(f"[TIMING] Inference YOLO: {t3 - t2:.2f}s")
+    print(f"[TIMING] Total: {t3 - t0:.2f}s")
 
+    boxes = results[0].boxes
     print(f"[INFO] Jumlah objek pohon terdeteksi: {len(boxes)}")
 
     if len(boxes) == 0:
@@ -56,9 +60,8 @@ def run_inference(image_url: str) -> dict:
         }
 
     confidences = boxes.conf.tolist()
-    xywh_all = boxes.xywh.tolist()  # semua box, format: [center_x, center_y, width, height] per box
+    xywh_all = boxes.xywh.tolist()
 
-    # Susun bounding box untuk SEMUA deteksi (dinormalisasi 0-1)
     bounding_boxes = []
     for (cx, cy, w, h), conf in zip(xywh_all, confidences):
         x_norm = (cx - w / 2) / image_width_px
@@ -74,10 +77,6 @@ def run_inference(image_url: str) -> dict:
             "confidence": round(conf, 3)
         })
 
-    # --- Metrik (risk_score, canopy_volume, biomass_estimate) tetap dihitung dari box PALING BESAR ---
-    # Asumsi: pohon dengan box terbesar = pohon utama yang jadi fokus laporan warga,
-    # bukan box dengan confidence tertinggi (karena pohon kecil di background bisa
-    # kebetulan confidence-nya tinggi tapi bukan itu yang dimaksud pelapor).
     areas = [w * h for (_, _, w, h) in xywh_all]
     main_idx = areas.index(max(areas))
     main_box = xywh_all[main_idx]
