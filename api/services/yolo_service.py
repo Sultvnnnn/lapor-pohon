@@ -16,11 +16,11 @@ from services.metrics_calculator import calculate_all_metrics
 
 print(f"[INFO] Loading YOLO...")
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "best.pt")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "best.onnx")
 
 try:
-    model = YOLO(MODEL_PATH)
-    print(f"[SUCCESS] Model YOLOv8 (LaporPohon custom) berhasil diload dari {MODEL_PATH}.")
+    model = YOLO(MODEL_PATH, task="detect")
+    print(f"[SUCCESS] Model YOLOv8 (LaporPohon, ONNX version) berhasil diload dari {MODEL_PATH}.")
 except Exception as e:
     print(f"[ERROR] Gagal meload model YOLOv8: {e}")
     model = None
