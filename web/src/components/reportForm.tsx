@@ -75,19 +75,22 @@ export const reportForm = () => {
         );
       }
 
-      const aiResponse = await fetch("http://localhost:8000/api/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+      const aiResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/analyze-tree`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({
+            image_url: imageUrl,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            description: data.description,
+          }),
         },
-        body: JSON.stringify({
-          image_url: imageUrl,
-          latitude: data.latitude,
-          longitude: data.longitude,
-          description: data.description,
-        }),
-      });
+      );
 
       if (!aiResponse.ok) {
         throw new Error(
