@@ -76,7 +76,7 @@ export const reportForm = () => {
       }
 
       const aiResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/analyze-tree`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/analyze`,
         {
           method: "POST",
           headers: {
