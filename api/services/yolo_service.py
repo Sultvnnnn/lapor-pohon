@@ -40,7 +40,7 @@ def run_inference(image_url: str) -> dict:
     image = Image.open(BytesIO(image_bytes))
     image_width_px, image_height_px = image.width, image.height
 
-    results = model.predict(image, conf=0.4)
+    results = model.predict(image, conf=0.4, imgsz=640)
     boxes = results[0].boxes
 
     print(f"[INFO] Jumlah objek pohon terdeteksi: {len(boxes)}")
