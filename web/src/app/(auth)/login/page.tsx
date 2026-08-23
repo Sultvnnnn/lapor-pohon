@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { SignIn, CircleNotch, WarningCircle } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { getEmailByUsername } from "@/lib/auth/checkUsername";
 
@@ -69,55 +70,84 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="w-full max-w-sm space-y-6">
+    <div className="w-full space-y-6">
       <div className="text-center space-y-1">
-        <h1 className="text-2xl font-bold">Masuk ke LaporPohon</h1>
-        <p className="text-sm text-gray-500">Selamat datang kembali</p>
+        <h1 className="text-2xl font-bold text-[#111111] tracking-tight">
+          Masuk ke LaporPohon
+        </h1>
+        <p className="text-xs text-[#111111]/60">
+          Selamat datang kembali! Silakan masuk ke akun Anda
+        </p>
       </div>
 
       {errorMessage && (
-        <div className="bg-red-100 border border-red-400 text-red-700 text-sm rounded px-3 py-2">
-          {errorMessage}
+        <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl px-4 py-3 flex items-center gap-2">
+          <WarningCircle size={18} className="shrink-0 text-red-600" />
+          <span>{errorMessage}</span>
         </div>
       )}
 
-      <form onSubmit={handleLogin} className="space-y-3">
-        <input
-          type="text"
-          required
-          placeholder="Username atau email"
-          value={usernameOrEmail}
-          onChange={(e) => setUsernameOrEmail(e.target.value)}
-          className="w-full border rounded px-3 py-2"
-        />
-        <input
-          type="password"
-          required
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full border rounded px-3 py-2"
-        />
+      <form onSubmit={handleLogin} className="space-y-4">
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70">
+            Username / Email
+          </label>
+          <input
+            type="text"
+            required
+            placeholder="Masukkan username atau email"
+            value={usernameOrEmail}
+            onChange={(e) => setUsernameOrEmail(e.target.value)}
+            className="w-full bg-[#ecefe6]/30 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#0b3d2c] focus:bg-white transition-all text-[#111111]"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70">
+            Kata Sandi
+          </label>
+          <input
+            type="password"
+            required
+            placeholder="Masukkan kata sandi"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full bg-[#ecefe6]/30 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#0b3d2c] focus:bg-white transition-all text-[#111111]"
+          />
+        </div>
 
         <button
           type="submit"
           disabled={isLoading}
-          className="w-full bg-blue-500 text-white rounded px-3 py-2 disabled:opacity-50"
+          className="w-full bg-[#0b3d2c] hover:bg-[#15543e] text-white py-3.5 px-4 rounded-2xl text-sm font-semibold transition-all shadow-sm hover:shadow-md disabled:opacity-60 flex items-center justify-center gap-2"
         >
-          {isLoading ? "Memproses..." : "Masuk"}
+          {isLoading ? (
+            <>
+              <CircleNotch size={18} className="animate-spin text-[#88d937]" />
+              <span>Memproses...</span>
+            </>
+          ) : (
+            <>
+              <SignIn size={18} weight="bold" />
+              <span>Masuk</span>
+            </>
+          )}
         </button>
       </form>
 
       <div className="flex items-center gap-3">
-        <div className="flex-1 h-px bg-gray-300" />
-        <span className="text-xs text-gray-400">ATAU</span>
-        <div className="flex-1 h-px bg-gray-300" />
+        <div className="flex-1 h-px bg-gray-200" />
+        <span className="text-[11px] font-bold text-gray-400 tracking-wider">
+          ATAU
+        </span>
+        <div className="flex-1 h-px bg-gray-200" />
       </div>
 
       <button
+        type="button"
         onClick={handleGoogleLogin}
         disabled={isLoading}
-        className="w-full border rounded px-3 py-2 flex items-center justify-center gap-2 disabled:opacity-50 hover:bg-gray-50 transition"
+        className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-[#111111] py-3 px-4 rounded-2xl text-sm font-medium transition-colors shadow-xs flex items-center justify-center gap-2.5 disabled:opacity-60"
       >
         <svg width="18" height="18" viewBox="0 0 48 48">
           <path
@@ -137,12 +167,15 @@ export default function LoginPage() {
             d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"
           />
         </svg>
-        Masuk dengan Google
+        <span>Masuk dengan Google</span>
       </button>
 
-      <p className="text-center text-sm text-gray-500">
+      <p className="text-center text-xs text-[#111111]/70">
         Belum punya akun?{" "}
-        <Link href="/register" className="text-blue-500 font-medium">
+        <Link
+          href="/register"
+          className="text-[#0b3d2c] font-bold hover:underline"
+        >
           Daftar di sini
         </Link>
       </p>
