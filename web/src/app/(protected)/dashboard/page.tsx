@@ -32,9 +32,9 @@ export default async function DashboardPage() {
   const displayName = profile?.full_name || user?.email?.split("@")[0] || "Pengguna";
 
   return (
-    <div className="space-y-6 sm:space-y-8 pb-12">
+    <div className="space-y-6 sm:space-y-8 pb-12 pt-2 sm:pt-4">
       {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-[#0b3d2c] via-[#15543e] to-[#0b3d2c] text-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-md relative overflow-hidden">
+      <div className="bg-gradient-to-r from-[#19382B] via-[#234A39] to-[#19382B] text-white rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-sm relative overflow-hidden">
         <div className="relative z-10 space-y-2 max-w-2xl">
           <div className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md px-2.5 py-1 rounded-full text-[11px] sm:text-xs font-medium text-[#88d937]">
             <Sparkle size={13} weight="fill" />
@@ -66,7 +66,7 @@ export default async function DashboardPage() {
             </p>
             <p className="text-[10px] sm:text-[11px] text-[#111111]/60">Laporan di database</p>
           </div>
-          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-[#0b3d2c]/10 text-[#0b3d2c] flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-[#19382B]/10 text-[#19382B] flex items-center justify-center shrink-0">
             <Tree size={20} weight="duotone" className="sm:hidden" />
             <Tree size={24} weight="duotone" className="hidden sm:block" />
           </div>
@@ -111,7 +111,7 @@ export default async function DashboardPage() {
             <p className="text-xl sm:text-2xl font-extrabold text-[#111111]">Sirkular</p>
             <p className="text-[10px] sm:text-[11px] text-[#111111]/60">Pemanfaatan Kayu</p>
           </div>
-          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-[#88d937]/30 text-[#0b3d2c] flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-[#88d937]/30 text-[#19382B] flex items-center justify-center shrink-0">
             <Recycle size={20} weight="duotone" className="sm:hidden" />
             <Recycle size={24} weight="duotone" className="hidden sm:block" />
           </div>
@@ -130,7 +130,7 @@ export default async function DashboardPage() {
           {/* Card 1: Panduan Pengambilan Foto */}
           <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-black/5 shadow-xs space-y-4">
             <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#0b3d2c]/10 text-[#0b3d2c] flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#19382B]/10 text-[#19382B] flex items-center justify-center shrink-0">
                 <Camera size={18} weight="fill" />
               </div>
               <h3 className="font-bold text-[#111111] text-sm sm:text-base">
@@ -140,19 +140,19 @@ export default async function DashboardPage() {
 
             <ul className="space-y-2.5 sm:space-y-3 text-xs text-[#111111]/70 leading-relaxed">
               <li className="flex items-start gap-2.5">
-                <CheckCircle size={16} weight="fill" className="text-[#0b3d2c] shrink-0 mt-0.5" />
+                <CheckCircle size={16} weight="fill" className="text-[#19382B] shrink-0 mt-0.5" />
                 <span>
                   <strong>Ambil sudut utuh:</strong> Pastikan batang dan tajuk pohon terlihat jelas dari jarak yang memadai.
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
-                <CheckCircle size={16} weight="fill" className="text-[#0b3d2c] shrink-0 mt-0.5" />
+                <CheckCircle size={16} weight="fill" className="text-[#19382B] shrink-0 mt-0.5" />
                 <span>
                   <strong>Pencahayaan memadai:</strong> Hindari foto yang terlalu gelap atau membelakangi cahaya (*backlight*).
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
-                <CheckCircle size={16} weight="fill" className="text-[#0b3d2c] shrink-0 mt-0.5" />
+                <CheckCircle size={16} weight="fill" className="text-[#19382B] shrink-0 mt-0.5" />
                 <span>
                   <strong>Aktifkan GPS HP:</strong> Gunakan tombol <em>Deteksi Lokasi Otomatis</em> agar titik koordinat akurat.
                 </span>
@@ -161,7 +161,7 @@ export default async function DashboardPage() {
           </div>
 
           {/* Card 2: Alur Pemrosesan Laporan */}
-          <div className="bg-[#0b3d2c] text-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="bg-[#19382B] text-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-xs space-y-4">
             <div className="flex items-center gap-3 pb-3 border-b border-white/10">
               <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-[#88d937]/20 text-[#88d937] flex items-center justify-center shrink-0">
                 <Recycle size={18} weight="fill" />
@@ -173,7 +173,7 @@ export default async function DashboardPage() {
 
             <div className="space-y-3.5 text-xs text-white/80">
               <div className="flex items-start gap-3">
-                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#88d937] text-[#0b3d2c] flex items-center justify-center font-bold text-[10px] sm:text-[11px] shrink-0">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#88d937] text-[#19382B] flex items-center justify-center font-bold text-[10px] sm:text-[11px] shrink-0">
                   1
                 </div>
                 <div>
@@ -185,7 +185,7 @@ export default async function DashboardPage() {
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#88d937] text-[#0b3d2c] flex items-center justify-center font-bold text-[10px] sm:text-[11px] shrink-0">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#88d937] text-[#19382B] flex items-center justify-center font-bold text-[10px] sm:text-[11px] shrink-0">
                   2
                 </div>
                 <div>
@@ -197,7 +197,7 @@ export default async function DashboardPage() {
               </div>
 
               <div className="flex items-start gap-3">
-                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#88d937] text-[#0b3d2c] flex items-center justify-center font-bold text-[10px] sm:text-[11px] shrink-0">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#88d937] text-[#19382B] flex items-center justify-center font-bold text-[10px] sm:text-[11px] shrink-0">
                   3
                 </div>
                 <div>
