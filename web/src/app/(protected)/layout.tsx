@@ -30,7 +30,7 @@ export default async function ProtectedLayout({
   return (
     <div className="min-h-screen bg-[#ecefe6] text-[#111111] font-sans flex flex-col">
       <DashboardNavbar userEmail={user.email} userRole={profile.role} />
-      <main className="flex-1 max-w-[1300px] w-full mx-auto px-4 sm:px-8 lg:px-12 py-8">
+      <main className="flex-1 max-w-[1300px] w-full mx-auto px-3 sm:px-8 lg:px-12 py-4 sm:py-8">
         {children}
       </main>
     </div>

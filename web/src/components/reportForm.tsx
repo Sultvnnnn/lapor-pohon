@@ -188,24 +188,25 @@ export const ReportForm = () => {
   };
 
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-6 sm:space-y-8">
       {/* Container Utama Formulir */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-black/5 shadow-sm space-y-6">
-        <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
-          <div className="w-10 h-10 rounded-2xl bg-[#0b3d2c] text-[#e3f4d7] flex items-center justify-center shadow-sm">
-            <Tree size={22} weight="fill" />
+      <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-black/5 shadow-xs space-y-5 sm:space-y-6">
+        <div className="flex items-center gap-3 pb-3.5 sm:pb-4 border-b border-gray-100">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-[#0b3d2c] text-[#e3f4d7] flex items-center justify-center shadow-xs shrink-0">
+            <Tree size={20} weight="fill" className="sm:hidden" />
+            <Tree size={22} weight="fill" className="hidden sm:block" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-[#111111] tracking-tight">
+            <h2 className="text-base sm:text-lg font-bold text-[#111111] tracking-tight">
               Formulir Laporan Pohon Rawan Tumbang
             </h2>
-            <p className="text-xs text-[#111111]/60">
+            <p className="text-[11px] sm:text-xs text-[#111111]/60">
               Unggah foto lokasi & koordinat untuk dideteksi oleh AI
             </p>
           </div>
         </div>
 
-        <form onSubmit={formLogic.handleSubmit(submitHandler)} className="space-y-6">
+        <form onSubmit={formLogic.handleSubmit(submitHandler)} className="space-y-5 sm:space-y-6">
           {/* Upload Foto */}
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
@@ -234,15 +235,15 @@ export const ReportForm = () => {
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-6 space-y-2">
-                  <div className="w-12 h-12 rounded-full bg-[#0b3d2c]/10 text-[#0b3d2c] flex items-center justify-center mx-auto">
-                    <UploadSimple size={24} weight="duotone" />
+                <div className="text-center py-5 sm:py-6 space-y-2">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#0b3d2c]/10 text-[#0b3d2c] flex items-center justify-center mx-auto">
+                    <UploadSimple size={22} weight="duotone" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-[#111111]">
+                    <p className="text-xs sm:text-sm font-semibold text-[#111111]">
                       Pilih atau tarik foto pohon ke sini
                     </p>
-                    <p className="text-xs text-[#111111]/50">
+                    <p className="text-[10px] sm:text-xs text-[#111111]/50">
                       Format PNG, JPG, JPEG (Maks. 10MB)
                     </p>
                   </div>
@@ -259,7 +260,7 @@ export const ReportForm = () => {
 
           {/* Location Inputs & GPS Auto-detect */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
                 <MapPin size={15} weight="bold" className="text-[#0b3d2c]" />
                 Koordinat Lokasi (GPS) <span className="text-red-500">*</span>
@@ -269,7 +270,7 @@ export const ReportForm = () => {
                 type="button"
                 onClick={handleGetLocation}
                 disabled={isGettingLocation}
-                className="flex items-center gap-1.5 text-xs font-semibold text-[#0b3d2c] hover:text-[#19382B] bg-[#ecefe6] hover:bg-[#e1e6d7] px-3 py-1.5 rounded-full transition-colors disabled:opacity-50"
+                className="self-start sm:self-auto flex items-center gap-1.5 text-xs font-semibold text-[#0b3d2c] hover:text-[#19382B] bg-[#ecefe6] hover:bg-[#e1e6d7] px-3 py-1.5 rounded-full transition-colors disabled:opacity-50"
               >
                 {isGettingLocation ? (
                   <>
