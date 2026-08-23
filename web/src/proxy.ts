@@ -48,7 +48,7 @@ export const proxy = async (request: NextRequest) => {
 
   if (user && (pathname === "/login" || pathname === "/register")) {
     const homeUrl = request.nextUrl.clone();
-    homeUrl.pathname = "/";
+    homeUrl.pathname = "/dashboard";
     return NextResponse.redirect(homeUrl);
   }
 
