@@ -118,7 +118,7 @@ export const HeroSection = () => {
                       <button className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-[#1a1a1a] shadow-sm border border-black/5 hover:bg-gray-50">
                         <ArrowsLeftRight size={12} weight="bold" />
                       </button>
-                      <Link href="/lapor" className="w-7 h-7 rounded-full bg-[#0b3d2c] flex items-center justify-center text-white hover:bg-[#07291d] transition-all">
+                      <Link href="/dashboard" className="w-7 h-7 rounded-full bg-[#0b3d2c] flex items-center justify-center text-white hover:bg-[#07291d] transition-all">
                         <ArrowRight size={12} weight="bold" />
                       </Link>
                     </div>

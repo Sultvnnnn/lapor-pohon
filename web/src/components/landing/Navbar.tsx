@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { House, Leaf, GearSix, Tree, Users, SignIn } from "@phosphor-icons/react";
+import { House, Leaf, GearSix, Tree, Users, SignIn, Layout } from "@phosphor-icons/react";
+import { createClient } from "@/lib/supabase/client";
 
 interface NavLinkItem {
   name: string;
@@ -11,6 +13,29 @@ interface NavLinkItem {
 }
 
 export const Navbar = () => {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const supabaseClient = createClient();
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const {
+        data: { user },
+      } = await supabaseClient.auth.getUser();
+      setIsLoggedIn(!!user);
+    };
+    checkUser();
+
+    const {
+      data: { subscription },
+    } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+      setIsLoggedIn(!!session?.user);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
   const navLinks: NavLinkItem[] = [
     { name: "Beranda", href: "#beranda", icon: House, isActive: true },
     { name: "Fitur AI", href: "#fitur", icon: Leaf },
@@ -23,7 +48,7 @@ export const Navbar = () => {
     <nav className="w-full bg-white pt-6 pb-2 relative border-none">
       <div className="w-full max-w-[1300px] mx-auto px-4 sm:px-8 lg:px-12 flex items-center justify-between">
 
-        {/* Left: LaporPohon Brand Logo with White Tree Icon */}
+        {/* Left: LaporPohon Brand Logo */}
         <Link href="/" className="flex items-center gap-3 group">
           <div className="w-9 h-9 rounded-full bg-[#19382B] text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
             <Tree size={20} weight="fill" />
@@ -53,21 +78,33 @@ export const Navbar = () => {
           })}
         </div>
 
-        {/* Right: Dark Forest CTA Buttons */}
+        {/* Right: CTA Buttons (Dynamic based on login status) */}
         <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-[#111111] hover:text-[#19382B] px-3 py-2"
-          >
-            <SignIn size={16} weight="bold" />
-            Masuk
-          </Link>
-          <Link
-            href="/register"
-            className="bg-[#19382B] hover:bg-[#234A39] text-white px-6 sm:px-7 py-2.5 sm:py-3 rounded-full text-[13px] sm:text-[14px] font-medium transition-colors shadow-sm flex items-center gap-1.5"
-          >
-            Daftar
-          </Link>
+          {isLoggedIn ? (
+            <Link
+              href="/dashboard"
+              className="bg-[#19382B] hover:bg-[#234A39] text-white px-6 sm:px-7 py-2.5 sm:py-3 rounded-full text-[13px] sm:text-[14px] font-semibold transition-colors shadow-sm flex items-center gap-2"
+            >
+              <Layout size={18} weight="bold" />
+              Dashboard Saya
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="hidden sm:flex items-center gap-1.5 text-xs font-semibold text-[#111111] hover:text-[#19382B] px-3 py-2"
+              >
+                <SignIn size={16} weight="bold" />
+                Masuk
+              </Link>
+              <Link
+                href="/register"
+                className="bg-[#19382B] hover:bg-[#234A39] text-white px-6 sm:px-7 py-2.5 sm:py-3 rounded-full text-[13px] sm:text-[14px] font-medium transition-colors shadow-sm flex items-center gap-1.5"
+              >
+                Daftar
+              </Link>
+            </>
+          )}
         </div>
 
       </div>
