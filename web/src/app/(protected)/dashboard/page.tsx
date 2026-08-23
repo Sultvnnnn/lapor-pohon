@@ -20,39 +20,53 @@ export default function DashboardPage() {
   const [totalReports, setTotalReports] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
+  const fetchTotalReports = async (userId: string) => {
+    const { count } = await supabase
+      .from("reports")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", userId);
 
-        if (user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("full_name, role")
-            .eq("id", user.id)
-            .maybeSingle();
+    setTotalReports(count ?? 0);
+  };
 
-          setDisplayName(
-            profile?.full_name || user.email?.split("@")[0] || "Pengguna"
-          );
-        }
+  const fetchDashboardData = async () => {
+    try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-        const { count } = await supabase
-          .from("reports")
-          .select("*", { count: "exact", head: true });
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, role")
+          .eq("id", user.id)
+          .maybeSingle();
 
-        setTotalReports(count ?? 0);
-      } catch (err) {
-        console.error("Error fetching dashboard data:", err);
-      } finally {
-        setIsLoading(false);
+        setDisplayName(
+          profile?.full_name || user.email?.split("@")[0] || "Pengguna"
+        );
+
+        await fetchTotalReports(user.id);
       }
-    };
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  const handleReportSubmitted = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      fetchTotalReports(user.id);
+    }
+  };
 
   return (
     <div className="space-y-6 sm:space-y-8 pb-12 pt-2 sm:pt-4 font-sans">
@@ -124,7 +138,7 @@ export default function DashboardPage() {
           transition={{ duration: 0.6 }}
           className="lg:col-span-7 space-y-6"
         >
-          <ReportForm />
+          <ReportForm onReportSubmitted={handleReportSubmitted} />
         </motion.div>
 
         {/* Right Column (5 cols): Guidelines & Workflow Info Cards */}

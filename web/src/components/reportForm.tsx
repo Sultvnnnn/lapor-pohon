@@ -92,7 +92,11 @@ const statusConfig: Record<
   },
 };
 
-export const ReportForm = () => {
+type ReportFormProps = {
+  onReportSubmitted?: () => void;
+};
+
+export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const [activeTab, setActiveTab] = useState<TabMode>("scan");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitStep, setSubmitStep] = useState<SubmitStep>("idle");
@@ -159,6 +163,7 @@ export const ReportForm = () => {
       const { data, error } = await supabaseClient
         .from("reports")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (!error && data) {
@@ -378,6 +383,7 @@ export const ReportForm = () => {
 
       setSubmitStep("saving");
       const { error: dbError } = await supabaseClient.from("reports").insert({
+        user_id: session.user.id,
         image_url: imageUrl,
         description: data.description,
         location: `POINT(${data.longitude} ${data.latitude})`,
@@ -405,8 +411,9 @@ export const ReportForm = () => {
       formLogic.reset();
       setCapturedFile(null);
       setLocationSuccess(false);
-      // Automatically refresh history for Tab 2
+      // Automatically refresh history for Tab 2 and parent Dashboard count
       fetchReportHistory();
+      onReportSubmitted?.();
     } catch (error) {
       const errorMessage =
         error instanceof Error
@@ -523,12 +530,16 @@ export const ReportForm = () => {
                   {(() => {
                     const riskLevel = getRiskLevel(submittedReport.riskScore);
                     const config = riskLevelConfig[riskLevel];
+                    const displayScore =
+                      submittedReport.riskScore <= 1
+                        ? Math.round(submittedReport.riskScore * 100)
+                        : Math.round(submittedReport.riskScore);
                     return (
                       <div
                         className={`self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-full font-extrabold text-xs shadow-xs ${config.bgColor} ${config.textColor}`}
                       >
                         <ShieldWarning size={16} weight="fill" />
-                        <span>{config.label} ({submittedReport.riskScore}/100)</span>
+                        <span>{config.label} ({displayScore}/100)</span>
                       </div>
                     );
                   })()}
@@ -555,7 +566,7 @@ export const ReportForm = () => {
                       setCapturedFile(null);
                       startCamera();
                     }}
-                    className="bg-[#19382B] text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-xs hover:bg-[#234A39] transition-all"
+                    className="bg-[#19382B] text-[#e3f4d7] px-5 py-2.5 rounded-full text-xs font-bold shadow-xs hover:bg-[#234A39] transition-all"
                   >
                     Potret Ulang Foto Pohon
                   </button>
@@ -582,7 +593,10 @@ export const ReportForm = () => {
                         Skor Risiko AI
                       </p>
                       <p className="text-xl sm:text-2xl font-extrabold text-[#19382B]">
-                        {submittedReport.riskScore} <span className="text-xs font-normal text-[#111111]/50">/ 100</span>
+                        {submittedReport.riskScore <= 1
+                          ? Math.round(submittedReport.riskScore * 100)
+                          : Math.round(submittedReport.riskScore)}{" "}
+                        <span className="text-xs font-normal text-[#111111]/50">/ 100</span>
                       </p>
                     </div>
 
@@ -946,7 +960,11 @@ export const ReportForm = () => {
                             <span
                               className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${riskConf.bgColor} ${riskConf.textColor}`}
                             >
-                              Risiko: {item.risk_score}/100
+                              Risiko:{" "}
+                              {item.risk_score <= 1
+                                ? Math.round(item.risk_score * 100)
+                                : Math.round(item.risk_score)}
+                              /100
                             </span>
                           </div>
 
@@ -1033,6 +1051,10 @@ export const ReportForm = () => {
                     statusConfig["pending"];
                   const riskLevel = getRiskLevel(selectedHistoryItem.risk_score);
                   const riskConf = riskLevelConfig[riskLevel];
+                  const modalDisplayScore =
+                    selectedHistoryItem.risk_score <= 1
+                      ? Math.round(selectedHistoryItem.risk_score * 100)
+                      : Math.round(selectedHistoryItem.risk_score);
                   return (
                     <>
                       <div
@@ -1043,7 +1065,7 @@ export const ReportForm = () => {
                       <div
                         className={`text-xs font-extrabold px-3 py-1 rounded-full ${riskConf.bgColor} ${riskConf.textColor}`}
                       >
-                        Skor Risiko: {selectedHistoryItem.risk_score} / 100
+                        Skor Risiko: {modalDisplayScore} / 100
                       </div>
                     </>
                   );
@@ -1070,7 +1092,10 @@ export const ReportForm = () => {
                     Skor Risiko AI
                   </p>
                   <p className="text-lg font-extrabold text-[#19382B]">
-                    {selectedHistoryItem.risk_score} / 100
+                    {selectedHistoryItem.risk_score <= 1
+                      ? Math.round(selectedHistoryItem.risk_score * 100)
+                      : Math.round(selectedHistoryItem.risk_score)}{" "}
+                    / 100
                   </p>
                 </div>
                 <div className="bg-[#f8f9f5] border border-black/5 p-3 rounded-2xl">

@@ -1,8 +1,9 @@
 export type RiskLevel = "rendah" | "sedang" | "tinggi";
 
 export const getRiskLevel = (score: number): RiskLevel => {
-  if (score < 0.33) return "rendah";
-  if (score < 0.66) return "sedang";
+  const normScore = score <= 1 ? score : score / 100;
+  if (normScore < 0.33) return "rendah";
+  if (normScore < 0.66) return "sedang";
   return "tinggi";
 };
 
