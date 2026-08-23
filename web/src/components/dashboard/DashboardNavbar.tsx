@@ -12,6 +12,7 @@ import {
   House,
   List,
   X,
+  Sparkle,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
@@ -21,7 +22,7 @@ interface DashboardNavbarProps {
   userRole?: string;
 }
 
-/* ── 1. Desktop Sidebar Component (Inspirasi Shadcn UI Sidebar) ── */
+/* ── 1. Desktop Sidebar Component (Mewah & Interaktif ala DESIGN.md) ── */
 export const DashboardSidebar = ({
   userEmail,
   userRole,
@@ -36,73 +37,98 @@ export const DashboardSidebar = ({
   };
 
   return (
-    <aside className="hidden md:flex flex-col justify-between w-64 h-screen sticky top-0 bg-white border-r border-black/5 p-5 shrink-0 z-40 font-sans shadow-xs">
-      {/* Sidebar Header */}
-      <div className="space-y-6">
+    <motion.aside
+      initial={{ opacity: 0, x: -24 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+      className="hidden md:flex flex-col justify-between w-64 h-screen sticky top-0 bg-white border-r border-black/5 p-5 shrink-0 z-40 font-sans shadow-xs relative overflow-hidden"
+    >
+      {/* Texture Background Overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.03] pointer-events-none"
+        style={{
+          backgroundImage: `radial-gradient(circle, #19382B 1px, transparent 1px)`,
+          backgroundSize: "20px 20px",
+        }}
+      />
+
+      {/* ── Sidebar Header ── */}
+      <div className="space-y-6 relative z-10">
         <Link
           href="/"
           className="flex items-center gap-3 group px-1"
           title="Kembali ke Beranda Utama"
         >
-          <div className="w-9 h-9 rounded-full bg-[#19382B] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
-            <Tree size={20} weight="fill" />
+          <div className="w-10 h-10 rounded-full bg-[#19382B] text-white flex items-center justify-center shadow-sm group-hover:scale-105 group-hover:bg-[#234A39] transition-all">
+            <Tree size={22} weight="fill" />
           </div>
           <div>
-            <span className="font-bold text-[#111111] text-base tracking-tight block leading-tight">
+            <span className="font-bold text-[#111111] text-base tracking-tight block leading-tight group-hover:text-[#19382B] transition-colors">
               LaporPohon
             </span>
-            <span className="text-[9px] uppercase font-bold tracking-wider text-[#19382B] bg-[#88d937]/30 px-2 py-0.5 rounded-full inline-block mt-0.5">
-              Dashboard AI
-            </span>
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="text-[9px] uppercase font-bold tracking-wider text-[#19382B] bg-[#88d937]/30 px-2 py-0.5 rounded-full inline-block">
+                Dashboard AI
+              </span>
+            </div>
           </div>
         </Link>
 
-        {/* Sidebar Content / Menu Group */}
-        <div className="space-y-1.5">
+        {/* Live System Status Pill */}
+        <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-2.5 flex items-center gap-2 text-[11px] font-medium text-[#111111]/70">
+          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
+          <span className="truncate">Sistem AI YOLOv8 Siap</span>
+          <Sparkle size={12} weight="fill" className="text-[#88d937] shrink-0 ml-auto" />
+        </div>
+
+        {/* ── Sidebar Navigation Group ── */}
+        <div className="space-y-1.5 pt-1">
           <p className="text-[10px] font-bold uppercase tracking-widest text-[#111111]/40 px-3 pb-1">
             Menu Utama
           </p>
 
-          <Link
-            href="/"
-            className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-[#111111]/70 hover:bg-[#ecefe6] hover:text-[#19382B] transition-all"
-          >
-            <House size={18} weight="bold" />
-            <span>Beranda Utama</span>
-          </Link>
+          <motion.div whileHover={{ x: 4 }} transition={{ duration: 0.2 }}>
+            <Link
+              href="/"
+              className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-[#111111]/70 hover:bg-[#ecefe6] hover:text-[#19382B] transition-all group"
+            >
+              <House size={18} weight="bold" className="group-hover:scale-110 transition-transform" />
+              <span>Beranda Utama</span>
+            </Link>
+          </motion.div>
 
-          <Link
-            href="/dashboard"
-            className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-[#19382B] text-white shadow-xs transition-all"
-          >
-            <div className="flex items-center gap-3">
-              <Layout size={18} weight="bold" />
-              <span>Laporan AI</span>
+          <motion.div whileHover={{ x: 4 }} transition={{ duration: 0.2 }} className="relative">
+            <Link
+              href="/dashboard"
+              className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-[#19382B] text-white shadow-sm transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <Layout size={18} weight="bold" />
+                <span>Laporan AI</span>
+              </div>
+              <span className="w-2 h-2 rounded-full bg-[#88d937] animate-pulse" />
+            </Link>
+          </motion.div>
+
+          <div className="opacity-60 cursor-not-allowed">
+            <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-medium text-gray-400 bg-gray-50/50">
+              <MapTrifold size={18} />
+              <span>Peta Sebaran (Segera)</span>
             </div>
-            <span className="w-2 h-2 rounded-full bg-[#88d937] animate-pulse" />
-          </Link>
+          </div>
 
-          <button
-            disabled
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-medium text-gray-400 bg-gray-50/50 cursor-not-allowed text-left opacity-60"
-          >
-            <MapTrifold size={18} />
-            <span>Peta Sebaran (Segera)</span>
-          </button>
-
-          <button
-            disabled
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-medium text-gray-400 bg-gray-50/50 cursor-not-allowed text-left opacity-60"
-          >
-            <Leaf size={18} />
-            <span>Katalog Kayu (Segera)</span>
-          </button>
+          <div className="opacity-60 cursor-not-allowed">
+            <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-medium text-gray-400 bg-gray-50/50">
+              <Leaf size={18} />
+              <span>Katalog Kayu (Segera)</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Sidebar Footer / User Profile & Sign Out */}
-      <div className="space-y-3 pt-4 border-t border-black/5">
-        <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#ecefe6]/60 border border-black/5">
+      {/* ── Sidebar Footer / User Profile & Sign Out ── */}
+      <div className="space-y-3 pt-4 border-t border-black/5 relative z-10">
+        <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#ecefe6]/60 border border-black/5 shadow-xs hover:bg-[#ecefe6] transition-colors">
           <div className="w-9 h-9 rounded-full bg-[#19382B] text-[#e3f4d7] flex items-center justify-center text-xs font-bold uppercase shrink-0 shadow-xs">
             {userEmail ? userEmail[0] : "U"}
           </div>
@@ -110,21 +136,23 @@ export const DashboardSidebar = ({
             <p className="font-semibold text-xs text-[#111111] truncate leading-tight">
               {userEmail || "Pengguna"}
             </p>
-            <p className="text-[10px] text-[#111111]/60 capitalize mt-0.5">
+            <p className="text-[10px] text-[#111111]/60 capitalize mt-0.5 font-medium">
               Peran: {userRole || "Warga"}
             </p>
           </div>
         </div>
 
-        <button
+        <motion.button
+          whileHover={{ scale: 1.01 }}
+          whileTap={{ scale: 0.98 }}
           onClick={handleSignOut}
-          className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 py-2.5 rounded-2xl transition-colors border border-red-200/60"
+          className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 py-2.5 rounded-2xl transition-all border border-red-200/60 shadow-xs"
         >
           <SignOut size={16} weight="bold" />
           <span>Keluar dari Akun</span>
-        </button>
+        </motion.button>
       </div>
-    </aside>
+    </motion.aside>
   );
 };
 
@@ -165,7 +193,7 @@ export const DashboardNavbar = ({
           </div>
         </Link>
 
-        {/* Desktop Quick Nav Links (Backup) */}
+        {/* Desktop Quick Nav Links */}
         <div className="hidden md:flex items-center gap-1 sm:gap-1.5">
           <Link
             href="/"
@@ -197,7 +225,7 @@ export const DashboardNavbar = ({
           </button>
         </div>
 
-        {/* Right Desktop: User Info & Sign Out (Backup) */}
+        {/* Right Desktop: User Info & Sign Out */}
         <div className="hidden md:flex items-center gap-2 shrink-0">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-black/5 text-xs font-medium text-[#111111]">
             <div className="w-6 h-6 rounded-full bg-[#19382B] text-[#e3f4d7] flex items-center justify-center text-[10px] font-bold uppercase">
