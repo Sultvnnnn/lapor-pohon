@@ -6,13 +6,10 @@ import { ReportForm } from "@/components/reportForm";
 import {
   ShieldWarning,
   Tree,
-  Scales,
   Sparkle,
   CheckCircle,
   Camera,
-  MapPinLine,
   Recycle,
-  CircleNotch,
 } from "@phosphor-icons/react";
 import { motion } from "framer-motion";
 
@@ -57,7 +54,7 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="space-y-6 sm:space-y-8 pb-12 pt-2 sm:pt-4">
+    <div className="space-y-6 sm:space-y-8 pb-12 pt-2 sm:pt-4 font-sans">
       {/* ── 1. Welcome Banner (Mewah & Bertekstur Radial Dot Grid) ── */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -74,19 +71,36 @@ export default function DashboardPage() {
           }}
         />
 
-        <div className="relative z-10 space-y-2.5 max-w-2xl">
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-[#88d937] border border-white/10 shadow-xs">
-            <Sparkle size={14} weight="fill" />
-            <span>Sistem Deteksi AI & Distribusi Sirkular</span>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="space-y-2.5 max-w-xl">
+            <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-3 py-1 rounded-full text-xs font-semibold text-[#88d937] border border-white/10 shadow-xs">
+              <Sparkle size={14} weight="fill" />
+              <span>Sistem Pemindai Pohon AI & Sirkularitas</span>
+            </div>
+
+            <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
+              Halo, {displayName}! 👋
+            </h1>
+
+            <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
+              Selamat datang di Dashboard LaporPohon. Potret langsung atau unggah foto pohon rawan tumbang di sekitar Anda untuk pencegahan bahaya dini dan pemanfaatan kayu sirkular.
+            </p>
           </div>
 
-          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
-            Halo, {displayName}! 👋
-          </h1>
-
-          <p className="text-xs sm:text-sm text-white/80 leading-relaxed max-w-xl">
-            Selamat datang di Dashboard LaporPohon. Laporkan lokasi pohon rawan tumbang di sekitar Anda untuk pencegahan bahaya dini dan pemanfaatan kayu sirkular.
-          </p>
+          {/* Quick Counter Badge */}
+          <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 flex items-center gap-4 shrink-0 shadow-sm">
+            <div className="w-12 h-12 rounded-2xl bg-[#88d937] text-[#19382B] flex items-center justify-center shadow-xs">
+              <Tree size={26} weight="fill" />
+            </div>
+            <div>
+              <p className="text-[10px] uppercase font-bold tracking-widest text-white/70">
+                Total Laporan
+              </p>
+              <p className="text-2xl font-extrabold text-white">
+                {isLoading ? "..." : totalReports} <span className="text-xs font-semibold text-[#88d937]">Laporan</span>
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Floating Decorative Graphic Element */}
@@ -99,111 +113,9 @@ export default function DashboardPage() {
         </motion.div>
       </motion.div>
 
-      {/* ── 2. Metrics Cards Row (Interactive Hover & Scroll Reveal) ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
-        {/* Card 1: Total Laporan */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          whileHover={{ y: -4, scale: 1.015 }}
-          transition={{ duration: 0.3 }}
-          className="bg-white rounded-2xl p-4 sm:p-5 border border-black/5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group transition-all"
-        >
-          <div className="space-y-1">
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[#111111]/40">
-              Total Laporan
-            </p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight">
-              {isLoading ? "..." : totalReports}
-            </p>
-            <p className="text-[10px] sm:text-[11px] text-[#111111]/60 font-medium">Laporan terverifikasi</p>
-          </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-[#19382B]/10 text-[#19382B] flex items-center justify-center shrink-0 group-hover:bg-[#19382B] group-hover:text-white transition-all shadow-xs">
-            <Tree size={22} weight="duotone" className="sm:hidden" />
-            <Tree size={26} weight="duotone" className="hidden sm:block" />
-          </div>
-        </motion.div>
-
-        {/* Card 2: Model AI Active */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          whileHover={{ y: -4, scale: 1.015 }}
-          transition={{ duration: 0.3, delay: 0.08 }}
-          className="bg-white rounded-2xl p-4 sm:p-5 border border-black/5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group transition-all"
-        >
-          <div className="space-y-1">
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[#111111]/40">
-              Model AI Active
-            </p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight">
-              YOLOv8
-            </p>
-            <p className="text-[10px] sm:text-[11px] text-[#88d937] font-bold flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <span>Sistem AI Siap</span>
-            </p>
-          </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0 group-hover:bg-amber-500 group-hover:text-white transition-all shadow-xs">
-            <ShieldWarning size={22} weight="duotone" className="sm:hidden" />
-            <ShieldWarning size={26} weight="duotone" className="hidden sm:block" />
-          </div>
-        </motion.div>
-
-        {/* Card 3: Cakupan Wilayah */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          whileHover={{ y: -4, scale: 1.015 }}
-          transition={{ duration: 0.3, delay: 0.16 }}
-          className="bg-white rounded-2xl p-4 sm:p-5 border border-black/5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group transition-all"
-        >
-          <div className="space-y-1">
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[#111111]/40">
-              Cakupan Wilayah
-            </p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight">
-              Semarang
-            </p>
-            <p className="text-[10px] sm:text-[11px] text-[#111111]/60 font-medium">Jawa Tengah</p>
-          </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-xs">
-            <MapPinLine size={22} weight="duotone" className="sm:hidden" />
-            <MapPinLine size={26} weight="duotone" className="hidden sm:block" />
-          </div>
-        </motion.div>
-
-        {/* Card 4: Mitra UMKM */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          whileHover={{ y: -4, scale: 1.015 }}
-          transition={{ duration: 0.3, delay: 0.24 }}
-          className="bg-white rounded-2xl p-4 sm:p-5 border border-black/5 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 group transition-all"
-        >
-          <div className="space-y-1">
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-[#111111]/40">
-              Mitra UMKM
-            </p>
-            <p className="text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight">
-              Sirkular
-            </p>
-            <p className="text-[10px] sm:text-[11px] text-[#111111]/60 font-medium">Pemanfaatan Kayu</p>
-          </div>
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-[#88d937]/30 text-[#19382B] flex items-center justify-center shrink-0 group-hover:bg-[#88d937] group-hover:text-[#111111] transition-all shadow-xs">
-            <Recycle size={22} weight="duotone" className="sm:hidden" />
-            <Recycle size={26} weight="duotone" className="hidden sm:block" />
-          </div>
-        </motion.div>
-      </div>
-
-      {/* ── 3. Main Grid Content (Asymmetrical 7 cols / 5 cols Layout) ── */}
+      {/* ── 2. Main Grid Content (Formulir Scanner Kamera & Kartu Informasi) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
-        {/* Left Column (7 cols): Report Form & Inspection Output */}
+        {/* Left Column (7 cols): Report Form dengan Kamera Live Scanner */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -229,7 +141,7 @@ export default function DashboardPage() {
                 <Camera size={19} weight="fill" />
               </div>
               <h3 className="font-bold text-[#111111] text-sm sm:text-base tracking-tight">
-                Tips Foto Pohon Presisi
+                Tips Pemindaian Pohon Presisi
               </h3>
             </div>
 
@@ -237,19 +149,19 @@ export default function DashboardPage() {
               <li className="flex items-start gap-2.5">
                 <CheckCircle size={17} weight="fill" className="text-[#19382B] shrink-0 mt-0.5" />
                 <span>
-                  <strong>Ambil sudut utuh:</strong> Pastikan batang dan tajuk pohon terlihat jelas dari jarak yang memadai.
+                  <strong>Mode Kamera Live:</strong> Arahkan kamera HP ke pohon, pastikan tajuk dan batang utama terlihat jelas di dalam jendela pemindai.
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
                 <CheckCircle size={17} weight="fill" className="text-[#19382B] shrink-0 mt-0.5" />
                 <span>
-                  <strong>Pencahayaan memadai:</strong> Hindari foto yang terlalu gelap atau membelakangi cahaya (*backlight*).
+                  <strong>Pencahayaan Memadai:</strong> Hindari membelakangi cahaya matahari (*backlight*) atau suasana terlalu gelap.
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
                 <CheckCircle size={17} weight="fill" className="text-[#19382B] shrink-0 mt-0.5" />
                 <span>
-                  <strong>Aktifkan GPS HP:</strong> Gunakan tombol <em>Deteksi Lokasi Otomatis</em> agar titik koordinat akurat.
+                  <strong>Aktifkan GPS HP:</strong> Klik tombol <em>Deteksi Lokasi Otomatis</em> agar koordinat lokasi pohon terdeteksi akurat.
                 </span>
               </li>
             </ul>
