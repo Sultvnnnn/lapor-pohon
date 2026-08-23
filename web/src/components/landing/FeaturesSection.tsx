@@ -61,7 +61,7 @@ export const FeaturesSection = () => {
                 Cukup ambil foto pohon rawan. AI YOLOv8 langsung mengukur posisi, tingkat kemiringan, dan potensi risiko bahaya secara cepat.
               </p>
 
-              <Link href="/lapor" className="inline-flex items-center gap-2 border border-black/20 rounded-full px-5 py-2 text-xs font-bold text-[#111111] hover:bg-[#19382B] hover:text-white transition-all">
+              <Link href="/dashboard" className="inline-flex items-center gap-2 border border-black/20 rounded-full px-5 py-2 text-xs font-bold text-[#111111] hover:bg-[#19382B] hover:text-white transition-all">
                 Coba Lapor Sekarang <ArrowUpRight size={14} weight="bold" />
               </Link>
             </div>

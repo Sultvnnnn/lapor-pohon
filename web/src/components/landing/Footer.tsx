@@ -40,7 +40,7 @@ export const Footer = () => {
 
           <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto shrink-0">
             <Link
-              href="/lapor"
+              href="/dashboard"
               className="w-full sm:w-auto text-center bg-[#0b3d2c] text-white hover:bg-[#07291d] font-bold px-8 py-4 rounded-full text-sm transition-all shadow-md hover:shadow-xl hover:-translate-y-1 flex items-center justify-center gap-2"
             >
               Laporkan Pohon <ArrowUpRight size={18} weight="bold" />

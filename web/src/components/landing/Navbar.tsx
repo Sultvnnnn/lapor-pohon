@@ -42,7 +42,7 @@ export const Navbar = () => {
   const navLinks: NavLinkItem[] = [
     { name: "Beranda", href: "#beranda", id: "beranda" },
     { name: "Ekosistem", href: "#ekosistem", id: "ekosistem" },
-    { name: "Alur Kerja", href: "#alur", id: "alur" },
+    { name: "Cara Kerja", href: "#alur", id: "alur" },
     { name: "Solusi AI", href: "#fitur", id: "fitur" },
     { name: "Tim Kami", href: "#tim", id: "tim" },
   ];
@@ -184,8 +184,8 @@ export const Navbar = () => {
                     href={link.href}
                     onClick={(e) => scrollToSection(e, link.id)}
                     className={`px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center justify-between transition-colors ${isActive
-                        ? "bg-[#19382B] text-white"
-                        : "text-[#111111]/80 hover:bg-black/5 hover:text-[#111111]"
+                      ? "bg-[#19382B] text-white"
+                      : "text-[#111111]/80 hover:bg-black/5 hover:text-[#111111]"
                       }`}
                   >
                     <span>{link.name}</span>
