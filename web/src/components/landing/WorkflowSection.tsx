@@ -98,9 +98,9 @@ export const WorkflowSection = () => {
               <span className="text-[11px] font-bold uppercase tracking-widest px-3.5 py-1.5 rounded-full bg-[#ecefe6] text-[#111111] inline-block">
                 Cara Kerja
               </span>
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#111111] leading-[1.1]">
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#111111] leading-[1.3] sm:leading-[1.25]">
                 4 Langkah Mudah <br className="hidden sm:block" />
-                <span className="inline-block bg-[#ecefe6] px-4 py-1 rounded-full text-[#19382B] font-medium">Penggunaan</span> LaporPohon.
+                <span className="inline-block bg-[#ecefe6] px-3 sm:px-4 py-0.5 sm:py-1 rounded-full text-[#19382B] font-medium align-middle relative -top-0.5">Penggunaan</span> LaporPohon.
               </h2>
             </div>
             <p className="text-xs sm:text-sm text-[#111111]/60 max-w-md leading-relaxed pb-1">
@@ -116,7 +116,7 @@ export const WorkflowSection = () => {
           <button
             onClick={() => scrollNav("left")}
             disabled={activeIndex === 0}
-            className={`absolute left-4 sm:left-10 top-[45%] -translate-y-1/2 z-30 w-12 h-12 rounded-full bg-white/80 backdrop-blur-md shadow-xl border border-white flex items-center justify-center text-[#111111] hover:bg-white hover:scale-110 transition-all hidden sm:flex opacity-0 group-hover:opacity-100 disabled:opacity-0 disabled:cursor-not-allowed`}
+            className={`absolute left-4 sm:left-10 top-[45%] -translate-y-1/2 z-30 w-12 h-12 rounded-full bg-white/80 backdrop-blur-md shadow-sm border border-black/10 flex items-center justify-center text-[#111111] hover:bg-white hover:scale-110 transition-all hidden sm:flex opacity-0 group-hover:opacity-100 disabled:opacity-0 disabled:cursor-not-allowed`}
             aria-label="Geser ke kiri"
           >
             <ArrowLeft size={20} weight="bold" />
@@ -126,7 +126,7 @@ export const WorkflowSection = () => {
           <button
             onClick={() => scrollNav("right")}
             disabled={activeIndex === steps.length - 1}
-            className={`absolute right-4 sm:right-10 top-[45%] -translate-y-1/2 z-30 w-12 h-12 rounded-full bg-white/80 backdrop-blur-md shadow-xl border border-white flex items-center justify-center text-[#111111] hover:bg-white hover:scale-110 transition-all hidden sm:flex opacity-0 group-hover:opacity-100 disabled:opacity-0 disabled:cursor-not-allowed`}
+            className={`absolute right-4 sm:right-10 top-[45%] -translate-y-1/2 z-30 w-12 h-12 rounded-full bg-white/80 backdrop-blur-md shadow-sm border border-black/10 flex items-center justify-center text-[#111111] hover:bg-white hover:scale-110 transition-all hidden sm:flex opacity-0 group-hover:opacity-100 disabled:opacity-0 disabled:cursor-not-allowed`}
             aria-label="Geser ke kanan"
           >
             <ArrowRight size={20} weight="bold" />
@@ -136,7 +136,7 @@ export const WorkflowSection = () => {
           <div
             ref={scrollContainerRef}
             onScroll={handleScroll}
-            className="flex overflow-x-auto snap-x snap-mandatory gap-4 sm:gap-6 lg:gap-10 py-10 px-[7.5vw] sm:px-[calc(50%-160px)] lg:px-[calc(50%-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] items-center"
+            className="flex overflow-x-auto snap-x snap-mandatory gap-4 sm:gap-6 lg:gap-10 py-6 sm:py-8 px-[7.5vw] sm:px-[calc(50%-160px)] lg:px-[calc(50%-200px)] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] items-center"
           >
             {steps.map((item) => (
               <motion.div
@@ -149,7 +149,7 @@ export const WorkflowSection = () => {
                   amount: "some"
                 }}
                 transition={{ duration: 0.4, ease: "easeOut" }}
-                className="flex flex-col w-[85vw] sm:w-[320px] lg:w-[400px] shrink-0 snap-center group/card cursor-grab active:cursor-grabbing shadow-2xl rounded-[1.5rem] sm:rounded-[2rem] bg-white transform-gpu origin-center"
+                className="flex flex-col w-[85vw] sm:w-[320px] lg:w-[400px] shrink-0 snap-center group/card cursor-grab active:cursor-grabbing shadow-sm border border-black/5 hover:shadow-md transition-shadow duration-300 rounded-[1.5rem] sm:rounded-[2rem] bg-white transform-gpu origin-center"
               >
                 {/* Image Section */}
                 <div className="relative h-[320px] sm:h-[280px] lg:h-[320px] w-full rounded-t-[1.5rem] sm:rounded-t-[2rem] overflow-hidden bg-gray-100">

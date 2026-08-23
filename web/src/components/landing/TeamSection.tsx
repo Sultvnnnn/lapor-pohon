@@ -82,16 +82,16 @@ export const TeamSection = () => {
           <span className="text-[11px] font-bold uppercase tracking-widest px-3.5 py-1.5 rounded-full bg-[#ecefe6] text-[#111111] inline-block">
             Tim Pengembang
           </span>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#111111] leading-[1.1]">
-            Meet <span className="inline-block bg-[#ecefe6] px-4 py-1 rounded-full text-[#19382B] font-medium">the Team</span>
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#111111] leading-[1.3] sm:leading-[1.25]">
+            Meet <span className="inline-block bg-[#ecefe6] px-3 sm:px-4 py-0.5 sm:py-1 rounded-full text-[#19382B] font-medium align-middle relative -top-0.5">the Team</span>
           </h2>
           <p className="text-xs sm:text-sm text-[#111111]/60 max-w-md leading-relaxed">
             Mahasiswa Institut Teknologi Tangerang Selatan (DSDC ANFORCOM 2026)
           </p>
         </motion.div>
 
-        {/* ── STACKED PHOTO CARDS (Responsif di HP Layar Kecil) ── */}
-        <div className="relative flex items-end justify-center w-full mb-10 pt-4">
+        {/* ── DESKTOP VIEW: Fan Stacked Cards (100% Original Desktop) ── */}
+        <div className="hidden sm:flex relative items-end justify-center w-full mb-10 pt-4">
           <div className="flex items-end justify-center gap-0">
             {team.map((member: TeamMember, index: number) => (
               <motion.div
@@ -103,14 +103,14 @@ export const TeamSection = () => {
                 whileHover={{ scale: 1.06, rotate: 0, zIndex: 50, y: -8 }}
                 className={`
                   relative group cursor-pointer shrink-0
-                  w-[130px] sm:w-[190px] md:w-[230px]
-                  h-[190px] sm:h-[260px] md:h-[310px]
+                  w-[190px] md:w-[230px]
+                  h-[260px] md:h-[310px]
                   rounded-2xl
-                  bg-white p-2 sm:p-3
+                  bg-white p-3
                   shadow-sm border border-black/10
                   transition-all duration-500
                   transform ${member.rotation} ${member.translate} ${member.zIndex}
-                  -mx-2.5 sm:-mx-4 md:-mx-5
+                  -mx-4 md:-mx-5
                 `}
               >
                 {/* Floating badge */}
@@ -119,17 +119,17 @@ export const TeamSection = () => {
                     absolute ${member.badge.position} ${member.badge.rotate}
                     z-30 pointer-events-none
                     bg-white/95 backdrop-blur-md
-                    px-2.5 sm:px-4 py-1 sm:py-2
+                    px-4 py-2
                     rounded-full
                     shadow-sm border border-black/10
                     whitespace-nowrap
                     transition-transform duration-300 group-hover:scale-105
                   `}
                 >
-                  <div className="text-[9px] sm:text-[11px] font-bold text-[#19382B]">
+                  <div className="text-[11px] font-bold text-[#19382B]">
                     {member.role}
                   </div>
-                  <div className="text-[7.5px] sm:text-[9px] text-[#19382B]/60 font-medium mt-0.5">
+                  <div className="text-[9px] text-[#19382B]/60 font-medium mt-0.5">
                     {member.name.split(" ")[0]} {member.name.split(" ")[1]?.charAt(0)}.
                   </div>
                 </div>
@@ -147,7 +147,36 @@ export const TeamSection = () => {
           </div>
         </div>
 
-        {/* ── MEMBER NAMES ROW ── */}
+        {/* ── MOBILE VIEW: Vertical Card Stack (Khusus Layar HP < 640px) ── */}
+        <div className="flex sm:hidden flex-col items-center gap-8 w-full mb-8 pt-2">
+          {team.map((member: TeamMember, index: number) => (
+            <motion.div
+              key={member.name}
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: index * 0.1 }}
+              className="relative group cursor-pointer w-[220px] h-[280px] rounded-2xl bg-white p-2.5 shadow-sm border border-black/10 transition-all duration-500"
+            >
+              {/* Floating badge */}
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-full shadow-sm border border-black/10 whitespace-nowrap text-center">
+                <div className="text-[10px] font-bold text-[#19382B]">{member.role}</div>
+                <div className="text-[8.5px] text-[#19382B]/60 font-medium mt-0.5">{member.name}</div>
+              </div>
+
+              {/* Photo */}
+              <div className="w-full h-full rounded-2xl overflow-hidden bg-[#ecefe6]">
+                <img
+                  src={member.image}
+                  alt={member.name}
+                  className="w-full h-full object-cover object-top"
+                />
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* ── MEMBER NAMES ROW (100% Original Desktop) ── */}
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}

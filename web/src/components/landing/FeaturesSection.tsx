@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowUpRight, Scan, Leaf, Recycle, Tree } from "@phosphor-icons/react";
+import { ArrowUpRight, Scan, Leaf, Recycle, Tree, Storefront } from "@phosphor-icons/react";
 
 export const FeaturesSection = () => {
   return (
@@ -21,9 +21,9 @@ export const FeaturesSection = () => {
             <span className="text-[11px] font-bold uppercase tracking-widest px-3.5 py-1.5 rounded-full bg-[#ecefe6] text-[#111111] inline-block">
               Solusi Unggulan
             </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#111111] leading-[1.1]">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#111111] leading-[1.3] sm:leading-[1.25]">
               Satu Aplikasi, <br className="hidden sm:block" />
-              <span className="inline-block bg-[#ecefe6] px-4 py-1 rounded-full text-[#19382B] font-medium">Tiga Manfaat</span> Nyata.
+              <span className="inline-block bg-[#ecefe6] px-3 sm:px-4 py-0.5 sm:py-1 rounded-full text-[#19382B] font-medium align-middle relative -top-0.5">Tiga Manfaat</span> Nyata.
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-[#111111]/60 max-w-md leading-relaxed pb-1">
@@ -80,9 +80,14 @@ export const FeaturesSection = () => {
             >
               <div className="relative z-10 flex flex-col sm:flex-row justify-between items-start gap-6">
                 <div className="space-y-4 max-w-sm">
-                  <span className="border border-white/30 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-[#88d937]">
-                    Ekonomi Sirkular
-                  </span>
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center shrink-0">
+                      <Storefront size={14} className="text-[#ecefe6]" weight="duotone" />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#ecefe6]">
+                      Ekonomi Sirkular
+                    </span>
+                  </div>
                   <h3 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
                     Kayu Tebangan Jadi Bahan Baku UMKM
                   </h3>

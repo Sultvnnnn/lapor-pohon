@@ -29,7 +29,7 @@ export const StakeholdersSection = () => {
     },
     {
       number: "02",
-      title: "Dinas Pertamanan & Kota",
+      title: "Dinas Lingkungan & Kota",
       role: "Pengelola & Eksekutor",
       description: "Menerima urutan laporan berdasarkan prioritas risiko AI, menerjunkan tim pemangkasan, dan menjalankan program tanam kembali.",
       hoverClass: "hover:bg-[#19382B] hover:text-white",
@@ -66,9 +66,9 @@ export const StakeholdersSection = () => {
             <span className="text-[11px] font-bold uppercase tracking-widest px-3.5 py-1.5 rounded-full bg-[#ecefe6] text-[#111111] inline-block">
               Pihak Terlibat
             </span>
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#111111] leading-[1.1]">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#111111] leading-[1.3] sm:leading-[1.25]">
               Sinergi Warga, <br className="hidden sm:block" />
-              <span className="inline-block bg-[#ecefe6] px-4 py-1 rounded-full text-[#19382B] font-medium">Pemerintah &amp; UMKM</span> Kota.
+              <span className="inline-block bg-[#ecefe6] px-3 sm:px-4 py-0.5 sm:py-1 rounded-full text-[#19382B] font-medium align-middle relative -top-0.5">Pemerintah &amp; UMKM</span> Kota.
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-[#111111]/60 max-w-md leading-relaxed pb-1">
@@ -86,24 +86,24 @@ export const StakeholdersSection = () => {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.5, delay: index * 0.1 }}
-              className={`group flex flex-col md:flex-row md:items-center justify-between py-10 sm:py-12 border-b border-black/10 transition-all duration-500 cursor-pointer sm:hover:px-8 ${item.hoverClass}`}
+              className={`group flex flex-col md:flex-row md:items-center justify-between py-6 sm:py-10 md:py-12 px-4 sm:px-6 md:px-8 border-b border-black/10 transition-all duration-500 cursor-pointer sm:hover:px-8 ${item.hoverClass}`}
             >
 
               {/* Kiri: Nomor, Ikon, & Judul Utama */}
-              <div className="flex items-center gap-6 sm:gap-10 mb-6 md:mb-0">
-                <span className="text-sm sm:text-base font-bold text-black/20 shrink-0 group-hover:text-black/60 transition-colors">
+              <div className="flex items-center gap-3.5 sm:gap-6 md:gap-10 mb-4 md:mb-0">
+                <span className={`text-xs sm:text-base font-bold shrink-0 transition-colors ${item.isDark ? 'text-black/30 group-hover:text-white/70' : 'text-black/30 group-hover:text-black/60'}`}>
                   {item.number}
                 </span>
 
-                <div className="flex items-center gap-5 sm:gap-8">
+                <div className="flex items-center gap-3 sm:gap-6 md:gap-8">
                   {/* Ikon Bulat */}
-                  <div className={`w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-black/10 flex items-center justify-center shrink-0 group-hover:scale-90 group-hover:rotate-6 transition-transform duration-500 bg-white shadow-sm ${item.isDark ? 'group-hover:bg-white/10 group-hover:text-white group-hover:border-white/20' : ''}`}>
+                  <div className={`w-11 h-11 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full border border-black/10 flex items-center justify-center shrink-0 group-hover:scale-90 group-hover:rotate-6 transition-transform duration-500 bg-white shadow-sm ${item.isDark ? 'group-hover:bg-white/10 group-hover:text-white group-hover:border-white/20' : ''}`}>
                     {item.icon}
                   </div>
 
                   {/* Judul Stakeholder */}
                   <div>
-                    <h3 className={`text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-[#111111] group-hover:tracking-normal transition-all duration-500 ${item.isDark ? 'group-hover:text-white' : ''}`}>
+                    <h3 className={`text-base sm:text-2xl lg:text-3xl font-bold tracking-tight text-[#111111] group-hover:tracking-normal transition-all duration-500 ${item.isDark ? 'group-hover:text-white' : ''}`}>
                       {item.title}
                     </h3>
                   </div>
@@ -111,22 +111,22 @@ export const StakeholdersSection = () => {
               </div>
 
               {/* Kanan: Deskripsi, Peran Pill, & Panah */}
-              <div className="flex items-center justify-between md:justify-end gap-8 sm:gap-12 pl-20 sm:pl-0 w-full md:w-auto">
+              <div className="flex items-center justify-between md:justify-end gap-4 sm:gap-8 md:gap-12 w-full md:w-auto pt-3 md:pt-0">
 
                 {/* Deskripsi & Peran */}
-                <div className="flex flex-col md:items-end gap-3 max-w-sm">
-                  <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-widest bg-white border border-black/10 text-[#111111] px-4 py-1.5 rounded-full transition-colors duration-500 shadow-sm ${item.pillClass} ${item.isDark ? 'group-hover:bg-white/20 group-hover:text-white group-hover:border-white/30' : ''}`}>
+                <div className="flex flex-col md:items-end gap-2 sm:gap-3 max-w-sm">
+                  <span className={`self-start md:self-end text-[9px] sm:text-xs font-bold uppercase tracking-widest bg-white border border-black/10 text-[#111111] px-3 sm:px-4 py-1 sm:py-1.5 rounded-full transition-colors duration-500 shadow-sm ${item.pillClass} ${item.isDark ? 'group-hover:bg-white/20 group-hover:text-white group-hover:border-white/30' : ''}`}>
                     {item.role}
                   </span>
 
-                  <p className={`text-xs sm:text-[13px] text-[#111111]/60 md:text-right leading-relaxed transition-colors duration-500 ${item.isDark ? 'group-hover:text-white/70' : ''}`}>
+                  <p className={`text-[11px] sm:text-[13px] text-[#111111]/70 md:text-right leading-relaxed transition-colors duration-500 ${item.isDark ? 'group-hover:text-white/70' : ''}`}>
                     {item.description}
                   </p>
                 </div>
 
                 {/* Arrow Icon */}
-                <div className={`w-10 h-10 rounded-full border border-black/10 flex items-center justify-center bg-white text-[#111111] sm:-translate-x-4 sm:opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-500 shrink-0 ${item.isDark ? 'group-hover:bg-white group-hover:text-[#19382B]' : ''}`}>
-                  <ArrowUpRight size={18} weight="bold" />
+                <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full border border-black/10 flex items-center justify-center bg-white text-[#111111] sm:-translate-x-4 sm:opacity-0 group-hover:translate-x-0 group-hover:opacity-100 transition-all duration-500 shrink-0 ${item.isDark ? 'group-hover:bg-white group-hover:text-[#19382B]' : ''}`}>
+                  <ArrowUpRight size={16} weight="bold" />
                 </div>
               </div>
 
