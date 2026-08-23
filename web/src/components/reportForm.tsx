@@ -18,9 +18,7 @@ import {
   Clock,
   ChartLineUp,
   Eye,
-  Recycle,
   X,
-  XCircle,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -66,7 +64,7 @@ type TabMode = "scan" | "progress";
 const submitStepLabels: Record<SubmitStep, string> = {
   idle: "",
   uploading: "Mengunggah foto laporan ke cloud...",
-  analyzing: "Menganalisis bahaya & volume dengan AI YOLOv8...",
+  analyzing: "Menganalisis bahaya & volume dengan AI YOLOv8 (Memuat server AI)...",
   saving: "Menyimpan data laporan ke database...",
 };
 
@@ -101,6 +99,7 @@ export const ReportForm = () => {
   const [submittedReport, setSubmittedReport] =
     useState<SubmittedReport | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [capturedFile, setCapturedFile] = useState<File | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationSuccess, setLocationSuccess] = useState(false);
 
@@ -224,7 +223,7 @@ export const ReportForm = () => {
 
   // Manage Camera Life Cycle
   useEffect(() => {
-    if (activeTab === "scan" && !isDesktop && !imagePreview) {
+    if (activeTab === "scan" && !isDesktop && !imagePreview && !submittedReport) {
       startCamera();
     } else {
       stopCamera();
@@ -233,12 +232,12 @@ export const ReportForm = () => {
     return () => {
       stopCamera();
     };
-  }, [activeTab, isDesktop, imagePreview]);
+  }, [activeTab, isDesktop, imagePreview, submittedReport]);
 
   // Auto-get Location
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
-      alert("Fitur lokasi tidak didukung oleh peramban Anda.");
+      alert("Fitur lokasi GPS tidak didukung oleh peramban Anda.");
       return;
     }
 
@@ -285,16 +284,15 @@ export const ReportForm = () => {
       const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
       setImagePreview(dataUrl);
 
-      // Convert Canvas to Blob -> File for form logic
+      // Convert Canvas to Blob -> File
       canvas.toBlob(
         (blob) => {
           if (blob) {
-            const capturedFile = new File([blob], `pohon-${Date.now()}.jpg`, {
+            const file = new File([blob], `pohon-${Date.now()}.jpg`, {
               type: "image/jpeg",
             });
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(capturedFile);
-            formLogic.setValue("image", dataTransfer.files as any);
+            setCapturedFile(file);
+            formLogic.setValue("image", file as any);
             formLogic.trigger("image");
           }
           setIsCapturing(false);
@@ -310,6 +308,7 @@ export const ReportForm = () => {
 
   const handleRetakePhoto = () => {
     setImagePreview(null);
+    setCapturedFile(null);
     formLogic.setValue("image", undefined as any);
     if (activeTab === "scan" && !isDesktop) {
       startCamera();
@@ -322,12 +321,28 @@ export const ReportForm = () => {
       return;
     }
 
+    let fileToUpload: File | null = capturedFile;
+    if (!fileToUpload && data.image) {
+      if (typeof window !== "undefined" && data.image instanceof File) {
+        fileToUpload = data.image;
+      } else if (typeof window !== "undefined" && data.image instanceof FileList && data.image.length > 0) {
+        fileToUpload = data.image[0];
+      } else if (Array.isArray(data.image) && data.image.length > 0) {
+        fileToUpload = data.image[0];
+      }
+    }
+
+    if (!fileToUpload) {
+      alert("Foto kondisi pohon belum dipotret. Silakan klik 'Potret Pohon Sekarang'.");
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmittedReport(null);
 
     try {
       setSubmitStep("uploading");
-      const imageUrl = await uploadReportImage(data.image[0]);
+      const imageUrl = await uploadReportImage(fileToUpload);
 
       setSubmitStep("analyzing");
       const {
@@ -355,7 +370,7 @@ export const ReportForm = () => {
 
       if (!aiResponse.ok) {
         throw new Error(
-          `Layanan AI merespons dengan status: ${aiResponse.status}`
+          `Layanan AI merespons dengan status error: ${aiResponse.status}`
         );
       }
 
@@ -366,10 +381,10 @@ export const ReportForm = () => {
         image_url: imageUrl,
         description: data.description,
         location: `POINT(${data.longitude} ${data.latitude})`,
-        risk_score: aiData.risk_score,
-        canopy_volume: aiData.canopy_volume,
-        biomass_estimate: aiData.biomass_estimate,
-        bounding_box: aiData.bounding_boxes,
+        risk_score: aiData.risk_score || 0,
+        canopy_volume: aiData.canopy_volume || 0,
+        biomass_estimate: aiData.biomass_estimate || 0,
+        bounding_box: aiData.bounding_boxes || [],
         status: "pending",
       });
 
@@ -380,14 +395,15 @@ export const ReportForm = () => {
 
       setSubmittedReport({
         imageUrl,
-        boundingBoxes: aiData.bounding_boxes,
-        riskScore: aiData.risk_score,
-        canopyVolume: aiData.canopy_volume,
-        biomassEstimate: aiData.biomass_estimate,
-        detections: aiData.detections,
+        boundingBoxes: aiData.bounding_boxes || [],
+        riskScore: aiData.risk_score || 0,
+        canopyVolume: aiData.canopy_volume || 0,
+        biomassEstimate: aiData.biomass_estimate || 0,
+        detections: aiData.detections || 0,
       });
 
       formLogic.reset();
+      setCapturedFile(null);
       setLocationSuccess(false);
       // Automatically refresh history for Tab 2
       fetchReportHistory();
@@ -404,6 +420,17 @@ export const ReportForm = () => {
     }
   };
 
+  const onInvalidHandler = (errors: any) => {
+    console.warn("[WARN] Validation errors:", errors);
+    if (errors.image) {
+      alert("Foto kondisi pohon belum dipotret. Silakan klik tombol 'Potret Pohon Sekarang'.");
+    } else if (errors.latitude || errors.longitude) {
+      alert("Koordinat lokasi GPS belum terdeteksi. Silakan klik 'Deteksi Lokasi Otomatis'.");
+    } else {
+      alert("Mohon lengkapi data lokasi dan foto sebelum mengirim laporan.");
+    }
+  };
+
   return (
     <div className="w-full space-y-6 sm:space-y-8 font-sans">
       {/* Hidden Canvas for Frame Capture */}
@@ -417,7 +444,7 @@ export const ReportForm = () => {
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-bold text-[#111111] tracking-tight">
-              Pemindai AI & Progress LaporPohon
+              Pemindai AI & LaporPohon
             </h2>
             <p className="text-[11px] sm:text-xs text-[#111111]/60">
               Lakukan pemindaian kamera live via HP atau pantau perkembangan laporan Anda
@@ -508,48 +535,77 @@ export const ReportForm = () => {
                 </div>
               </div>
 
-              {/* Bounding Box Image Visualizer */}
-              <div className="space-y-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-[#111111]/50">
-                  Visualisasi Deteksi Objek ({submittedReport.detections} Objek Terdeteksi)
-                </p>
-                <div className="rounded-2xl overflow-hidden border border-black/5 bg-[#ecefe6]/40 p-2">
-                  <TreeImageWithBoundingBox
-                    imageUrl={submittedReport.imageUrl}
-                    boundingBoxes={submittedReport.boundingBoxes}
-                  />
+              {/* Case 0 Trees Detected Warning */}
+              {submittedReport.detections === 0 ? (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-5 text-center space-y-3">
+                  <WarningCircle size={36} weight="fill" className="text-amber-600 mx-auto" />
+                  <div className="space-y-1">
+                    <h4 className="font-bold text-sm text-[#111111]">
+                      Objek Pohon Tidak Terdeteksi dalam Foto
+                    </h4>
+                    <p className="text-xs text-[#111111]/70 leading-relaxed max-w-md mx-auto">
+                      Sistem AI YOLOv8 tidak menemukan objek pohon rawan tumbang pada foto ini. Silakan pastikan tajuk dan batang pohon terlihat jelas dengan pencahayaan memadai.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSubmittedReport(null);
+                      setImagePreview(null);
+                      setCapturedFile(null);
+                      startCamera();
+                    }}
+                    className="bg-[#19382B] text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-xs hover:bg-[#234A39] transition-all"
+                  >
+                    Potret Ulang Foto Pohon
+                  </button>
                 </div>
-              </div>
+              ) : (
+                <>
+                  {/* Bounding Box Image Visualizer */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-[#111111]/50">
+                      Visualisasi Deteksi Objek ({submittedReport.detections} Objek Terdeteksi)
+                    </p>
+                    <div className="rounded-2xl overflow-hidden border border-black/5 bg-[#ecefe6]/40 p-2">
+                      <TreeImageWithBoundingBox
+                        imageUrl={submittedReport.imageUrl}
+                        boundingBoxes={submittedReport.boundingBoxes}
+                      />
+                    </div>
+                  </div>
 
-              {/* Key Metrics Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div className="bg-[#f8f9f5] border border-black/5 p-4 rounded-2xl space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">
-                    Skor Risiko AI
-                  </p>
-                  <p className="text-xl sm:text-2xl font-extrabold text-[#19382B]">
-                    {submittedReport.riskScore} <span className="text-xs font-normal text-[#111111]/50">/ 100</span>
-                  </p>
-                </div>
+                  {/* Key Metrics Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="bg-[#f8f9f5] border border-black/5 p-4 rounded-2xl space-y-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">
+                        Skor Risiko AI
+                      </p>
+                      <p className="text-xl sm:text-2xl font-extrabold text-[#19382B]">
+                        {submittedReport.riskScore} <span className="text-xs font-normal text-[#111111]/50">/ 100</span>
+                      </p>
+                    </div>
 
-                <div className="bg-[#f8f9f5] border border-black/5 p-4 rounded-2xl space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">
-                    Estimasi Volume Kanopi
-                  </p>
-                  <p className="text-xl sm:text-2xl font-extrabold text-[#19382B]">
-                    {submittedReport.canopyVolume} <span className="text-xs font-normal text-[#111111]/50">m³</span>
-                  </p>
-                </div>
+                    <div className="bg-[#f8f9f5] border border-black/5 p-4 rounded-2xl space-y-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">
+                        Estimasi Volume Kanopi
+                      </p>
+                      <p className="text-xl sm:text-2xl font-extrabold text-[#19382B]">
+                        {submittedReport.canopyVolume} <span className="text-xs font-normal text-[#111111]/50">m³</span>
+                      </p>
+                    </div>
 
-                <div className="bg-[#f8f9f5] border border-black/5 p-4 rounded-2xl space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">
-                    Estimasi Biomassa Kayu
-                  </p>
-                  <p className="text-xl sm:text-2xl font-extrabold text-[#19382B]">
-                    {submittedReport.biomassEstimate} <span className="text-xs font-normal text-[#111111]/50">kg</span>
-                  </p>
-                </div>
-              </div>
+                    <div className="bg-[#f8f9f5] border border-black/5 p-4 rounded-2xl space-y-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">
+                        Estimasi Biomassa Kayu
+                      </p>
+                      <p className="text-xl sm:text-2xl font-extrabold text-[#19382B]">
+                        {submittedReport.biomassEstimate} <span className="text-xs font-normal text-[#111111]/50">kg</span>
+                      </p>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
@@ -558,6 +614,7 @@ export const ReportForm = () => {
                   onClick={() => {
                     setSubmittedReport(null);
                     setImagePreview(null);
+                    setCapturedFile(null);
                     startCamera();
                   }}
                   className="flex-1 bg-[#19382B] text-white hover:bg-[#234A39] py-3 rounded-full text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2"
@@ -570,6 +627,7 @@ export const ReportForm = () => {
                   onClick={() => {
                     setSubmittedReport(null);
                     setImagePreview(null);
+                    setCapturedFile(null);
                     setActiveTab("progress");
                   }}
                   className="flex-1 bg-[#ecefe6] text-[#19382B] hover:bg-[#e1e6d7] py-3 rounded-full text-xs font-bold transition-all border border-black/5 flex items-center justify-center gap-2"
@@ -581,245 +639,246 @@ export const ReportForm = () => {
             </motion.div>
           ) : (
             <form
-              onSubmit={formLogic.handleSubmit(submitHandler)}
+              onSubmit={formLogic.handleSubmit(submitHandler, onInvalidHandler)}
               className="space-y-5 sm:space-y-6"
             >
-            {/* Case A: User Accesses from Desktop / Laptop (Notice Banner) */}
-            {isDesktop ? (
-              <div className="bg-[#f8f9f5] border border-black/8 rounded-2xl p-6 text-center space-y-4 relative overflow-hidden">
-                <div className="w-14 h-14 rounded-full bg-[#19382B]/10 text-[#19382B] flex items-center justify-center mx-auto shadow-xs">
-                  <DeviceMobile size={30} weight="fill" />
-                </div>
-                <div className="space-y-1.5 max-w-md mx-auto">
-                  <span className="inline-block text-[10px] font-extrabold uppercase tracking-widest bg-[#19382B] text-white px-3 py-1 rounded-full">
-                    📱 Khusus Perangkat Mobile (HP)
-                  </span>
-                  <h3 className="text-sm sm:text-base font-bold text-[#111111]">
-                    Fitur Kamera Pemindai Hanya Tersedia di Smartphone
-                  </h3>
-                  <p className="text-xs text-[#111111]/70 leading-relaxed">
-                    Untuk memastikan akurasi posisi GPS real-time dan keandalan foto kondisi pohon terkini di lokasi, pelaporan dilakukan secara langsung dari HP Anda.
-                  </p>
-                </div>
-                <div className="pt-2 border-t border-black/5 text-[11px] text-[#111111]/50 font-medium">
-                  💡 <em>Anda dapat menggunakan layar komputer ini untuk memantau perkembangan seluruh laporan pada Tab <strong>Laporan Saya</strong>.</em>
-                </div>
-              </div>
-            ) : (
-              /* Case B: User Accesses from Mobile Device (Live Scanner Camera Viewfinder) */
-              <div className="space-y-3">
-                <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
-                  <Camera size={15} weight="bold" className="text-[#19382B]" />
-                  Pemindaian Foto Pohon (Live Shoot) <span className="text-red-500">*</span>
-                </label>
-
-                {imagePreview ? (
-                  /* Preview hasil potret dari kamera */
-                  <div className="relative rounded-2xl overflow-hidden bg-black/5 border border-black/10 max-h-80 flex flex-col items-center justify-center p-2">
-                    <img
-                      src={imagePreview}
-                      alt="Hasil Potret Pohon"
-                      className="max-h-72 object-contain rounded-xl"
-                    />
-                    <div className="flex items-center gap-2 mt-3">
-                      <button
-                        type="button"
-                        onClick={handleRetakePhoto}
-                        className="flex items-center gap-1.5 bg-[#19382B] text-white px-4 py-2 rounded-full text-xs font-bold shadow-xs hover:bg-[#234A39] transition-all"
-                      >
-                        <ArrowCounterClockwise size={14} weight="bold" />
-                        <span>Potret Ulang</span>
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  /* Jendela Bidik Kamera Live (Scanner Viewfinder) */
-                  <div className="relative rounded-2xl overflow-hidden bg-black border-2 border-[#19382B] min-h-[300px] sm:min-h-[340px] flex items-center justify-center shadow-md">
-                    <video
-                      ref={videoRef}
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover min-h-[300px] sm:min-h-[340px]"
-                    />
-
-                    {/* Corner Target Reticles Overlay */}
-                    <div className="absolute inset-4 pointer-events-none border border-white/20 rounded-xl flex flex-col justify-between p-2">
-                      <div className="flex justify-between">
-                        <span className="w-5 h-5 border-t-2 border-l-2 border-[#88d937] rounded-tl-md" />
-                        <span className="w-5 h-5 border-t-2 border-r-2 border-[#88d937] rounded-tr-md" />
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="w-5 h-5 border-b-2 border-l-2 border-[#88d937] rounded-bl-md" />
-                        <span className="w-5 h-5 border-b-2 border-r-2 border-[#88d937] rounded-br-md" />
-                      </div>
-                    </div>
-
-                    {/* HUD Live Scanner Label */}
-                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[11px] font-semibold text-white flex items-center gap-1.5 border border-white/10">
-                      <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                      <span>KAMERA POHON LIVE</span>
-                    </div>
-
-                    {/* Camera Error / Permission Fallback */}
-                    {cameraError && (
-                      <div className="absolute inset-0 bg-black/90 p-6 flex flex-col items-center justify-center text-center space-y-3 z-20">
-                        <WarningCircle size={32} className="text-amber-400" weight="fill" />
-                        <p className="text-xs text-white/80 max-w-xs">{cameraError}</p>
-                        <button
-                          type="button"
-                          onClick={startCamera}
-                          className="bg-[#88d937] text-[#111111] px-4 py-2 rounded-full font-bold text-xs hover:bg-[#78c92a] transition-all"
-                        >
-                          Coba Lagi Izin Kamera
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Capture Button Bar */}
-                    {isCameraActive && (
-                      <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center z-10 px-4">
-                        <button
-                          type="button"
-                          onClick={capturePhoto}
-                          disabled={isCapturing}
-                          className="bg-[#19382B] hover:bg-[#234A39] text-white px-6 py-3 rounded-full text-xs font-bold transition-all shadow-lg flex items-center gap-2 border border-white/20 active:scale-95"
-                        >
-                          {isCapturing ? (
-                            <CircleNotch size={18} className="animate-spin text-[#88d937]" />
-                          ) : (
-                            <Camera size={18} weight="fill" className="text-[#88d937]" />
-                          )}
-                          <span>Potret Pohon Sekarang</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Location Inputs & GPS Auto-detect */}
-            <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
-                  <MapPin size={15} weight="bold" className="text-[#19382B]" />
-                  Koordinat Lokasi (GPS) <span className="text-red-500">*</span>
-                </label>
-
-                {!isDesktop && (
-                  <button
-                    type="button"
-                    onClick={handleGetLocation}
-                    disabled={isGettingLocation}
-                    className="self-start sm:self-auto flex items-center gap-1.5 text-xs font-semibold text-[#19382B] hover:text-[#234A39] bg-[#ecefe6] hover:bg-[#e1e6d7] px-3.5 py-1.5 rounded-full transition-colors disabled:opacity-50 border border-black/5"
-                  >
-                    {isGettingLocation ? (
-                      <>
-                        <CircleNotch size={14} className="animate-spin text-[#19382B]" />
-                        <span>Mendeteksi GPS...</span>
-                      </>
-                    ) : locationSuccess ? (
-                      <>
-                        <CheckCircle size={14} weight="fill" className="text-green-600" />
-                        <span>Lokasi Terisi!</span>
-                      </>
-                    ) : (
-                      <>
-                        <MapPin size={14} weight="bold" />
-                        <span>Deteksi Lokasi Otomatis</span>
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <input
-                    type="number"
-                    step="any"
-                    disabled={isDesktop}
-                    placeholder="Latitude (Contoh: -6.9932)"
-                    {...formLogic.register("latitude", { valueAsNumber: true })}
-                    className="w-full bg-[#f8f9f5] border border-black/8 rounded-full px-4 py-2.5 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#19382B] focus:bg-white transition-all text-[#111111] disabled:opacity-60 disabled:cursor-not-allowed"
-                  />
-                  {formLogic.formState.errors.latitude && (
-                    <p className="text-red-500 text-xs font-medium pt-1 pl-2">
-                      {formLogic.formState.errors.latitude.message}
-                    </p>
-                  )}
-                </div>
-
-                <div>
-                  <input
-                    type="number"
-                    step="any"
-                    disabled={isDesktop}
-                    placeholder="Longitude (Contoh: 110.4203)"
-                    {...formLogic.register("longitude", { valueAsNumber: true })}
-                    className="w-full bg-[#f8f9f5] border border-black/8 rounded-full px-4 py-2.5 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#19382B] focus:bg-white transition-all text-[#111111] disabled:opacity-60 disabled:cursor-not-allowed"
-                  />
-                  {formLogic.formState.errors.longitude && (
-                    <p className="text-red-500 text-xs font-medium pt-1 pl-2">
-                      {formLogic.formState.errors.longitude.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Deskripsi Laporan */}
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
-                <FileText size={15} weight="bold" className="text-[#19382B]" />
-                Catatan / Deskripsi Tambahan
-              </label>
-
-              <textarea
-                rows={3}
-                disabled={isDesktop}
-                placeholder="Contoh: Pohon mahoni miring ke arah jalan raya, dahan kering lebat..."
-                {...formLogic.register("description")}
-                className="w-full bg-[#f8f9f5] border border-black/8 rounded-2xl px-4 py-3 text-xs sm:text-sm focus:outline-none focus:border-[#19382B] focus:bg-white transition-all text-[#111111] resize-none font-medium disabled:opacity-60 disabled:cursor-not-allowed"
-              />
-              {formLogic.formState.errors.description && (
-                <p className="text-red-500 text-xs font-medium pl-1">
-                  {formLogic.formState.errors.description.message}
-                </p>
-              )}
-            </div>
-
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isSubmitting || isDesktop}
-              className={`w-full py-3.5 px-6 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 group active:scale-[0.99] ${
-                isDesktop
-                  ? "bg-gray-300 text-gray-600 cursor-not-allowed shadow-none"
-                  : "bg-[#19382B] hover:bg-[#234A39] text-white hover:shadow-lg disabled:opacity-60"
-              }`}
-            >
+              {/* Case A: User Accesses from Desktop / Laptop (Notice Banner) */}
               {isDesktop ? (
-                <>
-                  <DeviceMobile size={18} weight="bold" />
-                  <span>Pelaporan Hanya Melalui Perangkat Mobile (HP)</span>
-                </>
-              ) : isSubmitting ? (
-                <>
-                  <CircleNotch size={18} className="animate-spin text-[#88d937]" />
-                  <span>{submitStepLabels[submitStep]}</span>
-                </>
+                <div className="bg-[#f8f9f5] border border-black/8 rounded-2xl p-6 text-center space-y-4 relative overflow-hidden">
+                  <div className="w-14 h-14 rounded-full bg-[#19382B]/10 text-[#19382B] flex items-center justify-center mx-auto shadow-xs">
+                    <DeviceMobile size={30} weight="fill" />
+                  </div>
+                  <div className="space-y-1.5 max-w-md mx-auto">
+                    <span className="inline-block text-[10px] font-extrabold uppercase tracking-widest bg-[#19382B] text-white px-3 py-1 rounded-full">
+                      📱 Khusus Perangkat Mobile (HP)
+                    </span>
+                    <h3 className="text-sm sm:text-base font-bold text-[#111111]">
+                      Fitur Kamera Pemindai Hanya Tersedia di Smartphone
+                    </h3>
+                    <p className="text-xs text-[#111111]/70 leading-relaxed">
+                      Untuk memastikan akurasi posisi GPS real-time dan keandalan foto kondisi pohon terkini di lokasi, pelaporan dilakukan secara langsung dari HP Anda.
+                    </p>
+                  </div>
+                  <div className="pt-2 border-t border-black/5 text-[11px] text-[#111111]/50 font-medium">
+                    💡 <em>Anda dapat menggunakan layar komputer ini untuk memantau perkembangan seluruh laporan pada Tab <strong>Laporan Saya</strong>.</em>
+                  </div>
+                </div>
               ) : (
-                <>
-                  <Sparkle size={18} weight="fill" className="text-[#88d937]" />
-                  <span>Kirim & Analisis Risiko Pohon</span>
-                </>
-              )}
-            </button>
-          </form>
-        ))}
+                /* Case B: User Accesses from Mobile Device (Live Scanner Camera Viewfinder) */
+                <div className="space-y-3">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
+                    <Camera size={15} weight="bold" className="text-[#19382B]" />
+                    Pemindaian Foto Pohon (Live Shoot) <span className="text-red-500">*</span>
+                  </label>
 
-        {/* ── TAB 2: 📊 PROGRESS LAPORAN SAYA (MONITORING PAGE) ── */}
+                  {imagePreview ? (
+                    /* Preview hasil potret dari kamera */
+                    <div className="relative rounded-2xl overflow-hidden bg-black/5 border border-black/10 max-h-80 flex flex-col items-center justify-center p-2">
+                      <img
+                        src={imagePreview}
+                        alt="Hasil Potret Pohon"
+                        className="max-h-72 object-contain rounded-xl"
+                      />
+                      <div className="flex items-center gap-2 mt-3">
+                        <button
+                          type="button"
+                          onClick={handleRetakePhoto}
+                          className="flex items-center gap-1.5 bg-[#19382B] text-white px-4 py-2 rounded-full text-xs font-bold shadow-xs hover:bg-[#234A39] transition-all"
+                        >
+                          <ArrowCounterClockwise size={14} weight="bold" />
+                          <span>Potret Ulang</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Jendela Bidik Kamera Live (Scanner Viewfinder) */
+                    <div className="relative rounded-2xl overflow-hidden bg-black border-2 border-[#19382B] min-h-[300px] sm:min-h-[340px] flex items-center justify-center shadow-md">
+                      <video
+                        ref={videoRef}
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover min-h-[300px] sm:min-h-[340px]"
+                      />
+
+                      {/* Corner Target Reticles Overlay */}
+                      <div className="absolute inset-4 pointer-events-none border border-white/20 rounded-xl flex flex-col justify-between p-2">
+                        <div className="flex justify-between">
+                          <span className="w-5 h-5 border-t-2 border-l-2 border-[#88d937] rounded-tl-md" />
+                          <span className="w-5 h-5 border-t-2 border-r-2 border-[#88d937] rounded-tr-md" />
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="w-5 h-5 border-b-2 border-l-2 border-[#88d937] rounded-bl-md" />
+                          <span className="w-5 h-5 border-b-2 border-r-2 border-[#88d937] rounded-br-md" />
+                        </div>
+                      </div>
+
+                      {/* HUD Live Scanner Label */}
+                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[11px] font-semibold text-white flex items-center gap-1.5 border border-white/10">
+                        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                        <span>KAMERA POHON LIVE</span>
+                      </div>
+
+                      {/* Camera Error / Permission Fallback */}
+                      {cameraError && (
+                        <div className="absolute inset-0 bg-black/90 p-6 flex flex-col items-center justify-center text-center space-y-3 z-20">
+                          <WarningCircle size={32} className="text-amber-400" weight="fill" />
+                          <p className="text-xs text-white/80 max-w-xs">{cameraError}</p>
+                          <button
+                            type="button"
+                            onClick={startCamera}
+                            className="bg-[#88d937] text-[#111111] px-4 py-2 rounded-full font-bold text-xs hover:bg-[#78c92a] transition-all"
+                          >
+                            Coba Lagi Izin Kamera
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Capture Button Bar */}
+                      {isCameraActive && (
+                        <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center z-10 px-4">
+                          <button
+                            type="button"
+                            onClick={capturePhoto}
+                            disabled={isCapturing}
+                            className="bg-[#19382B] hover:bg-[#234A39] text-white px-6 py-3 rounded-full text-xs font-bold transition-all shadow-lg flex items-center gap-2 border border-white/20 active:scale-95"
+                          >
+                            {isCapturing ? (
+                              <CircleNotch size={18} className="animate-spin text-[#88d937]" />
+                            ) : (
+                              <Camera size={18} weight="fill" className="text-[#88d937]" />
+                            )}
+                            <span>Potret Pohon Sekarang</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Location Inputs & GPS Auto-detect */}
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
+                    <MapPin size={15} weight="bold" className="text-[#19382B]" />
+                    Koordinat Lokasi (GPS) <span className="text-red-500">*</span>
+                  </label>
+
+                  {!isDesktop && (
+                    <button
+                      type="button"
+                      onClick={handleGetLocation}
+                      disabled={isGettingLocation}
+                      className="self-start sm:self-auto flex items-center gap-1.5 text-xs font-semibold text-[#19382B] hover:text-[#234A39] bg-[#ecefe6] hover:bg-[#e1e6d7] px-3.5 py-1.5 rounded-full transition-colors disabled:opacity-50 border border-black/5"
+                    >
+                      {isGettingLocation ? (
+                        <>
+                          <CircleNotch size={14} className="animate-spin text-[#19382B]" />
+                          <span>Mendeteksi GPS...</span>
+                        </>
+                      ) : locationSuccess ? (
+                        <>
+                          <CheckCircle size={14} weight="fill" className="text-green-600" />
+                          <span>Lokasi Terisi!</span>
+                        </>
+                      ) : (
+                        <>
+                          <MapPin size={14} weight="bold" />
+                          <span>Deteksi Lokasi Otomatis</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                  <div>
+                    <input
+                      type="number"
+                      step="any"
+                      disabled={isDesktop}
+                      placeholder="Latitude (Contoh: -6.9932)"
+                      {...formLogic.register("latitude", { valueAsNumber: true })}
+                      className="w-full bg-[#f8f9f5] border border-black/8 rounded-full px-4 py-2.5 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#19382B] focus:bg-white transition-all text-[#111111] disabled:opacity-60 disabled:cursor-not-allowed"
+                    />
+                    {formLogic.formState.errors.latitude && (
+                      <p className="text-red-500 text-xs font-medium pt-1 pl-2">
+                        {formLogic.formState.errors.latitude.message}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <input
+                      type="number"
+                      step="any"
+                      disabled={isDesktop}
+                      placeholder="Longitude (Contoh: 110.4203)"
+                      {...formLogic.register("longitude", { valueAsNumber: true })}
+                      className="w-full bg-[#f8f9f5] border border-black/8 rounded-full px-4 py-2.5 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#19382B] focus:bg-white transition-all text-[#111111] disabled:opacity-60 disabled:cursor-not-allowed"
+                    />
+                    {formLogic.formState.errors.longitude && (
+                      <p className="text-red-500 text-xs font-medium pt-1 pl-2">
+                        {formLogic.formState.errors.longitude.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Deskripsi Laporan */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
+                  <FileText size={15} weight="bold" className="text-[#19382B]" />
+                  Catatan / Deskripsi Tambahan
+                </label>
+
+                <textarea
+                  rows={3}
+                  disabled={isDesktop}
+                  placeholder="Contoh: Pohon mahoni miring ke arah jalan raya, dahan kering lebat..."
+                  {...formLogic.register("description")}
+                  className="w-full bg-[#f8f9f5] border border-black/8 rounded-2xl px-4 py-3 text-xs sm:text-sm focus:outline-none focus:border-[#19382B] focus:bg-white transition-all text-[#111111] resize-none font-medium disabled:opacity-60 disabled:cursor-not-allowed"
+                />
+                {formLogic.formState.errors.description && (
+                  <p className="text-red-500 text-xs font-medium pl-1">
+                    {formLogic.formState.errors.description.message}
+                  </p>
+                )}
+              </div>
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={isSubmitting || isDesktop}
+                className={`w-full py-3.5 px-6 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 group active:scale-[0.99] ${
+                  isDesktop
+                    ? "bg-gray-300 text-gray-600 cursor-not-allowed shadow-none"
+                    : "bg-[#19382B] hover:bg-[#234A39] text-white hover:shadow-lg disabled:opacity-60"
+                }`}
+              >
+                {isDesktop ? (
+                  <>
+                    <DeviceMobile size={18} weight="bold" />
+                    <span>Pelaporan Hanya Melalui Perangkat Mobile (HP)</span>
+                  </>
+                ) : isSubmitting ? (
+                  <>
+                    <CircleNotch size={18} className="animate-spin text-[#88d937]" />
+                    <span>{submitStepLabels[submitStep]}</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkle size={18} weight="fill" className="text-[#88d937]" />
+                    <span>Kirim & Analisis Risiko Pohon</span>
+                  </>
+                )}
+              </button>
+            </form>
+          )
+        )}
+
+        {/* ── TAB 2: PROGRESS LAPORAN SAYA (MONITORING PAGE) ── */}
         {activeTab === "progress" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
