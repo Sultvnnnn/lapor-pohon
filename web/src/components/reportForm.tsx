@@ -441,7 +441,7 @@ export const ReportForm = () => {
             }`}
           >
             <Camera size={16} weight="bold" />
-            <span>📷 Lapor & Scan Pohon</span>
+            <span>Pemindaian Kamera Live</span>
           </button>
           <button
             type="button"
@@ -456,7 +456,7 @@ export const ReportForm = () => {
             }`}
           >
             <ChartLineUp size={16} weight="bold" />
-            <span>📊 Progress Laporan Saya</span>
+            <span>Laporan Saya</span>
           </button>
         </div>
 
@@ -484,7 +484,7 @@ export const ReportForm = () => {
                   </p>
                 </div>
                 <div className="pt-2 border-t border-black/5 text-[11px] text-[#111111]/50 font-medium">
-                  💡 <em>Anda dapat menggunakan layar komputer ini untuk memantau perkembangan seluruh laporan pada Tab <strong>Progress Laporan Saya</strong>.</em>
+                  💡 <em>Anda dapat menggunakan layar komputer ini untuk memantau perkembangan seluruh laporan pada Tab <strong>Laporan Saya</strong>.</em>
                 </div>
               </div>
             ) : (

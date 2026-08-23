@@ -84,7 +84,7 @@ export default function DashboardPage() {
             </h1>
 
             <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
-              Gunakan perangkat HP Anda untuk memotret lokasi pohon rawan tumbang secara live di lokasi, atau pantau perkembangan laporan Anda melalui Tab <strong>Progress Laporan Saya</strong>.
+              Gunakan perangkat HP Anda untuk memotret lokasi pohon rawan tumbang secara live di lokasi, atau pantau perkembangan laporan Anda melalui Tab <strong>Laporan Saya</strong>.
             </p>
           </div>
 
@@ -156,7 +156,7 @@ export default function DashboardPage() {
               <li className="flex items-start gap-2.5">
                 <CheckCircle size={17} weight="fill" className="text-[#19382B] shrink-0 mt-0.5" />
                 <span>
-                  <strong>Pantau Progress di HP/Desktop:</strong> Buka Tab <em>Progress Laporan Saya</em> untuk melihat status verifikasi DLH & pemanfaatan kayu sirkular.
+                  <strong>Pantau Progress di HP/Desktop:</strong> Buka Tab <em>Laporan Saya</em> untuk melihat status verifikasi DLH & pemanfaatan kayu sirkular.
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
