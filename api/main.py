@@ -19,6 +19,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+def health_check():
+    return {"status": "ok", "service": "LaporPohon AI Inference Engine"}
+
 # router
 app.include_router(analyze.router, prefix="/api", tags=["Analysis"])
 

@@ -16,10 +16,10 @@ JWKS_URL = f"{SUPABASE_URL}/auth/v1/.well-known/jwks.json"
 _jwks_cache = None
 
 
-def _get_jwks() -> dict:
+def _get_jwks(force_refresh: bool = False) -> dict:
     """ambil JWKS dari Supabase, dengan caching sederhana in-memory."""
     global _jwks_cache
-    if _jwks_cache is None:
+    if _jwks_cache is None or force_refresh:
         try:
             response = httpx.get(JWKS_URL, timeout=5.0)
             response.raise_for_status()
@@ -48,13 +48,22 @@ def verify_token(authorization: str = Header(...)) -> dict:
     token = authorization.replace("Bearer ", "")
 
     try:
-        jwks = _get_jwks()
         unverified_header = jwt.get_unverified_header(token)
+        jwks = _get_jwks()
 
         key = next(
             (k for k in jwks["keys"] if k["kid"] == unverified_header["kid"]),
             None,
         )
+
+        # kid gak ketemu di cache -> kemungkinan Supabase rotate JWKS key,
+        # coba refresh sekali
+        if key is None:
+            jwks = _get_jwks(force_refresh=True)
+            key = next(
+                (k for k in jwks["keys"] if k["kid"] == unverified_header["kid"]),
+                None,
+            )
 
         if key is None:
             raise HTTPException(

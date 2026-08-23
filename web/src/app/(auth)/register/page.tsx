@@ -3,7 +3,19 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { UserPlus, CircleNotch, WarningCircle, CheckCircle } from "@phosphor-icons/react";
+import {
+  User,
+  IdentificationCard,
+  EnvelopeSimple,
+  LockKey,
+  Eye,
+  EyeSlash,
+  CircleNotch,
+  WarningCircle,
+  CheckCircle,
+  UserPlus
+} from "@phosphor-icons/react";
+import { motion } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { isUsernameTaken } from "@/lib/auth/checkUsername";
 import {
@@ -22,6 +34,7 @@ export default function RegisterPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -94,216 +107,232 @@ export default function RegisterPage() {
     setIsLoading(false);
 
     if (error) {
-      console.error(`[ERROR] Kode OTP tidak valid: ${error.message}`);
-      setErrorMessage("Kode OTP salah atau sudah kedaluwarsa.");
+      console.error(`[ERROR] Verifikasi OTP gagal: ${error.message}`);
+      setErrorMessage("Kode OTP tidak valid atau sudah kadaluwarsa.");
       return;
     }
 
-    console.log("[SUCCESS] Verifikasi berhasil, akun aktif.");
-    router.push("/onboarding");
+    console.log("[SUCCESS] Verifikasi OTP berhasil, mengalihkan ke dashboard...");
+    router.push("/dashboard");
     router.refresh();
   };
 
-  const handleGoogleRegister = async () => {
-    setIsLoading(true);
-    const { error } = await supabaseClient.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard`,
-      },
-    });
-
-    if (error) {
-      console.error(`[ERROR] Gagal mendaftar dengan Google: ${error.message}`);
-      setErrorMessage("Gagal mendaftar dengan Google. Silakan coba lagi.");
-      setIsLoading(false);
-    }
-  };
-
   return (
-    <div className="w-full space-y-6">
-      <div className="text-center space-y-1">
-        <h1 className="text-2xl font-bold text-[#111111] tracking-tight">
-          Daftar LaporPohon
-        </h1>
-        <p className="text-xs text-[#111111]/60">
-          {step === "form"
-            ? "Buat akun baru untuk mulai melapor & berpartisipasi"
-            : `Masukkan kode OTP yang dikirim ke ${email}`}
-        </p>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1], delay: 0.05 }}
+      className="w-full space-y-3"
+    >
+      
+      {/* ── TAB SWITCHER (Login / Register) ── */}
+      <div className="bg-[#ecefe6] p-1 rounded-full flex gap-1 mb-2.5">
+        <Link
+          href="/login"
+          className="flex-1 text-center py-2 rounded-full font-semibold text-xs text-[#111111]/60 hover:text-[#111111] transition-all"
+        >
+          Masuk
+        </Link>
+        <Link
+          href="/register"
+          className="flex-1 text-center py-2 rounded-full font-bold text-xs bg-[#2d5341] hover:bg-[#234536] text-white shadow-xs transition-all"
+        >
+          Daftar
+        </Link>
       </div>
 
+      {/* Notifikasi Error */}
       {errorMessage && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-xs rounded-2xl px-4 py-3 flex items-center gap-2">
-          <WarningCircle size={18} className="shrink-0 text-red-600" />
-          <span>{errorMessage}</span>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-red-50 border border-red-100 text-red-600 text-xs rounded-xl px-3 py-2 flex items-start gap-2 shadow-xs mb-1.5"
+        >
+          <WarningCircle size={15} className="shrink-0 mt-0.5" weight="fill" />
+          <span className="leading-relaxed text-[10.5px]">{errorMessage}</span>
+        </motion.div>
       )}
 
-      {step === "form" && (
-        <>
-          <form onSubmit={handleRegister} className="space-y-3.5">
-            <div className="space-y-1">
-              <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70">
-                Nama Lengkap
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Masukkan nama lengkap Anda"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full bg-[#ecefe6]/30 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#0b3d2c] focus:bg-white transition-all text-[#111111]"
-              />
+      {step === "form" ? (
+        <form onSubmit={handleRegister} className="space-y-2">
+          
+          {/* Username Input */}
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: 0.1 }}
+          >
+            <div className="relative bg-white border border-black/10 focus-within:border-[#19382B] focus-within:ring-2 focus-within:ring-[#19382B]/10 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 flex items-center gap-2.5 shadow-xs transition-all">
+              <User size={18} className="text-[#19382B] shrink-0" weight="duotone" />
+              <div className="flex-1 min-w-0">
+                <label className="block text-[8.5px] font-bold uppercase tracking-wider text-[#111111]/40 leading-none mb-0.5">
+                  Username
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="username_anda"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full bg-transparent text-xs font-semibold text-[#111111] outline-none placeholder:text-gray-300 placeholder:font-normal"
+                />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Nama Lengkap Input */}
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: 0.15 }}
+          >
+            <div className="relative bg-white border border-black/10 focus-within:border-[#19382B] focus-within:ring-2 focus-within:ring-[#19382B]/10 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 flex items-center gap-2.5 shadow-xs transition-all">
+              <IdentificationCard size={18} className="text-[#19382B] shrink-0" weight="duotone" />
+              <div className="flex-1 min-w-0">
+                <label className="block text-[8.5px] font-bold uppercase tracking-wider text-[#111111]/40 leading-none mb-0.5">
+                  Nama Lengkap
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Nama Lengkap Anda"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full bg-transparent text-xs font-semibold text-[#111111] outline-none placeholder:text-gray-300 placeholder:font-normal"
+                />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Email Input */}
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: 0.2 }}
+          >
+            <div className="relative bg-white border border-black/10 focus-within:border-[#19382B] focus-within:ring-2 focus-within:ring-[#19382B]/10 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 flex items-center gap-2.5 shadow-xs transition-all">
+              <EnvelopeSimple size={18} className="text-[#19382B] shrink-0" weight="duotone" />
+              <div className="flex-1 min-w-0">
+                <label className="block text-[8.5px] font-bold uppercase tracking-wider text-[#111111]/40 leading-none mb-0.5">
+                  Alamat Email
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="nama@email.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-transparent text-xs font-semibold text-[#111111] outline-none placeholder:text-gray-300 placeholder:font-normal"
+                />
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Password Input */}
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: 0.25 }}
+          >
+            <div className="relative bg-white border border-black/10 focus-within:border-[#19382B] focus-within:ring-2 focus-within:ring-[#19382B]/10 rounded-full px-3.5 sm:px-4 py-1.5 sm:py-2 flex items-center gap-2.5 shadow-xs transition-all">
+              <LockKey size={18} className="text-[#19382B] shrink-0" weight="duotone" />
+              <div className="flex-1 min-w-0">
+                <label className="block text-[8.5px] font-bold uppercase tracking-wider text-[#111111]/40 leading-none mb-0.5">
+                  Kata Sandi
+                </label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-transparent text-xs font-semibold text-[#111111] outline-none placeholder:text-gray-300 placeholder:font-normal"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="text-gray-400 hover:text-[#19382B] transition-colors p-0.5"
+                aria-label="Tampilkan sandi"
+              >
+                {showPassword ? <EyeSlash size={16} /> : <Eye size={16} />}
+              </button>
             </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70">
-                Username
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="Pilih username unik"
-                value={username}
-                onChange={(e) =>
-                  setUsername(e.target.value.toLowerCase().replace(/\s/g, ""))
-                }
-                className="w-full bg-[#ecefe6]/30 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#0b3d2c] focus:bg-white transition-all text-[#111111]"
-              />
+            {/* Password Validation Requirements */}
+            {password && (
+              <div className="bg-[#ecefe6]/60 p-1.5 rounded-xl space-y-0.5 text-[9.5px] mt-1 border border-black/5">
+                {passwordRequirements.map((req) => {
+                  const passed = req.test(password);
+                  return (
+                    <div
+                      key={req.id}
+                      className={`flex items-center gap-1.5 font-medium ${
+                        passed ? "text-[#19382B]" : "text-gray-400"
+                      }`}
+                    >
+                      <CheckCircle
+                        size={11}
+                        weight={passed ? "fill" : "regular"}
+                        className={passed ? "text-[#88d937]" : "text-gray-300"}
+                      />
+                      <span>{req.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+
+          {/* Submit Button */}
+          <motion.button
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, delay: 0.3 }}
+            type="submit"
+            disabled={isLoading}
+            className="w-full bg-[#2d5341] hover:bg-[#234536] text-white py-2.5 sm:py-3 px-5 rounded-full font-bold text-xs sm:text-sm transition-all shadow-xs hover:shadow-md active:scale-[0.99] flex items-center justify-center gap-2 mt-2 disabled:opacity-60"
+          >
+            {isLoading ? (
+              <>
+                <CircleNotch size={18} className="animate-spin text-[#88d937]" />
+                <span>Memproses...</span>
+              </>
+            ) : (
+              <>
+                <UserPlus size={16} weight="bold" />
+                <span>Daftar Akun Baru</span>
+              </>
+            )}
+          </motion.button>
+        </form>
+      ) : (
+        /* OTP Step Form */
+        <form onSubmit={handleVerifyOtp} className="space-y-3">
+          <div className="space-y-1">
+            <div className="relative bg-white border border-black/10 focus-within:border-[#19382B] focus-within:ring-2 focus-within:ring-[#19382B]/10 rounded-full px-4 py-2 flex items-center gap-2.5 shadow-xs">
+              <LockKey size={18} className="text-[#19382B] shrink-0" weight="duotone" />
+              <div className="flex-1 min-w-0">
+                <label className="block text-[8.5px] font-bold uppercase tracking-wider text-[#111111]/40 leading-none mb-0.5">
+                  Kode OTP (6 digit)
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={6}
+                  placeholder="123456"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  className="w-full bg-transparent text-xs sm:text-sm font-semibold text-[#111111] outline-none tracking-widest text-center"
+                />
+              </div>
             </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70">
-                Email
-              </label>
-              <input
-                type="email"
-                required
-                placeholder="nama@email.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-[#ecefe6]/30 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#0b3d2c] focus:bg-white transition-all text-[#111111]"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70">
-                Kata Sandi
-              </label>
-              <input
-                type="password"
-                required
-                placeholder="Buat kata sandi"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-[#ecefe6]/30 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#0b3d2c] focus:bg-white transition-all text-[#111111]"
-              />
-            </div>
-
-            <ul className="text-xs space-y-1 pl-1 py-1">
-              {passwordRequirements.map((req) => {
-                const passed = req.test(password);
-                return (
-                  <li
-                    key={req.label}
-                    className={`flex items-center gap-1.5 ${
-                      passed ? "text-[#0b3d2c] font-semibold" : "text-gray-400"
-                    }`}
-                  >
-                    {passed ? (
-                      <CheckCircle size={14} weight="fill" className="text-[#0b3d2c]" />
-                    ) : (
-                      <span className="text-[10px]">○</span>
-                    )}
-                    <span>{req.label}</span>
-                  </li>
-                );
-              })}
-            </ul>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-[#0b3d2c] hover:bg-[#15543e] text-white py-3.5 px-4 rounded-2xl text-sm font-semibold transition-all shadow-sm hover:shadow-md disabled:opacity-60 flex items-center justify-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <CircleNotch size={18} className="animate-spin text-[#88d937]" />
-                  <span>Mendaftar...</span>
-                </>
-              ) : (
-                <>
-                  <UserPlus size={18} weight="bold" />
-                  <span>Daftar Akun Baru</span>
-                </>
-              )}
-            </button>
-          </form>
-
-          <div className="flex items-center gap-3">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-[11px] font-bold text-gray-400 tracking-wider">
-              ATAU
-            </span>
-            <div className="flex-1 h-px bg-gray-200" />
           </div>
 
           <button
-            type="button"
-            onClick={handleGoogleRegister}
-            disabled={isLoading}
-            className="w-full bg-white border border-gray-200 hover:bg-gray-50 text-[#111111] py-3 px-4 rounded-2xl text-sm font-medium transition-colors shadow-xs flex items-center justify-center gap-2.5 disabled:opacity-60"
-          >
-            <svg width="18" height="18" viewBox="0 0 48 48">
-              <path
-                fill="#FFC107"
-                d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"
-              />
-              <path
-                fill="#FF3D00"
-                d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"
-              />
-              <path
-                fill="#4CAF50"
-                d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"
-              />
-              <path
-                fill="#1976D2"
-                d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z"
-              />
-            </svg>
-            <span>Daftar dengan Google</span>
-          </button>
-
-          <p className="text-center text-xs text-[#111111]/70">
-            Sudah punya akun?{" "}
-            <Link
-              href="/login"
-              className="text-[#0b3d2c] font-bold hover:underline"
-            >
-              Masuk di sini
-            </Link>
-          </p>
-        </>
-      )}
-
-      {step === "otp" && (
-        <form onSubmit={handleVerifyOtp} className="space-y-4">
-          <input
-            type="text"
-            inputMode="numeric"
-            required
-            placeholder="Kode OTP"
-            value={otp}
-            onChange={(e) => setOtp(e.target.value)}
-            className="w-full bg-[#ecefe6]/30 border border-[#0b3d2c] rounded-2xl px-4 py-3 text-center tracking-widest text-xl font-bold text-[#111111]"
-            maxLength={8}
-          />
-          <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-[#0b3d2c] hover:bg-[#15543e] text-white py-3.5 px-4 rounded-2xl text-sm font-semibold transition-all shadow-sm disabled:opacity-60 flex items-center justify-center gap-2"
+            className="w-full bg-[#2d5341] hover:bg-[#234536] text-white py-2.5 sm:py-3 px-5 rounded-full font-bold text-xs sm:text-sm transition-all shadow-xs hover:shadow-md disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
@@ -311,11 +340,20 @@ export default function RegisterPage() {
                 <span>Memverifikasi...</span>
               </>
             ) : (
-              <span>Verifikasi & Aktifkan Akun</span>
+              <span>Verifikasi Kode OTP</span>
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStep("form")}
+            className="w-full text-center text-xs font-semibold text-[#111111]/60 hover:text-[#19382B] transition-colors pt-0.5"
+          >
+            &larr; Kembali ke Form Pendaftaran
           </button>
         </form>
       )}
-    </div>
+
+    </motion.div>
   );
 }

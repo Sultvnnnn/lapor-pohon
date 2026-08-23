@@ -98,10 +98,12 @@ export const ReportForm = () => {
       },
       (error) => {
         console.error("[ERROR] Geolocation error:", error.message);
-        alert("Gagal mengambil lokasi GPS. Silakan isi koordinat secara manual.");
+        alert(
+          "Gagal mengambil lokasi GPS. Silakan isi koordinat secara manual.",
+        );
         setIsGettingLocation(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000 },
     );
   };
 
@@ -139,7 +141,7 @@ export const ReportForm = () => {
 
       if (!aiResponse.ok) {
         throw new Error(
-          `Layanan AI merespons dengan status: ${aiResponse.status}`
+          `Layanan AI merespons dengan status: ${aiResponse.status}`,
         );
       }
 
@@ -206,11 +208,18 @@ export const ReportForm = () => {
           </div>
         </div>
 
-        <form onSubmit={formLogic.handleSubmit(submitHandler)} className="space-y-5 sm:space-y-6">
+        <form
+          onSubmit={formLogic.handleSubmit(submitHandler)}
+          className="space-y-5 sm:space-y-6"
+        >
           {/* Upload Foto */}
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
-              <UploadSimple size={15} weight="bold" className="text-[#0b3d2c]" />
+              <UploadSimple
+                size={15}
+                weight="bold"
+                className="text-[#0b3d2c]"
+              />
               Foto Kondisi Pohon <span className="text-red-500">*</span>
             </label>
 
@@ -279,7 +288,11 @@ export const ReportForm = () => {
                   </>
                 ) : locationSuccess ? (
                   <>
-                    <CheckCircle size={14} weight="fill" className="text-green-600" />
+                    <CheckCircle
+                      size={14}
+                      weight="fill"
+                      className="text-green-600"
+                    />
                     Lokasi Terisi!
                   </>
                 ) : (
@@ -352,7 +365,10 @@ export const ReportForm = () => {
           >
             {isSubmitting ? (
               <>
-                <CircleNotch size={18} className="animate-spin text-[#88d937]" />
+                <CircleNotch
+                  size={18}
+                  className="animate-spin text-[#88d937]"
+                />
                 <span>{submitStepLabels[submitStep]}</span>
               </>
             ) : (
@@ -448,8 +464,13 @@ export const ReportForm = () => {
 
               <div className="bg-[#0b3d2c]/5 border border-[#0b3d2c]/10 rounded-2xl p-4 flex items-center justify-between text-xs text-[#111111]/80">
                 <span className="flex items-center gap-2">
-                  <CheckCircle size={16} weight="fill" className="text-[#0b3d2c]" />
-                  Laporan Anda berhasil dicatat dan sedang dalam antrean verifikasi petugas.
+                  <CheckCircle
+                    size={16}
+                    weight="fill"
+                    className="text-[#0b3d2c]"
+                  />
+                  Laporan Anda berhasil dicatat dan sedang dalam antrean
+                  verifikasi petugas.
                 </span>
                 <span className="font-semibold text-[#0b3d2c]">
                   {submittedReport.detections} Objek Terdeteksi
