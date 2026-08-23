@@ -3,7 +3,16 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Tree, SignOut, Layout, Leaf, MapTrifold, House, List, X } from "@phosphor-icons/react";
+import {
+  Tree,
+  SignOut,
+  Layout,
+  Leaf,
+  MapTrifold,
+  House,
+  List,
+  X,
+} from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 
 interface DashboardNavbarProps {
@@ -11,7 +20,10 @@ interface DashboardNavbarProps {
   userRole?: string;
 }
 
-export const DashboardNavbar = ({ userEmail, userRole }: DashboardNavbarProps) => {
+export const DashboardNavbar = ({
+  userEmail,
+  userRole,
+}: DashboardNavbarProps) => {
   const router = useRouter();
   const supabaseClient = createClient();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -24,9 +36,13 @@ export const DashboardNavbar = ({ userEmail, userRole }: DashboardNavbarProps) =
 
   return (
     <header className="w-full bg-white border-b border-black/5 sticky top-0 z-50">
-      <div className="max-w-[1300px] mx-auto px-4 sm:px-8 lg:px-12 py-3 flex items-center justify-between">
+      <div className="max-w-325 mx-auto px-4 sm:px-8 lg:px-12 py-3 flex items-center justify-between">
         {/* Brand Logo - Links back to Landing Page (/) */}
-        <Link href="/" className="flex items-center gap-2.5 sm:gap-3 group" title="Kembali ke Beranda Utama">
+        <Link
+          href="/"
+          className="flex items-center gap-2.5 sm:gap-3 group"
+          title="Kembali ke Beranda Utama"
+        >
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#0b3d2c] text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
             <Tree size={18} weight="fill" className="sm:hidden" />
             <Tree size={20} weight="fill" className="hidden sm:block" />
@@ -80,7 +96,7 @@ export const DashboardNavbar = ({ userEmail, userRole }: DashboardNavbarProps) =
               {userEmail ? userEmail[0] : "U"}
             </div>
             <div className="text-left">
-              <p className="font-semibold text-xs leading-tight truncate max-w-[120px]">
+              <p className="font-semibold text-xs leading-tight truncate max-w-30">
                 {userEmail || "Pengguna"}
               </p>
               <p className="text-[10px] text-[#111111]/60 capitalize">
@@ -104,7 +120,11 @@ export const DashboardNavbar = ({ userEmail, userRole }: DashboardNavbarProps) =
           className="sm:hidden p-2 text-[#111111] hover:bg-gray-100 rounded-xl transition-colors"
           aria-label="Toggle Navigation Menu"
         >
-          {isMobileMenuOpen ? <X size={22} weight="bold" /> : <List size={22} weight="bold" />}
+          {isMobileMenuOpen ? (
+            <X size={22} weight="bold" />
+          ) : (
+            <List size={22} weight="bold" />
+          )}
         </button>
       </div>
 
