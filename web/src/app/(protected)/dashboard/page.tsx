@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ReportForm } from "@/components/reportForm";
 import {
-  ShieldWarning,
   Tree,
   Sparkle,
   CheckCircle,
   Camera,
   Recycle,
+  DeviceMobile,
+  ChartLineUp,
 } from "@phosphor-icons/react";
 import { motion } from "framer-motion";
 
@@ -83,7 +84,7 @@ export default function DashboardPage() {
             </h1>
 
             <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
-              Selamat datang di Dashboard LaporPohon. Potret langsung atau unggah foto pohon rawan tumbang di sekitar Anda untuk pencegahan bahaya dini dan pemanfaatan kayu sirkular.
+              Gunakan perangkat HP Anda untuk memotret lokasi pohon rawan tumbang secara live di lokasi, atau pantau perkembangan laporan Anda melalui Tab <strong>Progress Laporan Saya</strong>.
             </p>
           </div>
 
@@ -113,9 +114,9 @@ export default function DashboardPage() {
         </motion.div>
       </motion.div>
 
-      {/* ── 2. Main Grid Content (Formulir Scanner Kamera & Kartu Informasi) ── */}
+      {/* ── 2. Main Grid Content (Formulir Scanner Kamera & Progress Laporan) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 items-start">
-        {/* Left Column (7 cols): Report Form dengan Kamera Live Scanner */}
+        {/* Left Column (7 cols): Report Form (Live Scan / Progress Tabs) */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -134,14 +135,14 @@ export default function DashboardPage() {
           transition={{ duration: 0.6, delay: 0.15 }}
           className="lg:col-span-5 space-y-6"
         >
-          {/* Card 1: Tips Foto Pohon Presisi */}
+          {/* Card 1: Tips Pemindaian HP & Monitoring Desktop */}
           <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 border border-black/5 shadow-xs space-y-4 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-3 pb-3 border-b border-gray-100">
               <div className="w-9 h-9 rounded-2xl bg-[#19382B]/10 text-[#19382B] flex items-center justify-center shrink-0 shadow-xs">
-                <Camera size={19} weight="fill" />
+                <DeviceMobile size={19} weight="fill" />
               </div>
               <h3 className="font-bold text-[#111111] text-sm sm:text-base tracking-tight">
-                Tips Pemindaian Pohon Presisi
+                Alur Pelaporan & Monitoring
               </h3>
             </div>
 
@@ -149,19 +150,19 @@ export default function DashboardPage() {
               <li className="flex items-start gap-2.5">
                 <CheckCircle size={17} weight="fill" className="text-[#19382B] shrink-0 mt-0.5" />
                 <span>
-                  <strong>Mode Kamera Live:</strong> Arahkan kamera HP ke pohon, pastikan tajuk dan batang utama terlihat jelas di dalam jendela pemindai.
+                  <strong>Lapor dari HP di Lokasi:</strong> Buka web LaporPohon di smartphone, potret pohon rawan tumbang secara live. Lokasi GPS direkam secara otomatis.
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
                 <CheckCircle size={17} weight="fill" className="text-[#19382B] shrink-0 mt-0.5" />
                 <span>
-                  <strong>Pencahayaan Memadai:</strong> Hindari membelakangi cahaya matahari (*backlight*) atau suasana terlalu gelap.
+                  <strong>Pantau Progress di HP/Desktop:</strong> Buka Tab <em>Progress Laporan Saya</em> untuk melihat status verifikasi DLH & pemanfaatan kayu sirkular.
                 </span>
               </li>
               <li className="flex items-start gap-2.5">
                 <CheckCircle size={17} weight="fill" className="text-[#19382B] shrink-0 mt-0.5" />
                 <span>
-                  <strong>Aktifkan GPS HP:</strong> Klik tombol <em>Deteksi Lokasi Otomatis</em> agar koordinat lokasi pohon terdeteksi akurat.
+                  <strong>Deteksi Presisi AI:</strong> Sistem AI YOLOv8 langsung menganalisis tingkat kerawanan dan estimasi volume kayu sirkular.
                 </span>
               </li>
             </ul>
