@@ -56,7 +56,7 @@ export default function LoginPage() {
     setErrorMessage(null);
     const { error } = await supabaseClient.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=/dashboard` },
     });
     if (error) {
       setErrorMessage("Gagal masuk dengan Google. Silakan coba lagi.");
