@@ -16,7 +16,7 @@ export default function Home() {
       <Navbar />
 
       {/* Main Page Content */}
-      <main className="overflow-x-hidden">
+      <main>
         <HeroSection />
         <StakeholdersSection />
         <WorkflowSection />
