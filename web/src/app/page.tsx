@@ -7,10 +7,11 @@ import { WorkflowSection } from "@/components/landing/WorkflowSection";
 import { StakeholdersSection } from "@/components/landing/StakeholdersSection";
 import { TeamSection } from "@/components/landing/TeamSection";
 import { Footer } from "@/components/landing/Footer";
+import { ScrollToTop } from "@/components/landing/ScrollToTop";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-[#ecefe6] text-[#111111] font-sans selection:bg-[#88d937] selection:text-[#111111]">
+    <div className="min-h-screen bg-white text-[#111111] font-sans selection:bg-[#88d937] selection:text-[#111111]">
       {/* Top Navbar */}
       <Navbar />
 
@@ -27,6 +28,9 @@ export default function Home() {
 
       {/* Footer */}
       <Footer />
+
+      {/* Floating Scroll To Top Button */}
+      <ScrollToTop />
     </div>
   );
 }

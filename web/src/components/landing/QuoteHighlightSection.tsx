@@ -19,9 +19,9 @@ export const QuoteHighlightSection = () => {
             </span>
 
             {/* SECTION HEADER */}
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#111111] leading-[1.1]">
+            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#111111] leading-[1.3] sm:leading-[1.25]">
               Solusi Pintar <br />
-              <span className="inline-block bg-[#ecefe6] px-4 py-1 rounded-full text-[#19382B] font-medium mt-1">Kota Aman &amp; Hijau.</span>
+              <span className="inline-block bg-[#ecefe6] px-3 sm:px-4 py-0.5 sm:py-1 rounded-full text-[#19382B] font-medium align-middle relative -top-0.5">Kota Aman &amp; Hijau.</span>
             </h2>
 
             <p className="text-xs sm:text-sm text-[#111111]/60 max-w-md leading-relaxed">
