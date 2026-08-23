@@ -21,6 +21,114 @@ interface DashboardNavbarProps {
   userRole?: string;
 }
 
+/* ── 1. Desktop Sidebar Component (Inspirasi Shadcn UI Sidebar) ── */
+export const DashboardSidebar = ({
+  userEmail,
+  userRole,
+}: DashboardNavbarProps) => {
+  const router = useRouter();
+  const supabaseClient = createClient();
+
+  const handleSignOut = async () => {
+    await supabaseClient.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
+
+  return (
+    <aside className="hidden md:flex flex-col justify-between w-64 h-screen sticky top-0 bg-white border-r border-black/5 p-5 shrink-0 z-40 font-sans shadow-xs">
+      {/* Sidebar Header */}
+      <div className="space-y-6">
+        <Link
+          href="/"
+          className="flex items-center gap-3 group px-1"
+          title="Kembali ke Beranda Utama"
+        >
+          <div className="w-9 h-9 rounded-full bg-[#19382B] text-white flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+            <Tree size={20} weight="fill" />
+          </div>
+          <div>
+            <span className="font-bold text-[#111111] text-base tracking-tight block leading-tight">
+              LaporPohon
+            </span>
+            <span className="text-[9px] uppercase font-bold tracking-wider text-[#19382B] bg-[#88d937]/30 px-2 py-0.5 rounded-full inline-block mt-0.5">
+              Dashboard AI
+            </span>
+          </div>
+        </Link>
+
+        {/* Sidebar Content / Menu Group */}
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-[#111111]/40 px-3 pb-1">
+            Menu Utama
+          </p>
+
+          <Link
+            href="/"
+            className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-[#111111]/70 hover:bg-[#ecefe6] hover:text-[#19382B] transition-all"
+          >
+            <House size={18} weight="bold" />
+            <span>Beranda Utama</span>
+          </Link>
+
+          <Link
+            href="/dashboard"
+            className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-[#19382B] text-white shadow-xs transition-all"
+          >
+            <div className="flex items-center gap-3">
+              <Layout size={18} weight="bold" />
+              <span>Laporan AI</span>
+            </div>
+            <span className="w-2 h-2 rounded-full bg-[#88d937] animate-pulse" />
+          </Link>
+
+          <button
+            disabled
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-medium text-gray-400 bg-gray-50/50 cursor-not-allowed text-left opacity-60"
+          >
+            <MapTrifold size={18} />
+            <span>Peta Sebaran (Segera)</span>
+          </button>
+
+          <button
+            disabled
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-medium text-gray-400 bg-gray-50/50 cursor-not-allowed text-left opacity-60"
+          >
+            <Leaf size={18} />
+            <span>Katalog Kayu (Segera)</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Sidebar Footer / User Profile & Sign Out */}
+      <div className="space-y-3 pt-4 border-t border-black/5">
+        <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#ecefe6]/60 border border-black/5">
+          <div className="w-9 h-9 rounded-full bg-[#19382B] text-[#e3f4d7] flex items-center justify-center text-xs font-bold uppercase shrink-0 shadow-xs">
+            {userEmail ? userEmail[0] : "U"}
+          </div>
+          <div className="overflow-hidden min-w-0 flex-1">
+            <p className="font-semibold text-xs text-[#111111] truncate leading-tight">
+              {userEmail || "Pengguna"}
+            </p>
+            <p className="text-[10px] text-[#111111]/60 capitalize mt-0.5">
+              Peran: {userRole || "Warga"}
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleSignOut}
+          className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 py-2.5 rounded-2xl transition-colors border border-red-200/60"
+        >
+          <SignOut size={16} weight="bold" />
+          <span>Keluar dari Akun</span>
+        </button>
+      </div>
+    </aside>
+  );
+};
+
+/* ── 2. Mobile Top Header Component (Dipertahankan 100% tanpa perubahan) ── */
 export const DashboardNavbar = ({
   userEmail,
   userRole,
@@ -57,7 +165,7 @@ export const DashboardNavbar = ({
           </div>
         </Link>
 
-        {/* Center: Desktop Quick Nav Links */}
+        {/* Desktop Quick Nav Links (Backup) */}
         <div className="hidden md:flex items-center gap-1 sm:gap-1.5">
           <Link
             href="/"
@@ -89,7 +197,7 @@ export const DashboardNavbar = ({
           </button>
         </div>
 
-        {/* Right Desktop: User Info & Sign Out */}
+        {/* Right Desktop: User Info & Sign Out (Backup) */}
         <div className="hidden md:flex items-center gap-2 shrink-0">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-black/5 text-xs font-medium text-[#111111]">
             <div className="w-6 h-6 rounded-full bg-[#19382B] text-[#e3f4d7] flex items-center justify-center text-[10px] font-bold uppercase">
@@ -128,7 +236,7 @@ export const DashboardNavbar = ({
         </button>
       </nav>
 
-      {/* Mobile Menu Drawer Dropdown Panel (Identical to Landing Page Navbar) */}
+      {/* Mobile Menu Drawer Dropdown Panel */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
