@@ -388,9 +388,8 @@ export const ReportForm = () => {
       });
 
       formLogic.reset();
-      setImagePreview(null);
       setLocationSuccess(false);
-      // Automatically refresh history
+      // Automatically refresh history for Tab 2
       fetchReportHistory();
     } catch (error) {
       const errorMessage =
@@ -460,12 +459,131 @@ export const ReportForm = () => {
           </button>
         </div>
 
-        {/* ── TAB 1: 📷 LAPOR & SCAN POHON ── */}
+        {/* ── TAB 1: PEMINDAIAN KAMERA LIVE ── */}
         {activeTab === "scan" && (
-          <form
-            onSubmit={formLogic.handleSubmit(submitHandler)}
-            className="space-y-5 sm:space-y-6"
-          >
+          submittedReport ? (
+            /* Result AI Inspection Card */
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-6 pt-1"
+            >
+              {/* Header Hasil */}
+              <div className="bg-[#19382B] text-white rounded-2xl p-5 shadow-xs space-y-3 relative overflow-hidden">
+                <div
+                  className="absolute inset-0 opacity-15 pointer-events-none"
+                  style={{
+                    backgroundImage: `radial-gradient(circle, #3E6B54 1px, transparent 1px)`,
+                    backgroundSize: "20px 20px",
+                  }}
+                />
+                <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#88d937] text-[#19382B] flex items-center justify-center shadow-xs">
+                      <CheckCircle size={22} weight="fill" />
+                    </div>
+                    <div>
+                      <h3 className="text-base sm:text-lg font-extrabold text-white tracking-tight">
+                        Laporan Berhasil Dianalisis!
+                      </h3>
+                      <p className="text-xs text-white/80">
+                        Hasil deteksi otomatis AI YOLOv8 & estimasi kayu sirkular
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Risk Badge */}
+                  {(() => {
+                    const riskLevel = getRiskLevel(submittedReport.riskScore);
+                    const config = riskLevelConfig[riskLevel];
+                    return (
+                      <div
+                        className={`self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-full font-extrabold text-xs shadow-xs ${config.bgColor} ${config.textColor}`}
+                      >
+                        <ShieldWarning size={16} weight="fill" />
+                        <span>{config.label} ({submittedReport.riskScore}/100)</span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Bounding Box Image Visualizer */}
+              <div className="space-y-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-[#111111]/50">
+                  Visualisasi Deteksi Objek ({submittedReport.detections} Objek Terdeteksi)
+                </p>
+                <div className="rounded-2xl overflow-hidden border border-black/5 bg-[#ecefe6]/40 p-2">
+                  <TreeImageWithBoundingBox
+                    imageUrl={submittedReport.imageUrl}
+                    boundingBoxes={submittedReport.boundingBoxes}
+                  />
+                </div>
+              </div>
+
+              {/* Key Metrics Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-[#f8f9f5] border border-black/5 p-4 rounded-2xl space-y-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">
+                    Skor Risiko AI
+                  </p>
+                  <p className="text-xl sm:text-2xl font-extrabold text-[#19382B]">
+                    {submittedReport.riskScore} <span className="text-xs font-normal text-[#111111]/50">/ 100</span>
+                  </p>
+                </div>
+
+                <div className="bg-[#f8f9f5] border border-black/5 p-4 rounded-2xl space-y-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">
+                    Estimasi Volume Kanopi
+                  </p>
+                  <p className="text-xl sm:text-2xl font-extrabold text-[#19382B]">
+                    {submittedReport.canopyVolume} <span className="text-xs font-normal text-[#111111]/50">m³</span>
+                  </p>
+                </div>
+
+                <div className="bg-[#f8f9f5] border border-black/5 p-4 rounded-2xl space-y-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">
+                    Estimasi Biomassa Kayu
+                  </p>
+                  <p className="text-xl sm:text-2xl font-extrabold text-[#19382B]">
+                    {submittedReport.biomassEstimate} <span className="text-xs font-normal text-[#111111]/50">kg</span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSubmittedReport(null);
+                    setImagePreview(null);
+                    startCamera();
+                  }}
+                  className="flex-1 bg-[#19382B] text-white hover:bg-[#234A39] py-3 rounded-full text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2"
+                >
+                  <Camera size={16} weight="bold" />
+                  <span>Potret & Lapor Pohon Lain</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSubmittedReport(null);
+                    setImagePreview(null);
+                    setActiveTab("progress");
+                  }}
+                  className="flex-1 bg-[#ecefe6] text-[#19382B] hover:bg-[#e1e6d7] py-3 rounded-full text-xs font-bold transition-all border border-black/5 flex items-center justify-center gap-2"
+                >
+                  <ChartLineUp size={16} weight="bold" />
+                  <span>Lihat Di Laporan Saya</span>
+                </button>
+              </div>
+            </motion.div>
+          ) : (
+            <form
+              onSubmit={formLogic.handleSubmit(submitHandler)}
+              className="space-y-5 sm:space-y-6"
+            >
             {/* Case A: User Accesses from Desktop / Laptop (Notice Banner) */}
             {isDesktop ? (
               <div className="bg-[#f8f9f5] border border-black/8 rounded-2xl p-6 text-center space-y-4 relative overflow-hidden">
@@ -699,7 +817,7 @@ export const ReportForm = () => {
               )}
             </button>
           </form>
-        )}
+        ))}
 
         {/* ── TAB 2: 📊 PROGRESS LAPORAN SAYA (MONITORING PAGE) ── */}
         {activeTab === "progress" && (
