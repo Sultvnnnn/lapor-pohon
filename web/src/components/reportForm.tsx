@@ -194,6 +194,44 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] =
     useState<ReportHistoryItem | null>(null);
+  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+
+  // Report Deletion Handler (Only for pending status)
+  const handleDeleteReport = async (reportId: string, status: string) => {
+    if (status !== "pending") {
+      alert("Laporan yang sudah diverifikasi atau dalam proses penanganan DLH tidak dapat dibatalkan.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Apakah Anda yakin ingin membatalkan & menghapus laporan ini?"
+    );
+    if (!confirmed) return;
+
+    setIsDeletingId(reportId);
+    try {
+      const { error } = await supabaseClient
+        .from("reports")
+        .delete()
+        .eq("id", reportId);
+
+      if (error) {
+        console.error("[ERROR] Delete report failed:", error.message);
+        alert(`Gagal menghapus laporan: ${error.message}`);
+      } else {
+        setReportHistory((prev) => prev.filter((item) => item.id !== reportId));
+        if (selectedHistoryItem?.id === reportId) {
+          setSelectedHistoryItem(null);
+        }
+        onReportSubmitted?.();
+      }
+    } catch (err: any) {
+      console.error("[ERROR] Delete report exception:", err);
+      alert("Terjadi kesalahan saat menghapus laporan.");
+    } finally {
+      setIsDeletingId(null);
+    }
+  };
 
   // Delete Report States
   const [deleteConfirmItem, setDeleteConfirmItem] =
@@ -362,9 +400,9 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
     setIsCameraActive(false);
   };
 
-  // Manage Camera Life Cycle
+  // Manage Camera Life Cycle (Only for Mobile devices)
   useEffect(() => {
-    if (activeTab === "scan" && !imagePreview && !submittedReport) {
+    if (activeTab === "scan" && !isDesktop && !imagePreview && !submittedReport) {
       startCamera();
     } else {
       stopCamera();
@@ -373,66 +411,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
     return () => {
       stopCamera();
     };
-  }, [activeTab, imagePreview, submittedReport]);
-
-  // Demo Sample Photo Injection for Instant Testing on Desktop/Mobile
-  const handleUseDemoSamplePhoto = async () => {
-    try {
-      const sampleUrl =
-        "https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&w=1000&q=80";
-      const res = await fetch(sampleUrl);
-      const blob = await res.blob();
-      const demoFile = new File([blob], `pohon-demo-${Date.now()}.jpg`, {
-        type: "image/jpeg",
-      });
-
-      setCapturedFile(demoFile);
-      setImagePreview(sampleUrl);
-      formLogic.setValue("image", demoFile as any);
-      formLogic.setValue(
-        "description",
-        "Laporan pengujian pohon mahoni rawan tumbang di dekat jalan utama (Demo Test)."
-      );
-      formLogic.setValue("latitude", -6.9932 as any);
-      formLogic.setValue("longitude", 110.4203 as any);
-      formLogic.trigger(["image", "description", "latitude", "longitude"]);
-      setLocationSuccess(true);
-      stopCamera();
-    } catch (err) {
-      console.error("Gagal memuat foto demo via network, membuat foto canvas demo...", err);
-      const canvas = document.createElement("canvas");
-      canvas.width = 800;
-      canvas.height = 600;
-      const ctx = canvas.getContext("2d");
-      if (ctx) {
-        ctx.fillStyle = "#19382B";
-        ctx.fillRect(0, 0, 800, 600);
-        ctx.fillStyle = "#88d937";
-        ctx.font = "bold 32px sans-serif";
-        ctx.fillText("FOTO POHON DEMO TEST", 220, 300);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-        canvas.toBlob((blob) => {
-          if (blob) {
-            const demoFile = new File([blob], `pohon-demo-${Date.now()}.jpg`, {
-              type: "image/jpeg",
-            });
-            setCapturedFile(demoFile);
-            setImagePreview(dataUrl);
-            formLogic.setValue("image", demoFile as any);
-            formLogic.setValue(
-              "description",
-              "Laporan pengujian pohon rawan tumbang (Foto Sampel Generator)."
-            );
-            formLogic.setValue("latitude", -6.9932 as any);
-            formLogic.setValue("longitude", 110.4203 as any);
-            formLogic.trigger(["image", "description", "latitude", "longitude"]);
-            setLocationSuccess(true);
-            stopCamera();
-          }
-        }, "image/jpeg");
-      }
-    }
-  };
+  }, [activeTab, isDesktop, imagePreview, submittedReport]);
 
   // Auto-get Location
   const handleGetLocation = () => {
@@ -510,12 +489,17 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
     setImagePreview(null);
     setCapturedFile(null);
     formLogic.setValue("image", undefined as any);
-    if (activeTab === "scan") {
+    if (activeTab === "scan" && !isDesktop) {
       startCamera();
     }
   };
 
   const submitHandler: SubmitHandler<ReportFormValues> = async (data) => {
+    if (isDesktop) {
+      alert("Pelaporan pohon rawan tumbang hanya dapat dilakukan melalui smartphone (HP).");
+      return;
+    }
+
     let fileToUpload: File | null = capturedFile;
     if (!fileToUpload && data.image) {
       if (typeof window !== "undefined" && data.image instanceof File) {
@@ -634,7 +618,6 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       if (dbError) {
         console.error(`[ERROR] DB Insert error: ${dbError.message}`);
 
-        // If error is caused by user_id column missing in DB, retry without user_id
         if (dbError.message.includes("user_id")) {
           delete basePayload.user_id;
           const { error: retryError } = await supabaseClient
@@ -646,7 +629,6 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
             alert(`[Gagal Simpan Database] ${retryError.message}`);
           }
         } else {
-          // If error is RLS policy or PostGIS/column issue, inform user via alert
           alert(`[Gagal Simpan Database] ${dbError.message}`);
         }
       }
@@ -908,128 +890,118 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               onSubmit={formLogic.handleSubmit(submitHandler, onInvalidHandler)}
               className="space-y-5 sm:space-y-6"
             >
-              {/* Live Scanner Camera Viewfinder & Photo Capture (Works on Desktop & Mobile) */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
-                    <Camera size={15} weight="bold" className="text-[#19382B]" />
-                    Pemindaian Foto Pohon (Live Shoot & File) <span className="text-red-500">*</span>
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={handleUseDemoSamplePhoto}
-                    className="inline-flex items-center gap-1.5 bg-[#88d937] text-[#19382B] hover:bg-[#78c92a] px-3.5 py-1.5 rounded-full text-xs font-extrabold shadow-xs transition-all active:scale-95 border border-black/10"
-                  >
-                    <Sparkle size={15} weight="fill" />
-                    <span>Pakai Foto Sampel Demo</span>
-                  </button>
-                </div>
-
-                {imagePreview ? (
-                  /* Preview hasil potret dari kamera / file demo */
-                  <div className="relative rounded-2xl overflow-hidden bg-black/5 border border-black/10 max-h-80 flex flex-col items-center justify-center p-3">
-                    <img
-                      src={imagePreview}
-                      alt="Hasil Potret Pohon"
-                      className="max-h-72 object-contain rounded-xl shadow-xs"
-                    />
-                    <div className="flex items-center gap-2 mt-3">
-                      <button
-                        type="button"
-                        onClick={handleRetakePhoto}
-                        className="flex items-center gap-1.5 bg-[#19382B] text-white px-4 py-2 rounded-full text-xs font-bold shadow-xs hover:bg-[#234A39] transition-all"
-                      >
-                        <ArrowCounterClockwise size={14} weight="bold" />
-                        <span>Potret / Ganti Foto</span>
-                      </button>
-                    </div>
+              {/* Case A: User Accesses from Desktop / Laptop (Notice Banner) */}
+              {isDesktop ? (
+                <div className="bg-[#f8f9f5] border border-black/8 rounded-2xl p-6 text-center space-y-4 relative overflow-hidden">
+                  <div className="w-14 h-14 rounded-full bg-[#19382B]/10 text-[#19382B] flex items-center justify-center mx-auto shadow-xs">
+                    <DeviceMobile size={30} weight="fill" />
                   </div>
-                ) : (
-                  /* Jendela Bidik Kamera Live (Scanner Viewfinder) */
-                  <div className="relative rounded-2xl overflow-hidden bg-black border-2 border-[#19382B] min-h-[280px] sm:min-h-[340px] flex items-center justify-center shadow-md">
-                    <video
-                      ref={videoRef}
-                      playsInline
-                      muted
-                      className="w-full h-full object-cover min-h-[280px] sm:min-h-[340px]"
-                    />
+                  <div className="space-y-1.5 max-w-md mx-auto">
+                    <span className="inline-block text-[10px] font-extrabold uppercase tracking-widest bg-[#19382B] text-white px-3 py-1 rounded-full">
+                      📱 Khusus Perangkat Mobile (HP)
+                    </span>
+                    <h3 className="text-sm sm:text-base font-bold text-[#111111]">
+                      Fitur Kamera Pemindai Hanya Tersedia di Smartphone
+                    </h3>
+                    <p className="text-xs text-[#111111]/70 leading-relaxed font-medium">
+                      Untuk memastikan akurasi posisi GPS dan pengambilan foto kondisi pohon rawan tumbang secara langsung di lapangan, silakan buka aplikasi web ini melalui peramban ponsel (mobile browser) Anda.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                /* Live Scanner Camera Viewfinder & Photo Capture (Mobile Only) */
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
+                      <Camera size={15} weight="bold" className="text-[#19382B]" />
+                      Pemindaian Foto Pohon (Live Shoot) <span className="text-red-500">*</span>
+                    </label>
+                  </div>
 
-                    {/* Corner Target Reticles Overlay */}
-                    <div className="absolute inset-4 pointer-events-none border border-white/20 rounded-xl flex flex-col justify-between p-2">
-                      <div className="flex justify-between">
-                        <span className="w-5 h-5 border-t-2 border-l-2 border-[#88d937] rounded-tl-md" />
-                        <span className="w-5 h-5 border-t-2 border-r-2 border-[#88d937] rounded-tr-md" />
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="w-5 h-5 border-b-2 border-l-2 border-[#88d937] rounded-bl-md" />
-                        <span className="w-5 h-5 border-b-2 border-r-2 border-[#88d937] rounded-br-md" />
-                      </div>
-                    </div>
-
-                    {/* HUD Live Scanner Label */}
-                    <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[11px] font-semibold text-white flex items-center gap-1.5 border border-white/10">
-                      <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                      <span>KAMERA POHON LIVE</span>
-                    </div>
-
-                    {/* Camera Error / Permission Fallback */}
-                    {cameraError && (
-                      <div className="absolute inset-0 bg-black/90 p-6 flex flex-col items-center justify-center text-center space-y-3 z-20">
-                        <WarningCircle size={32} className="text-amber-400" weight="fill" />
-                        <p className="text-xs text-white/80 max-w-xs">{cameraError}</p>
+                  {imagePreview ? (
+                    /* Preview hasil potret dari kamera */
+                    <div className="relative rounded-2xl overflow-hidden bg-black/5 border border-black/10 max-h-80 flex flex-col items-center justify-center p-3">
+                      <img
+                        src={imagePreview}
+                        alt="Hasil Potret Pohon"
+                        className="max-h-72 object-contain rounded-xl shadow-xs"
+                      />
+                      <div className="flex items-center gap-2 mt-3">
                         <button
                           type="button"
-                          onClick={startCamera}
-                          className="bg-[#88d937] text-[#111111] px-4 py-2 rounded-full font-bold text-xs hover:bg-[#78c92a] transition-all"
+                          onClick={handleRetakePhoto}
+                          className="flex items-center gap-1.5 bg-[#19382B] text-white px-4 py-2 rounded-full text-xs font-bold shadow-xs hover:bg-[#234A39] transition-all"
                         >
-                          Coba Lagi Izin Kamera
+                          <ArrowCounterClockwise size={14} weight="bold" />
+                          <span>Potret Ulang Foto</span>
                         </button>
                       </div>
-                    )}
+                    </div>
+                  ) : (
+                    /* Jendela Bidik Kamera Live (Scanner Viewfinder) */
+                    <div className="relative rounded-2xl overflow-hidden bg-black border-2 border-[#19382B] min-h-[280px] sm:min-h-[340px] flex items-center justify-center shadow-md">
+                      <video
+                        ref={videoRef}
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover min-h-[280px] sm:min-h-[340px]"
+                      />
 
-                    {/* Capture Button Bar */}
-                    {isCameraActive && (
-                      <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center z-10 px-4">
-                        <button
-                          type="button"
-                          onClick={capturePhoto}
-                          disabled={isCapturing}
-                          className="bg-[#19382B] hover:bg-[#234A39] text-white px-6 py-3 rounded-full text-xs font-bold transition-all shadow-lg flex items-center gap-2 border border-white/20 active:scale-95"
-                        >
-                          {isCapturing ? (
-                            <CircleNotch size={18} className="animate-spin text-[#88d937]" />
-                          ) : (
-                            <Camera size={18} weight="fill" className="text-[#88d937]" />
-                          )}
-                          <span>Potret Pohon Sekarang</span>
-                        </button>
+                      {/* Corner Target Reticles Overlay */}
+                      <div className="absolute inset-4 pointer-events-none border border-white/20 rounded-xl flex flex-col justify-between p-2">
+                        <div className="flex justify-between">
+                          <span className="w-5 h-5 border-t-2 border-l-2 border-[#88d937] rounded-tl-md" />
+                          <span className="w-5 h-5 border-t-2 border-r-2 border-[#88d937] rounded-tr-md" />
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="w-5 h-5 border-b-2 border-l-2 border-[#88d937] rounded-bl-md" />
+                          <span className="w-5 h-5 border-b-2 border-r-2 border-[#88d937] rounded-br-md" />
+                        </div>
                       </div>
-                    )}
-                  </div>
-                )}
 
-                {/* Optional File Picker Input */}
-                <div className="flex items-center gap-2 pt-1">
-                  <span className="text-[11px] font-semibold text-[#111111]/60">Atau pilih dari galeri:</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      if (files && files.length > 0) {
-                        const file = files[0];
-                        setCapturedFile(file);
-                        setImagePreview(URL.createObjectURL(file));
-                        formLogic.setValue("image", file as any);
-                        formLogic.trigger("image");
-                        stopCamera();
-                      }
-                    }}
-                    className="text-xs text-[#111111]/70 file:mr-2 file:py-1 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-[#19382B] file:text-white hover:file:bg-[#234A39] cursor-pointer"
-                  />
+                      {/* HUD Live Scanner Label */}
+                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[11px] font-semibold text-white flex items-center gap-1.5 border border-white/10">
+                        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                        <span>KAMERA POHON LIVE</span>
+                      </div>
+
+                      {/* Camera Error / Permission Fallback */}
+                      {cameraError && (
+                        <div className="absolute inset-0 bg-black/90 p-6 flex flex-col items-center justify-center text-center space-y-3 z-20">
+                          <WarningCircle size={32} className="text-amber-400" weight="fill" />
+                          <p className="text-xs text-white/80 max-w-xs">{cameraError}</p>
+                          <button
+                            type="button"
+                            onClick={startCamera}
+                            className="bg-[#88d937] text-[#111111] px-4 py-2 rounded-full font-bold text-xs hover:bg-[#78c92a] transition-all"
+                          >
+                            Coba Lagi Izin Kamera
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Capture Button Bar */}
+                      {isCameraActive && (
+                        <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center z-10 px-4">
+                          <button
+                            type="button"
+                            onClick={capturePhoto}
+                            disabled={isCapturing}
+                            className="bg-[#19382B] hover:bg-[#234A39] text-white px-6 py-3 rounded-full text-xs font-bold transition-all shadow-lg flex items-center gap-2 border border-white/20 active:scale-95"
+                          >
+                            {isCapturing ? (
+                              <CircleNotch size={18} className="animate-spin text-[#88d937]" />
+                            ) : (
+                              <Camera size={18} weight="fill" className="text-[#88d937]" />
+                            )}
+                            <span>Potret Pohon Sekarang</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
 
               {/* Location Inputs & GPS Auto-detect */}
               <div className="space-y-3">
@@ -1269,6 +1241,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                           onClick={() => setSelectedHistoryItem(item)}
                           className="bg-[#19382B] text-white hover:bg-[#234A39] px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
                         >
+                        >
                           <Eye size={14} weight="bold" />
                           <span>Lihat Detail AI</span>
                         </button>
@@ -1481,11 +1454,31 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                 </div>
               )}
 
-              <div className="pt-2">
+              <div className="pt-2 space-y-2">
+                {selectedHistoryItem.status === "pending" && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleDeleteReport(
+                        selectedHistoryItem.id,
+                        selectedHistoryItem.status
+                      )
+                    }
+                    disabled={isDeletingId === selectedHistoryItem.id}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isDeletingId === selectedHistoryItem.id ? (
+                      <CircleNotch size={16} className="animate-spin" />
+                    ) : (
+                      <Trash size={16} weight="bold" />
+                    )}
+                    <span>Batalkan & Hapus Laporan Ini</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setSelectedHistoryItem(null)}
-                  className="w-full bg-[#19382B] text-white py-2.5 rounded-full text-xs font-bold hover:bg-[#234A39] transition-all"
+                  className="w-full bg-gray-100 text-[#111111] py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition-all"
                 >
                   Tutup Detail
                 </button>

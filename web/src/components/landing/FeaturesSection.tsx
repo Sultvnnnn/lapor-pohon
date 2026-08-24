@@ -22,12 +22,12 @@ export const FeaturesSection = () => {
               Solusi Unggulan
             </span>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#111111] leading-[1.3] sm:leading-[1.25]">
-              Satu Aplikasi, <br className="hidden sm:block" />
-              <span className="inline-block bg-[#ecefe6] px-3 sm:px-4 py-0.5 sm:py-1 rounded-full text-[#19382B] font-medium align-middle relative -top-0.5">Tiga Manfaat</span> Nyata.
+              Tiga Solusi <br className="hidden sm:block" />
+              <span className="inline-block bg-[#ecefe6] px-3 sm:px-4 py-0.5 sm:py-1 rounded-full text-[#19382B] font-medium align-middle relative -top-0.5">dalam Satu Sentuhan.</span>
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-[#111111]/60 max-w-md leading-relaxed pb-1">
-            Mencegah kecelakaan akibat pohon tumbang sekaligus mengolah limbah kayu tebangan untuk memberdayakan perajin lokal Kota Semarang.
+            Melindungi warga dari bahaya, menjaga kelestarian kota, dan menghidupkan ekonomi kreatif lokal.
           </p>
         </motion.div>
 
@@ -55,10 +55,10 @@ export const FeaturesSection = () => {
                 <Scan size={24} className="text-[#19382B]" weight="regular" />
               </div>
               <h3 className="text-xl sm:text-2xl font-bold text-[#111111] mb-2 leading-tight">
-                Deteksi Otomatis <br /> Berbasis AI
+                Deteksi Cerdas &amp; Cepat
               </h3>
               <p className="text-xs text-[#111111]/60 leading-relaxed mb-6">
-                Cukup ambil foto pohon rawan. AI YOLOv8 langsung mengukur posisi, tingkat kemiringan, dan potensi risiko bahaya secara cepat.
+                Tidak perlu menunggu lama. Teknologi kami langsung menganalisis risiko dan kemiringan pohon hanya dari foto yang Anda kirim.
               </p>
 
               <Link href="/dashboard" className="inline-flex items-center gap-2 border border-black/20 rounded-full px-5 py-2 text-xs font-bold text-[#111111] hover:bg-[#19382B] hover:text-white transition-all">
@@ -89,10 +89,10 @@ export const FeaturesSection = () => {
                     </span>
                   </div>
                   <h3 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
-                    Kayu Tebangan Jadi Bahan Baku UMKM
+                    Kayu Sisa Jadi Berkah
                   </h3>
                   <p className="text-xs text-white/70 leading-relaxed">
-                    Pohon berisiko yang terpaksa ditebang dihitung volume kayunya, lalu disalurkan langsung ke UMKM perajin lokal untuk dibuat produk kerajinan bermanfaat.
+                    Kami memastikan kayu tebangan tidak terbuang sia-sia, melainkan disalurkan langsung ke UMKM lokal untuk diolah menjadi karya bernilai.
                   </p>
                 </div>
 
@@ -125,10 +125,10 @@ export const FeaturesSection = () => {
                   </span>
                 </div>
                 <h3 className="text-2xl sm:text-3xl font-bold text-[#111111] leading-tight">
-                  Audit Penanaman Pohon Pengganti
+                  Pantau Penanaman Kembali
                 </h3>
                 <p className="text-xs text-[#111111]/70 leading-relaxed">
-                  Setiap 1 pohon yang ditebang wajib diganti dengan 2 bibit baru. Masyarakat bisa memantau kewajiban penanaman ini secara terbuka.
+                  Setiap pohon yang ditebang akan diganti dengan bibit baru. Anda bisa memantau langsung proses penghijauan kembali kota kita.
                 </p>
               </div>
 

@@ -68,9 +68,8 @@ export const HeroSection = () => {
               {/* Tampilan Desktop Baris 3 & Paragraf Subteks (Posisi Asli Desktop) */}
               <div className="flex flex-col-reverse lg:flex-row lg:items-end justify-between gap-4 pt-2">
                 <p className="text-[12px] sm:text-[13px] text-[#1a1a1a]/60 leading-relaxed max-w-[340px] sm:max-w-[440px] pb-1 sm:pb-2">
-                  Aplikasi cerdas pelaporan pohon rawan tumbang dengan AI
-                  <br className="hidden sm:inline" />
-                  {" "}deteksi risiko &amp; daur ulang kayu untuk UMKM lokal.
+                  Platform pelaporan pohon berisiko. Kami membantu mendeteksi bahaya lebih cepat
+                  dan menyalurkan sisa tebangannya untuk menghidupkan UMKM lokal
                 </p>
                 <h1 className="hidden sm:block text-3xl sm:text-4xl lg:text-6xl font-medium tracking-tight text-[#0b3d2c] leading-[1.1] italic font-serif">
                   kota aman.
@@ -111,7 +110,7 @@ export const HeroSection = () => {
                       Cara Mudah
                     </span>
                     <h3 className="text-base font-bold text-[#1a1a1a] group-hover:text-[#0b3d2c] transition-colors">
-                      Foto &amp; Laporkan Sekarang
+                      Foto &amp; Laporkan!
                     </h3>
                   </div>
                 </motion.div>
@@ -133,7 +132,7 @@ export const HeroSection = () => {
 
                 {/* Kartu White Kasus Utama Melekat di Bawah Kontainer */}
                 <div className="relative z-10 bg-white rounded-[1.75rem] p-4 sm:p-5 shadow-md border border-black/5 space-y-3">
-                  <h4 className="text-[15px] font-bold text-[#1a1a1a]">Manfaat Utama Platform</h4>
+                  <h4 className="text-[15px] font-bold text-[#1a1a1a]">Cegah Bahaya, Dukung UMKM</h4>
                   <div className="space-y-1">
                     <a href="#alur" className="flex items-center justify-between py-2 border-b border-black/5 group">
                       <div className="flex items-center gap-3">
@@ -172,7 +171,7 @@ export const HeroSection = () => {
                       <span className="bg-white/90 text-[#1a1a1a] text-[8px] font-bold px-2 py-1 rounded-full shadow-sm">#Sirkular</span>
                     </div>
                   </div>
-                  <h4 className="relative z-10 text-[13px] font-bold text-[#1a1a1a]">Limbah Kayu ke UMKM</h4>
+                  <h4 className="relative z-10 text-[13px] font-bold text-[#1a1a1a]">Limbah Kayu Jadi Karya</h4>
                 </div>
 
                 {/* 2 Small Square Cards */}
@@ -182,14 +181,14 @@ export const HeroSection = () => {
                       <span className="text-[11px] font-bold text-[#111111]">Lacak Laporan</span>
                       <Sparkle size={12} className="text-[#88d937]" weight="fill" />
                     </div>
-                    <p className="text-[9px] text-[#111111]/50 leading-snug">Pantau respon petugas</p>
+                    <p className="text-[9px] text-[#111111]/50 leading-snug">Pantau Status Laporan</p>
                   </div>
                   <div className="flex-1 bg-white border border-black/5 rounded-2xl p-3.5 flex flex-col justify-center min-h-[60px]">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[11px] font-bold text-[#111111]">Manfaat UMKM</span>
                       <Recycle size={12} className="text-[#88d937]" weight="fill" />
                     </div>
-                    <p className="text-[9px] text-[#111111]/50 leading-snug">Kayu untuk perajin lokal</p>
+                    <p className="text-[9px] text-[#111111]/50 leading-snug">Bahan Baku Gratis UMKM</p>
                   </div>
                 </div>
               </motion.div>
@@ -214,8 +213,8 @@ export const HeroSection = () => {
 
               <div className="relative z-10 h-full p-6 lg:p-8 flex flex-col justify-end">
                 <h3 className="text-2xl sm:text-3xl font-bold text-white mb-2 leading-tight">Wujudkan<br />Kota Aman &amp; Hijau</h3>
-                <p className="text-[12px] text-white/80 leading-relaxed max-w-[200px] mb-8">
-                  Bersama menjaga lingkungan Kota Semarang dari bahaya pohon tumbang.
+                <p className="text-[12px] text-white/80 leading-relaxed max-w-[220px] mb-8">
+                  Jaga kota kita dari bahaya pohon tumbang, mulai dari langkah kecil.
                 </p>
 
                 {/* Social Icons */}

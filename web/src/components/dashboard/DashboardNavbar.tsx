@@ -272,7 +272,7 @@ export const DashboardNavbar = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.98 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="pointer-events-auto mt-2 w-full max-w-[1100px] bg-[#ecefe6]/95 backdrop-blur-xl border border-black/10 text-[#111111] rounded-3xl p-4 flex flex-col gap-2.5 shadow-2xl md:hidden"
+            className="pointer-events-auto mt-2 w-full max-w-[960px] bg-[#ecefe6]/95 backdrop-blur-xl border border-black/10 text-[#111111] rounded-3xl p-4 flex flex-col gap-2.5 shadow-2xl md:hidden"
           >
             {/* User Profile Card inside Mobile Drawer */}
             <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/70 border border-black/5">
