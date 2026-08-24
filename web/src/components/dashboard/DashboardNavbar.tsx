@@ -173,7 +173,7 @@ export const DashboardNavbar = ({
 
   return (
     <header className="sticky top-4 z-50 w-full px-4 sm:px-6 flex flex-col items-center pointer-events-none font-sans">
-      <nav className="pointer-events-auto w-full max-w-[1100px] bg-[#ecefe6]/90 backdrop-blur-md border border-black/10 text-[#111111] rounded-full p-1.5 sm:p-2 pl-3 sm:pl-4 pr-2 sm:pr-2.5 flex items-center justify-between gap-2 sm:gap-4 transition-all shadow-xs">
+      <nav className="pointer-events-auto w-full max-w-[960px] bg-[#ecefe6]/90 backdrop-blur-md border border-black/10 text-[#111111] rounded-full p-1.5 sm:p-2 pl-2.5 sm:pl-3.5 pr-2 sm:pr-2.5 flex items-center justify-between gap-2 sm:gap-4 transition-all shadow-md">
         {/* Left: Brand Logo & Title */}
         <Link
           href="/"
@@ -272,7 +272,7 @@ export const DashboardNavbar = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.98 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="pointer-events-auto mt-2 w-full max-w-[1100px] bg-[#ecefe6]/95 backdrop-blur-xl border border-black/10 text-[#111111] rounded-3xl p-4 flex flex-col gap-2.5 shadow-2xl md:hidden"
+            className="pointer-events-auto mt-2 w-full max-w-[960px] bg-[#ecefe6]/95 backdrop-blur-xl border border-black/10 text-[#111111] rounded-3xl p-4 flex flex-col gap-2.5 shadow-2xl md:hidden"
           >
             {/* User Profile Card inside Mobile Drawer */}
             <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/70 border border-black/5">
