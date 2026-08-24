@@ -5,7 +5,7 @@ import { ArrowsClockwise } from "@phosphor-icons/react";
 
 export const MarqueeBanner = () => {
   const items = [
-    "Cegah Pohon Tumbang di Lingkungan Anda",
+    "Cegah Pohon Tumbang di Lingkungan Kamu",
     "Deteksi Risiko Otomatis Berbasis AI YOLOv8",
     "Pemanfaatan Kayu Tebangan untuk UMKM Lokal",
     "Audit Penanaman Kembali Pohon Pengganti yang Transparan",

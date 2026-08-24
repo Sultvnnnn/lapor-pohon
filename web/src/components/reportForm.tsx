@@ -377,7 +377,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   // Auto-get Location
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
-      alert("Fitur lokasi GPS tidak didukung oleh peramban Anda.");
+      alert("Fitur lokasi GPS tidak didukung oleh peramban kamu.");
       return;
     }
 
@@ -399,7 +399,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       (error) => {
         console.error("[ERROR] Geolocation error:", error.message);
         alert(
-          "Gagal mengambil lokasi GPS. Silakan pastikan izin lokasi diaktifkan di HP Anda."
+          "Gagal mengambil lokasi GPS. Silakan pastikan izin lokasi diaktifkan di HP kamu."
         );
         setIsGettingLocation(false);
       },
@@ -514,7 +514,8 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 12000);
+        // Allow up to 45 seconds for Render PyTorch YOLOv8 AI inference
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
 
         const aiResponse = await fetch(`${apiUrl}/api/analyze`, {
           method: "POST",
@@ -532,23 +533,20 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
         if (aiResponse.ok) {
           aiData = await aiResponse.json();
         } else {
-          console.warn(`[WARN] Backend AI returned status ${aiResponse.status}, using fail-safe AI calculation.`);
+          console.warn(`[WARN] Backend AI returned status ${aiResponse.status}, setting zero risk fallback.`);
         }
       } catch (aiErr) {
-        console.warn("[WARN] Backend AI endpoint unreachable or timed out, using fail-safe AI calculation:", aiErr);
+        console.warn("[WARN] Backend AI endpoint unreachable or timed out, setting zero risk fallback:", aiErr);
       }
 
       if (!aiData) {
-        const calcRisk = parseFloat((0.74 + Math.random() * 0.20).toFixed(2));
         aiData = {
-          risk_score: calcRisk,
-          canopy_volume: 163.2,
-          biomass_estimate: 2622.12,
-          bounding_boxes: [
-            { x: 0.2, y: 0.15, width: 0.6, height: 0.7, confidence: calcRisk }
-          ],
-          detections: 1,
-          status: "success",
+          risk_score: 0.0,
+          canopy_volume: 0.0,
+          biomass_estimate: 0.0,
+          bounding_boxes: [],
+          detections: 0,
+          status: "no_tree_detected",
         };
       }
 
@@ -649,7 +647,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               Pemindai AI & LaporPohon
             </h2>
             <p className="text-[11px] sm:text-xs text-[#111111]/60">
-              Lakukan pemindaian kamera live via HP atau pantau perkembangan laporan Anda
+              Lakukan pemindaian kamera live via HP atau pantau perkembangan laporan kamu
             </p>
           </div>
         </div>
@@ -865,7 +863,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                       Fitur Kamera Pemindai Hanya Tersedia di Smartphone
                     </h3>
                     <p className="text-xs text-[#111111]/70 leading-relaxed font-medium">
-                      Untuk memastikan akurasi posisi GPS dan pengambilan foto kondisi pohon rawan tumbang secara langsung di lapangan, silakan buka aplikasi web ini melalui peramban ponsel (mobile browser) Anda.
+                      Untuk memastikan akurasi posisi GPS dan pengambilan foto kondisi pohon rawan tumbang secara langsung di lapangan, silakan buka aplikasi web ini melalui peramban ponsel (mobile browser) kamu.
                     </p>
                   </div>
                 </div>
@@ -1089,7 +1087,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs font-bold uppercase tracking-wider text-[#111111]/70">
-                Riwayat Perkembangan Laporan Anda
+                Riwayat Perkembangan Laporan Kamu
               </p>
               <button
                 type="button"
@@ -1105,16 +1103,16 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
             {isLoadingHistory ? (
               <div className="py-12 text-center text-xs text-[#111111]/60 flex flex-col items-center gap-2">
                 <CircleNotch size={24} className="animate-spin text-[#19382B]" />
-                <span>Memuat perkembangan laporan Anda...</span>
+                <span>Memuat perkembangan laporan kamu...</span>
               </div>
             ) : reportHistory.length === 0 ? (
               <div className="py-10 px-4 bg-[#f8f9f5] border border-black/5 rounded-2xl text-center space-y-2">
                 <Tree size={36} weight="duotone" className="text-[#19382B]/40 mx-auto" />
                 <p className="text-xs sm:text-sm font-semibold text-[#111111]">
-                  Belum ada laporan yang Anda kirim.
+                  Belum ada laporan yang kamu kirim.
                 </p>
                 <p className="text-[11px] text-[#111111]/50 max-w-xs mx-auto">
-                  Gunakan perangkat HP Anda untuk memotret dan memindai lokasi pohon rawan tumbang.
+                  Gunakan perangkat HP kamu untuk memotret dan memindai lokasi pohon rawan tumbang.
                 </p>
               </div>
             ) : (
@@ -1235,7 +1233,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   Batalkan & Hapus Laporan?
                 </h3>
                 <p className="text-xs text-[#111111]/70 leading-relaxed max-w-xs mx-auto">
-                  Laporan ini <strong>belum diverifikasi oleh petugas</strong>. Apakah Anda yakin ingin membatalkannya? Data laporan akan <strong>terhapus secara permanen</strong> dari sistem.
+                  Laporan ini <strong>belum diverifikasi oleh petugas</strong>. Apakah kamu yakin ingin membatalkannya? Data laporan akan <strong>terhapus secara permanen</strong> dari sistem.
                 </p>
               </div>
 
