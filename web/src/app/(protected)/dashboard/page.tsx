@@ -21,9 +21,19 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const fetchTotalReports = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user?.id) {
+      setTotalReports(0);
+      return;
+    }
+
     const { count, data } = await supabase
       .from("reports")
-      .select("id", { count: "exact" });
+      .select("id", { count: "exact" })
+      .eq("user_id", user.id);
 
     const total = count ?? (data ? data.length : 0);
     setTotalReports(total);

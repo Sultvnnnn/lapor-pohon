@@ -50,12 +50,32 @@ type ReportHistoryItem = {
   created_at: string;
   image_url: string;
   description: string;
-  location: string;
+  location: any;
   risk_score: number;
   canopy_volume: number;
   biomass_estimate: number;
   bounding_box: BoundingBox[] | null;
   status: "pending" | "in_progress" | "resolved" | string;
+};
+
+const formatLocationDisplay = (location: any): string => {
+  if (!location) return "Lokasi terdeteksi";
+  if (typeof location === "string") {
+    return location.replace("POINT(", "").replace(")", "").trim();
+  }
+  if (typeof location === "object") {
+    if (Array.isArray(location.coordinates) && location.coordinates.length >= 2) {
+      return `${location.coordinates[0]}, ${location.coordinates[1]}`;
+    }
+    if (location.x !== undefined && location.y !== undefined) {
+      return `${location.x}, ${location.y}`;
+    }
+    if (location.longitude !== undefined && location.latitude !== undefined) {
+      return `${location.longitude}, ${location.latitude}`;
+    }
+    return JSON.stringify(location);
+  }
+  return String(location);
 };
 
 type SubmitStep = "idle" | "uploading" | "analyzing" | "saving";
@@ -154,18 +174,31 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const fetchReportHistory = async () => {
     setIsLoadingHistory(true);
     try {
+      const {
+        data: { user },
+      } = await supabaseClient.auth.getUser();
+
+      if (!user?.id) {
+        setReportHistory([]);
+        setIsLoadingHistory(false);
+        return;
+      }
+
       const { data, error } = await supabaseClient
         .from("reports")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (!error && data) {
         setReportHistory(data as ReportHistoryItem[]);
       } else if (error) {
         console.error("[ERROR] Fetching report history failed:", error.message);
+        setReportHistory([]);
       }
     } catch (err) {
       console.error("[ERROR] Fetching report history failed:", err);
+      setReportHistory([]);
     } finally {
       setIsLoadingHistory(false);
     }
@@ -200,7 +233,13 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        try {
+          await videoRef.current.play();
+        } catch (playErr: any) {
+          if (playErr.name !== "AbortError") {
+            console.warn("[WARN] Camera video play exception:", playErr);
+          }
+        }
       }
       setIsCameraActive(true);
     } catch (err: any) {
@@ -470,7 +509,11 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       }
 
       setSubmitStep("saving");
-      const { error: dbError } = await supabaseClient.from("reports").insert({
+      const {
+        data: { user },
+      } = await supabaseClient.auth.getUser();
+
+      const basePayload: any = {
         image_url: imageUrl,
         description: data.description || "Laporan Pohon Rawan Tumbang",
         location: `POINT(${data.longitude} ${data.latitude})`,
@@ -479,16 +522,34 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
         biomass_estimate: aiData.biomass_estimate || 0,
         bounding_box: aiData.bounding_boxes || [],
         status: "pending",
-      });
+      };
+
+      if (user?.id) {
+        basePayload.user_id = user.id;
+      }
+
+      const { error: dbError } = await supabaseClient
+        .from("reports")
+        .insert(basePayload);
 
       if (dbError) {
         console.error(`[ERROR] DB Insert error: ${dbError.message}`);
-        await supabaseClient.from("reports").insert({
-          image_url: imageUrl,
-          description: data.description || "Laporan Pohon Rawan Tumbang",
-          location: `POINT(${data.longitude} ${data.latitude})`,
-          risk_score: aiData.risk_score || 0,
-        });
+
+        // If error is caused by user_id column missing in DB, retry without user_id
+        if (dbError.message.includes("user_id")) {
+          delete basePayload.user_id;
+          const { error: retryError } = await supabaseClient
+            .from("reports")
+            .insert(basePayload);
+
+          if (retryError) {
+            console.error(`[ERROR] Retry DB Insert error: ${retryError.message}`);
+            alert(`[Gagal Simpan Database] ${retryError.message}`);
+          }
+        } else {
+          // If error is RLS policy or PostGIS/column issue, inform user via alert
+          alert(`[Gagal Simpan Database] ${dbError.message}`);
+        }
       }
 
       setSubmittedReport({
@@ -1084,7 +1145,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                             </span>
                             <span className="flex items-center gap-1">
                               <MapPin size={12} />
-                              {item.location.replace("POINT(", "").replace(")", "")}
+                              {formatLocationDisplay(item.location)}
                             </span>
                           </div>
                         </div>

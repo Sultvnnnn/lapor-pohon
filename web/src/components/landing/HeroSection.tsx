@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
-  ArrowsLeftRight,
+  Camera,
   InstagramLogo,
   TwitterLogo,
   FacebookLogo,
@@ -16,7 +16,7 @@ import {
 
 export const HeroSection = () => {
   return (
-    <section id="beranda" className="py-8 sm:py-12 bg-white overflow-hidden font-sans flex items-center min-h-[90vh]">
+    <section id="beranda" className="py-12 sm:py-12 bg-white overflow-hidden font-sans flex items-center min-h-[90vh]">
       <div className="w-full max-w-[1300px] mx-auto px-4 sm:px-8 lg:px-12">
 
         {/* ==================================================== */}
@@ -81,29 +81,41 @@ export const HeroSection = () => {
             {/* 2. BENTO GRID KIRI */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6 flex-1 items-stretch">
 
-              {/* Card 1 (Mobile Order 1, Desktop Right Top): 01 Card */}
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.1 }}
-                className="order-1 sm:order-2 sm:col-start-2 sm:row-start-1 bg-[#f4f5f0] rounded-[1.75rem] p-5 flex flex-col justify-between h-36 sm:h-40 border border-black/5 shrink-0"
+              {/* Card 1 (Mobile Order 1, Desktop Right Top): 01 Card - Clickable to /dashboard */}
+              <Link
+                href="/dashboard"
+                className="order-1 sm:order-2 sm:col-start-2 sm:row-start-1 block group"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-3xl font-medium text-[#1a1a1a]">01</span>
-                  <div className="flex items-center gap-1.5">
-                    <button className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-[#1a1a1a] shadow-sm border border-black/5 hover:bg-gray-50">
-                      <ArrowsLeftRight size={12} weight="bold" />
-                    </button>
-                    <Link href="/dashboard" className="w-7 h-7 rounded-full bg-[#0b3d2c] flex items-center justify-center text-white hover:bg-[#07291d] transition-all">
-                      <ArrowRight size={12} weight="bold" />
-                    </Link>
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -4, scale: 1.01 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-[#f4f5f0] group-hover:bg-[#eaece2] rounded-[1.75rem] p-5 flex flex-col justify-between h-36 sm:h-40 border border-black/5 group-hover:border-black/15 group-hover:shadow-lg transition-all duration-300 shrink-0 cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-3xl font-medium text-[#1a1a1a] group-hover:text-[#0b3d2c] transition-colors">
+                      01
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#1a1a1a] shadow-xs border border-black/5 group-hover:scale-110 group-hover:bg-[#88d937] group-hover:text-[#0b3d2c] transition-all">
+                        <Camera size={15} weight="bold" />
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-[#0b3d2c] flex items-center justify-center text-white group-hover:bg-[#19382B] group-hover:scale-110 group-hover:translate-x-0.5 transition-all">
+                        <ArrowRight size={14} weight="bold" />
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-[#1a1a1a]/50 uppercase tracking-widest block mb-1">Cara Mudah</span>
-                  <h3 className="text-base font-bold text-[#1a1a1a]">Foto &amp; Laporkan Sekarang</h3>
-                </div>
-              </motion.div>
+                  <div>
+                    <span className="text-[10px] font-bold text-[#1a1a1a]/50 uppercase tracking-widest block mb-1 group-hover:text-[#0b3d2c]/70 transition-colors">
+                      Cara Mudah
+                    </span>
+                    <h3 className="text-base font-bold text-[#1a1a1a] group-hover:text-[#0b3d2c] transition-colors">
+                      Foto &amp; Laporkan Sekarang
+                    </h3>
+                  </div>
+                </motion.div>
+              </Link>
 
               {/* Card 2 (Mobile Order 2, Desktop Left Full Column): Manfaat Utama Platform */}
               <motion.div
