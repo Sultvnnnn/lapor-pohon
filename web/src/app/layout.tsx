@@ -1,4 +1,5 @@
 import './globals.css'
+import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 
 const plusJakartaSans = Plus_Jakarta_Sans({
@@ -7,9 +8,13 @@ const plusJakartaSans = Plus_Jakarta_Sans({
   display: 'swap',
 })
 
-export const metadata = {
-  title: 'LaporPohon',
-  description: 'Sustainable circular wood ecosystem',
+export const metadata: Metadata = {
+  title: 'LaporPohon - Platform Deteksi & Pelaporan Pohon Rawan Tumbang',
+  description: 'Ekosistem cerdas pemetaan & pelaporan pohon berbasis AI YOLOv8 demi keselamatan publik',
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+    apple: '/icon.svg',
+  },
 }
 
 export default function RootLayout({
