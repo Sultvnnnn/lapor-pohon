@@ -13,9 +13,9 @@ export const WorkflowSection = () => {
       step: "01",
       total: "/04",
       title: "Jepret & Laporkan",
-      subtitle: "Temukan pohon rawan? Foto saja pakai HP Anda. Lokasi akan terdeteksi secara otomatis.",
+      subtitle: "Temukan pohon rawan? Foto saja pakai HP kamu. Lokasi akan terdeteksi secara otomatis.",
       pill: "1. Pelaporan",
-      image: "https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=800&auto=format&fit=crop",
+      image: "/assets/workflow_step1.svg",
     },
     {
       step: "02",
@@ -23,7 +23,7 @@ export const WorkflowSection = () => {
       title: "Analisis Cerdas",
       subtitle: "Sistem kami akan langsung menghitung tingkat kemiringan dan potensi bahayanya dalam hitungan detik.",
       pill: "2. Deteksi Cerdas",
-      image: "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800&auto=format&fit=crop",
+      image: "/assets/workflow_step2.svg",
     },
     {
       step: "03",
@@ -31,7 +31,7 @@ export const WorkflowSection = () => {
       title: "Penanganan Cepat",
       subtitle: "Petugas menerima data prioritas dan langsung meluncur ke lokasi untuk melakukan penanganan.",
       pill: "3. Penanganan",
-      image: "https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=800&auto=format&fit=crop",
+      image: "/assets/workflow_step3.svg",
     },
     {
       step: "04",
@@ -39,7 +39,7 @@ export const WorkflowSection = () => {
       title: "Daur Ulang & Tanam Baru",
       subtitle: "Kayu sisa disalurkan ke UMKM, dan petugas menanam bibit baru sebagai ganti pohon yang ditebang.",
       pill: "4. Daur Ulang & Tanam",
-      image: "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?q=80&w=800&auto=format&fit=crop",
+      image: "/assets/workflow_step4.svg",
     },
   ];
 

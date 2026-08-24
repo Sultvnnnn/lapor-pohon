@@ -42,9 +42,9 @@ export const HeroSection = () => {
               <div className="hidden sm:flex flex-wrap items-center gap-3 sm:gap-4 text-3xl sm:text-4xl lg:text-6xl font-medium tracking-tight text-[#1a1a1a] leading-[1.1]">
                 <span className="inline-block w-20 h-10 sm:w-28 sm:h-[2.75rem] lg:w-36 lg:h-[3.25rem] rounded-full overflow-hidden shadow-inner border border-black/5 relative -top-1 shrink-0">
                   <img
-                    src="https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=400&auto=format&fit=crop"
+                    src="/assets/hero_tree.svg"
                     className="w-full h-full object-cover"
-                    alt="Pohon Hijau"
+                    alt="Pohon Perkotaan"
                   />
                 </span>
                 <span>cegah bahaya,</span>
@@ -56,9 +56,9 @@ export const HeroSection = () => {
                 <span className="inline-flex items-center gap-2">
                   <span className="inline-block w-16 h-8 rounded-full overflow-hidden shadow-inner border border-black/5 shrink-0">
                     <img
-                      src="https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=400&auto=format&fit=crop"
+                      src="/assets/hero_tree.svg"
                       className="w-full h-full object-cover"
-                      alt="Pohon Hijau"
+                      alt="Pohon Perkotaan"
                     />
                   </span>
                   <span className="text-[#0b3d2c] italic font-serif text-4xl">kota aman.</span>
@@ -107,10 +107,10 @@ export const HeroSection = () => {
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-[#1a1a1a]/50 uppercase tracking-widest block mb-1 group-hover:text-[#0b3d2c]/70 transition-colors">
-                      Cara Mudah
+                      Langkah Cepat
                     </span>
                     <h3 className="text-base font-bold text-[#1a1a1a] group-hover:text-[#0b3d2c] transition-colors">
-                      Foto &amp; Laporkan!
+                      Foto Pohon &amp; Laporkan Sekarang
                     </h3>
                   </div>
                 </motion.div>
@@ -126,7 +126,7 @@ export const HeroSection = () => {
                 {/* Background Image */}
                 <div
                   className="absolute inset-0 rounded-[2.5rem] overflow-hidden bg-cover bg-center"
-                  style={{ backgroundImage: `url('https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=800&auto=format&fit=crop')` }}
+                  style={{ backgroundImage: `url('/assets/hero_tree.svg')` }}
                 />
                 <div className="absolute inset-0 rounded-[2.5rem] bg-black/10" />
 
@@ -137,7 +137,7 @@ export const HeroSection = () => {
                     <a href="#alur" className="flex items-center justify-between py-2 border-b border-black/5 group">
                       <div className="flex items-center gap-3">
                         <div className="w-6 h-6 rounded-full overflow-hidden shrink-0">
-                          <img src="https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=100&auto=format&fit=crop" className="w-full h-full object-cover" alt="Thumb" />
+                          <img src="/assets/hero_tree.svg" className="w-full h-full object-cover" alt="Thumb" />
                         </div>
                         <span className="text-[10px] font-bold text-[#1a1a1a] uppercase tracking-wider">CEGAH BAHAYA POHON TUMBANG</span>
                       </div>
@@ -146,9 +146,9 @@ export const HeroSection = () => {
                     <a href="#fitur" className="flex items-center justify-between py-2 group">
                       <div className="flex items-center gap-3">
                         <div className="w-6 h-6 rounded-full overflow-hidden shrink-0">
-                          <img src="https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=100&auto=format&fit=crop" className="w-full h-full object-cover" alt="Thumb" />
+                          <img src="/assets/hero_tree.svg" className="w-full h-full object-cover" alt="Thumb" />
                         </div>
-                        <span className="text-[10px] font-bold text-[#1a1a1a] uppercase tracking-wider">KAYU TEBANGAN UNTUK UMKM CRAFT</span>
+                        <span className="text-[10px] font-bold text-[#1a1a1a] uppercase tracking-wider">Dampak nyata dibalik setiap laporan</span>
                       </div>
                       <ArrowRight size={14} className="text-[#1a1a1a]/40 group-hover:text-[#1a1a1a] transition-colors" />
                     </a>
@@ -165,13 +165,13 @@ export const HeroSection = () => {
               >
                 {/* Vertical Image Card */}
                 <div className="flex-[1.2] bg-gray-100 rounded-[1.5rem] p-4 flex flex-col justify-between relative overflow-hidden border border-black/5 min-h-[130px]">
-                  <div className="absolute inset-0 bg-cover bg-center opacity-20" style={{ backgroundImage: `url('https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=300&auto=format&fit=crop')` }} />
+                  <div className="absolute inset-0 bg-cover bg-center opacity-40" style={{ backgroundImage: `url('/assets/hero_tree.svg')` }} />
                   <div className="relative z-10 flex items-center justify-between">
                     <div className="flex gap-1 flex-wrap">
                       <span className="bg-white/90 text-[#1a1a1a] text-[8px] font-bold px-2 py-1 rounded-full shadow-sm">#Sirkular</span>
                     </div>
                   </div>
-                  <h4 className="relative z-10 text-[13px] font-bold text-[#1a1a1a]">Limbah Kayu Jadi Karya</h4>
+                  <h4 className="relative z-10 text-[13px] font-bold text-[#1a1a1a]">Daur Ulang Kayu Tebangan</h4>
                 </div>
 
                 {/* 2 Small Square Cards */}
@@ -188,7 +188,7 @@ export const HeroSection = () => {
                       <span className="text-[11px] font-bold text-[#111111]">Manfaat UMKM</span>
                       <Recycle size={12} className="text-[#88d937]" weight="fill" />
                     </div>
-                    <p className="text-[9px] text-[#111111]/50 leading-snug">Bahan Baku Gratis UMKM</p>
+                    <p className="text-[9px] text-[#111111]/50 leading-snug">Berdayakan Pengrajin Lokal</p>
                   </div>
                 </div>
               </motion.div>
@@ -207,7 +207,7 @@ export const HeroSection = () => {
 
               <div
                 className="absolute inset-0 bg-cover bg-center opacity-90"
-                style={{ backgroundImage: `url('https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=400&auto=format&fit=crop')` }}
+                style={{ backgroundImage: `url('/assets/hero_tree.svg')` }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
