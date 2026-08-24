@@ -194,45 +194,6 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] =
     useState<ReportHistoryItem | null>(null);
-  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
-
-  // Report Deletion Handler (Only for pending status)
-  const handleDeleteReport = async (reportId: string, status: string) => {
-    if (status !== "pending") {
-      alert("Laporan yang sudah diverifikasi atau dalam proses penanganan DLH tidak dapat dibatalkan.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      "Apakah Anda yakin ingin membatalkan & menghapus laporan ini?"
-    );
-    if (!confirmed) return;
-
-    setIsDeletingId(reportId);
-    try {
-      const { error } = await supabaseClient
-        .from("reports")
-        .delete()
-        .eq("id", reportId);
-
-      if (error) {
-        console.error("[ERROR] Delete report failed:", error.message);
-        alert(`Gagal menghapus laporan: ${error.message}`);
-      } else {
-        setReportHistory((prev) => prev.filter((item) => item.id !== reportId));
-        if (selectedHistoryItem?.id === reportId) {
-          setSelectedHistoryItem(null);
-        }
-        onReportSubmitted?.();
-      }
-    } catch (err: any) {
-      console.error("[ERROR] Delete report exception:", err);
-      alert("Terjadi kesalahan saat menghapus laporan.");
-    } finally {
-      setIsDeletingId(null);
-    }
-  };
-
   // Delete Report States
   const [deleteConfirmItem, setDeleteConfirmItem] =
     useState<ReportHistoryItem | null>(null);
@@ -1241,7 +1202,6 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                           onClick={() => setSelectedHistoryItem(item)}
                           className="bg-[#19382B] text-white hover:bg-[#234A39] px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
                         >
-                        >
                           <Eye size={14} weight="bold" />
                           <span>Lihat Detail AI</span>
                         </button>
@@ -1455,24 +1415,17 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               )}
 
               <div className="pt-2 space-y-2">
-                {selectedHistoryItem.status === "pending" && (
+                {getReportStatusConfig(selectedHistoryItem.status).isPending && (
                   <button
                     type="button"
-                    onClick={() =>
-                      handleDeleteReport(
-                        selectedHistoryItem.id,
-                        selectedHistoryItem.status
-                      )
-                    }
-                    disabled={isDeletingId === selectedHistoryItem.id}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    onClick={() => {
+                      setDeleteConfirmItem(selectedHistoryItem);
+                      setSelectedHistoryItem(null);
+                    }}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-2"
                   >
-                    {isDeletingId === selectedHistoryItem.id ? (
-                      <CircleNotch size={16} className="animate-spin" />
-                    ) : (
-                      <Trash size={16} weight="bold" />
-                    )}
-                    <span>Batalkan & Hapus Laporan Ini</span>
+                    <Trash size={16} weight="bold" />
+                    <span>Batalkan &amp; Hapus Laporan Ini</span>
                   </button>
                 )}
                 <button
