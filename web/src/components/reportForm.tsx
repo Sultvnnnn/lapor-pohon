@@ -19,6 +19,7 @@ import {
   ChartLineUp,
   Eye,
   X,
+  Trash,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -131,6 +132,44 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] =
     useState<ReportHistoryItem | null>(null);
+  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+
+  // Report Deletion Handler (Only for pending status)
+  const handleDeleteReport = async (reportId: string, status: string) => {
+    if (status !== "pending") {
+      alert("Laporan yang sudah diverifikasi atau dalam proses penanganan DLH tidak dapat dibatalkan.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "Apakah Anda yakin ingin membatalkan & menghapus laporan ini?"
+    );
+    if (!confirmed) return;
+
+    setIsDeletingId(reportId);
+    try {
+      const { error } = await supabaseClient
+        .from("reports")
+        .delete()
+        .eq("id", reportId);
+
+      if (error) {
+        console.error("[ERROR] Delete report failed:", error.message);
+        alert(`Gagal menghapus laporan: ${error.message}`);
+      } else {
+        setReportHistory((prev) => prev.filter((item) => item.id !== reportId));
+        if (selectedHistoryItem?.id === reportId) {
+          setSelectedHistoryItem(null);
+        }
+        onReportSubmitted?.();
+      }
+    } catch (err: any) {
+      console.error("[ERROR] Delete report exception:", err);
+      alert("Terjadi kesalahan saat menghapus laporan.");
+    } finally {
+      setIsDeletingId(null);
+    }
+  };
 
   // Camera Live Shoot States & Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1064,15 +1103,33 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                         </div>
                       </div>
 
-                      {/* Detail Inspection Trigger */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedHistoryItem(item)}
-                        className="self-end sm:self-center bg-[#19382B] text-white hover:bg-[#234A39] px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 shrink-0"
-                      >
-                        <Eye size={14} weight="bold" />
-                        <span>Lihat Detail AI</span>
-                      </button>
+                      {/* Actions: Delete (if pending) & Detail */}
+                      <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                        {item.status === "pending" && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReport(item.id, item.status)}
+                            disabled={isDeletingId === item.id}
+                            className="bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-500/20 px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 shrink-0 disabled:opacity-50"
+                            title="Batalkan & Hapus Laporan Ini"
+                          >
+                            {isDeletingId === item.id ? (
+                              <CircleNotch size={14} className="animate-spin" />
+                            ) : (
+                              <Trash size={14} weight="bold" />
+                            )}
+                            <span>Hapus</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedHistoryItem(item)}
+                          className="bg-[#19382B] text-white hover:bg-[#234A39] px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 shrink-0"
+                        >
+                          <Eye size={14} weight="bold" />
+                          <span>Lihat Detail AI</span>
+                        </button>
+                      </div>
                     </motion.div>
                   );
                 })}
@@ -1201,11 +1258,31 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                 </div>
               )}
 
-              <div className="pt-2">
+              <div className="pt-2 space-y-2">
+                {selectedHistoryItem.status === "pending" && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleDeleteReport(
+                        selectedHistoryItem.id,
+                        selectedHistoryItem.status
+                      )
+                    }
+                    disabled={isDeletingId === selectedHistoryItem.id}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isDeletingId === selectedHistoryItem.id ? (
+                      <CircleNotch size={16} className="animate-spin" />
+                    ) : (
+                      <Trash size={16} weight="bold" />
+                    )}
+                    <span>Batalkan & Hapus Laporan Ini</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setSelectedHistoryItem(null)}
-                  className="w-full bg-[#19382B] text-white py-2.5 rounded-full text-xs font-bold hover:bg-[#234A39] transition-all"
+                  className="w-full bg-gray-100 text-[#111111] py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition-all"
                 >
                   Tutup Detail
                 </button>
