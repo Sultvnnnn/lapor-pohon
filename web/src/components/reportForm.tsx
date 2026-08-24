@@ -19,6 +19,7 @@ import {
   ChartLineUp,
   Eye,
   X,
+  Trash,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -88,28 +89,86 @@ const submitStepLabels: Record<SubmitStep, string> = {
   saving: "Menyimpan data laporan ke database...",
 };
 
-const statusConfig: Record<
-  string,
-  { label: string; bg: string; text: string; border: string }
-> = {
-  pending: {
-    label: "⏳ Menunggu Verifikasi",
-    bg: "bg-amber-500/10",
-    text: "text-amber-700",
-    border: "border-amber-500/20",
-  },
-  in_progress: {
-    label: "🚜 Dalam Penanganan DLH",
-    bg: "bg-blue-500/10",
-    text: "text-blue-700",
-    border: "border-blue-500/20",
-  },
-  resolved: {
-    label: "♻️ Pemanfaatan Sirkular Selesai",
-    bg: "bg-[#88d937]/20",
-    text: "text-[#19382B]",
-    border: "border-[#88d937]/40",
-  },
+export const getReportStatusConfig = (statusRaw?: string) => {
+  const s = (statusRaw || "pending").toString().toLowerCase().trim();
+
+  // 1. Pending variations
+  if (s === "pending" || s === "menunggu" || s === "draft" || s === "unverified") {
+    return {
+      label: "⏳ Menunggu Verifikasi",
+      bg: "bg-amber-500/10",
+      text: "text-amber-700",
+      border: "border-amber-500/20",
+      isPending: true,
+    };
+  }
+
+  // 2. Verified variations
+  if (
+    s === "verified" ||
+    s === "terverifikasi" ||
+    s === "verifikasi" ||
+    s === "diverifikasi" ||
+    s === "approved" ||
+    s === "valid" ||
+    s === "verified_dlh" ||
+    s.includes("verif") ||
+    s.includes("ok") ||
+    s.includes("acc")
+  ) {
+    return {
+      label: "✅ Terverifikasi DLH",
+      bg: "bg-emerald-500/10",
+      text: "text-emerald-700",
+      border: "border-emerald-500/20",
+      isPending: false,
+    };
+  }
+
+  // 3. In Progress variations
+  if (
+    s === "in_progress" ||
+    s === "progress" ||
+    s === "proses" ||
+    s === "diproses" ||
+    s === "tindak_lanjut" ||
+    s === "penanganan" ||
+    s.includes("proses")
+  ) {
+    return {
+      label: "🚜 Dalam Penanganan DLH",
+      bg: "bg-blue-500/10",
+      text: "text-blue-700",
+      border: "border-blue-500/20",
+      isPending: false,
+    };
+  }
+
+  // 4. Resolved / Completed variations
+  if (
+    s === "resolved" ||
+    s === "completed" ||
+    s === "selesai" ||
+    s === "sirkular" ||
+    s.includes("selesai")
+  ) {
+    return {
+      label: "♻️ Pemanfaatan Sirkular Selesai",
+      bg: "bg-[#88d937]/20",
+      text: "text-[#19382B]",
+      border: "border-[#88d937]/40",
+      isPending: false,
+    };
+  }
+
+  // Fallback for custom status: Display actual status text dynamically
+  return {
+    label: `✅ ${statusRaw}`,
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-700",
+    border: "border-emerald-500/20",
+    isPending: false,
+  };
 };
 
 type ReportFormProps = {
@@ -135,6 +194,46 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] =
     useState<ReportHistoryItem | null>(null);
+
+  // Delete Report States
+  const [deleteConfirmItem, setDeleteConfirmItem] =
+    useState<ReportHistoryItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Permanent Delete Handler
+  const handleDeleteReport = async () => {
+    if (!deleteConfirmItem) return;
+    setIsDeleting(true);
+    try {
+      const { data, error } = await supabaseClient
+        .from("reports")
+        .delete()
+        .eq("id", deleteConfirmItem.id)
+        .select();
+
+      if (error) {
+        console.error("[ERROR] Delete report failed:", error.message);
+        alert(`Gagal membatalkan laporan: ${error.message}`);
+      } else if (!data || data.length === 0) {
+        console.warn("[WARN] Supabase deleted 0 rows. Check RLS DELETE policy.");
+        alert(
+          "Data tidak terhapus di database Supabase (0 baris terhapus).\n\nHal ini disebabkan karena aturan Row Level Security (RLS) di Supabase belum memiliki izin DELETE.\n\nSilakan jalankan SQL Policy DELETE pada Supabase SQL Editor."
+        );
+      } else {
+        // Data successfully deleted permanently from Supabase
+        setReportHistory((prev) =>
+          prev.filter((item) => item.id !== deleteConfirmItem.id)
+        );
+        setDeleteConfirmItem(null);
+        onReportSubmitted?.();
+      }
+    } catch (err) {
+      console.error("[ERROR] Delete report exception:", err);
+      alert("Terjadi kesalahan sistem saat membatalkan laporan.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Camera Live Shoot States & Refs
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1090,7 +1189,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                 {reportHistory.map((item) => {
                   const riskLevel = getRiskLevel(item.risk_score);
                   const riskConf = riskLevelConfig[riskLevel];
-                  const st = statusConfig[item.status] || statusConfig["pending"];
+                  const st = getReportStatusConfig(item.status);
 
                   return (
                     <motion.div
@@ -1151,15 +1250,29 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                         </div>
                       </div>
 
-                      {/* Detail Inspection Trigger */}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedHistoryItem(item)}
-                        className="self-end sm:self-center bg-[#19382B] text-white hover:bg-[#234A39] px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 shrink-0"
-                      >
-                        <Eye size={14} weight="bold" />
-                        <span>Lihat Detail AI</span>
-                      </button>
+                      {/* Action Buttons: Cancel Report (ONLY if pending) & View Detail */}
+                      <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                        {st.isPending && (
+                          <button
+                            type="button"
+                            onClick={() => setDeleteConfirmItem(item)}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/60 px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+                            title="Batalkan Laporan Ini"
+                          >
+                            <Trash size={14} weight="bold" />
+                            <span>Batalkan</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => setSelectedHistoryItem(item)}
+                          className="bg-[#19382B] text-white hover:bg-[#234A39] px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+                        >
+                          <Eye size={14} weight="bold" />
+                          <span>Lihat Detail AI</span>
+                        </button>
+                      </div>
                     </motion.div>
                   );
                 })}
@@ -1168,6 +1281,88 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
           </div>
         )}
       </div>
+
+      {/* ── Modal Alert Konfirmasi Pembatalan & Penghapusan Permanen Laporan ── */}
+      <AnimatePresence>
+        {deleteConfirmItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm font-sans">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl border border-black/10 text-center"
+            >
+              {/* Red Warning Icon Header */}
+              <div className="w-14 h-14 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto shadow-xs">
+                <Trash size={28} weight="fill" />
+              </div>
+
+              <div className="space-y-1.5">
+                <h3 className="text-lg font-extrabold text-[#111111] tracking-tight">
+                  Batalkan & Hapus Laporan?
+                </h3>
+                <p className="text-xs text-[#111111]/70 leading-relaxed max-w-xs mx-auto">
+                  Laporan ini <strong>belum diverifikasi oleh petugas</strong>. Apakah Anda yakin ingin membatalkannya? Data laporan akan <strong>terhapus secara permanen</strong> dari sistem.
+                </p>
+              </div>
+
+              {/* Card Ringkasan Laporan */}
+              <div className="bg-[#f8f9f5] border border-black/8 rounded-2xl p-3.5 flex items-center gap-3 text-left">
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/10 shrink-0 border border-black/5">
+                  <img
+                    src={deleteConfirmItem.image_url}
+                    alt="Thumbnail Laporan"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-[#111111] truncate">
+                    {deleteConfirmItem.description || "Laporan Pohon Rawan Tumbang"}
+                  </p>
+                  <p className="text-[10px] text-[#111111]/50 font-medium pt-0.5">
+                    Diposting: {new Date(deleteConfirmItem.created_at).toLocaleDateString("id-ID", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setDeleteConfirmItem(null)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-[#111111] py-2.5 rounded-full text-xs font-bold transition-all border border-black/5"
+                >
+                  Kembali (Batal)
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleDeleteReport}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-full text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-60"
+                >
+                  {isDeleting ? (
+                    <>
+                      <CircleNotch size={16} className="animate-spin text-white" />
+                      <span>Menghapus...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash size={16} weight="bold" />
+                      <span>Ya, Hapus Permanen</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── Modal Detail Inspeksi AI untuk Progress Item ── */}
       <AnimatePresence>
@@ -1206,9 +1401,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               {/* Status Badge */}
               <div className="flex items-center justify-between flex-wrap gap-2">
                 {(() => {
-                  const st =
-                    statusConfig[selectedHistoryItem.status] ||
-                    statusConfig["pending"];
+                  const st = getReportStatusConfig(selectedHistoryItem.status);
                   const riskLevel = getRiskLevel(selectedHistoryItem.risk_score);
                   const riskConf = riskLevelConfig[riskLevel];
                   const modalDisplayScore =
