@@ -64,7 +64,7 @@ export default function AuthLayout({
           <p className="text-xs text-[#19382B]/55 leading-relaxed mt-1 max-w-xs">
             {isLogin
               ? "Masuk untuk pantau laporan pohon & peta AI kamu."
-              : "Buat akun baru dan mulai jaga kota Semarang bersama."}
+              : "Buat akun baru dan mulai jaga lingkungan kota bersama."}
           </p>
         </div>
       </motion.div>

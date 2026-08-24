@@ -30,11 +30,11 @@ export const Footer = () => {
               Mari Bersama Jaga Kota
             </span>
             <h3 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#0b3d2c] leading-[1.1]">
-              Temukan pohon berisiko <br className="hidden sm:block" />
-              <span className="italic font-serif text-[#0b3d2c]/60">di sekitarmu?</span>
+              Ada pohon berisiko <br className="hidden sm:block" />
+              <span className="italic font-serif text-[#0b3d2c]/80">di dekatmu?</span>
             </h3>
-            <p className="text-sm sm:text-base text-[#0b3d2c]/70 leading-relaxed max-w-md pt-2">
-              Laporkan sekarang. Bantu ciptakan lingkungan Kota Semarang yang lebih aman dan terlindungi.
+            <p className="text-sm sm:text-base text-[#0b3d2c]/80 leading-relaxed max-w-md pt-2">
+              Yuk, laporkan sekarang! Bantu jadikan jalanan kota kita lebih aman dan nyaman untuk kita semua.
             </p>
           </div>
 
@@ -80,7 +80,7 @@ export const Footer = () => {
                 </span>
               </Link>
               <p className="text-xs sm:text-sm text-[#111111]/60 leading-relaxed max-w-sm">
-                Platform kecerdasan buatan (AI YOLOv8) untuk pencegahan dini pohon rawan tumbang dan sistem distribusi sirkular limbah kayu untuk UMKM lokal Semarang.
+                Platform cerdas untuk mencegah pohon tumbang, sekaligus mengubah limbah kayu menjadi peluang baru bagi perajin lokal.
               </p>
 
               {/* Social Icons */}

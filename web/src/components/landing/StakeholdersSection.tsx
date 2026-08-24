@@ -20,18 +20,18 @@ export const StakeholdersSection = () => {
     {
       number: "01",
       title: "Masyarakat & Warga Kota",
-      role: "Mata & Pelapor Utama",
-      description: "Melaporkan pohon berisiko di lingkungan sekitar secara praktis melalui HP, dan memantau respon penanganan oleh petugas.",
+      role: "Pelapor & Pemantau",
+      description: "Cukup pakai HP untuk melaporkan pohon rawan tumbang di sekitarmu, lalu pantau status penanganannya secara langsung.",
       hoverClass: "hover:bg-[#ecefe6]",
       pillClass: "group-hover:bg-[#19382B] group-hover:text-white",
       icon: <User size={28} className="text-[#111111]" weight="duotone" />,
-      href: "/lapor",
+      href: "/dashboard",
     },
     {
       number: "02",
       title: "Dinas Lingkungan & Kota",
-      role: "Pengelola & Eksekutor",
-      description: "Menerima urutan laporan berdasarkan prioritas risiko AI, menerjunkan tim pemangkasan, dan menjalankan program tanam kembali.",
+      role: "Eksekutor Cepat",
+      description: "Menerima laporan yang sudah diurutkan berdasarkan tingkat bahaya, sehingga tim bisa langsung menindak dan melakukan penanaman kembali.",
       hoverClass: "hover:bg-[#19382B] hover:text-white",
       pillClass: "group-hover:bg-[#88d937] group-hover:text-[#111111]",
       icon: <Buildings size={28} className="text-[#111111] group-hover:text-white transition-colors" weight="duotone" />,
@@ -41,8 +41,8 @@ export const StakeholdersSection = () => {
     {
       number: "03",
       title: "UMKM & Perajin Kayu",
-      role: "Penerima Manfaat Kayu",
-      description: "Menerima pasokan kayu sisa tebangan secara terukur sebagai bahan baku gratis/terjangkau untuk produk kerajinan bernilai jual tinggi.",
+      role: "Penggerak Ekonomi",
+      description: "Memanfaatkan kayu sisa tebangan menjadi bahan baku kerajinan. Lingkungan bersih, ekonomi kreatif pun terbantu.",
       hoverClass: "hover:bg-[#ecefe6]",
       pillClass: "group-hover:bg-[#19382B] group-hover:text-white",
       icon: <Storefront size={28} className="text-[#111111]" weight="duotone" />,
@@ -67,12 +67,12 @@ export const StakeholdersSection = () => {
               Pihak Terlibat
             </span>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#111111] leading-[1.3] sm:leading-[1.25]">
-              Sinergi Warga, <br className="hidden sm:block" />
-              <span className="inline-block bg-[#ecefe6] px-3 sm:px-4 py-0.5 sm:py-1 rounded-full text-[#19382B] font-medium align-middle relative -top-0.5">Pemerintah &amp; UMKM</span> Kota.
+              Kolaborasi Warga, <br className="hidden sm:block" />
+              <span className="inline-block bg-[#ecefe6] px-3 sm:px-4 py-0.5 sm:py-1 rounded-full text-[#19382B] font-medium align-middle relative -top-0.5">Pemerintah &amp; UMKM.</span>
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-[#111111]/60 max-w-md leading-relaxed pb-1">
-            Menghubungkan masyarakat, dinas kota, dan UMKM dalam satu rantai saling menguntungkan untuk keselamatan dan ekonomi lokal.
+            Menyatukan kepedulian warga, aksi cepat pemerintah, dan kreativitas UMKM untuk kota yang lebih aman dan berdaya.
           </p>
         </motion.div>
 

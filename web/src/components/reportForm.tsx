@@ -59,20 +59,24 @@ type ReportHistoryItem = {
   status: "pending" | "in_progress" | "resolved" | string;
 };
 
-const formatLocation = (loc: any): string => {
-  if (!loc) return "Lokasi tidak tersedia";
-  if (typeof loc === "string") {
-    return loc.replace("POINT(", "").replace(")", "").trim();
+const formatLocationDisplay = (location: any): string => {
+  if (!location) return "Lokasi terdeteksi";
+  if (typeof location === "string") {
+    return location.replace("POINT(", "").replace(")", "").trim();
   }
-  if (typeof loc === "object") {
-    if (Array.isArray(loc.coordinates) && loc.coordinates.length >= 2) {
-      return `${loc.coordinates[1]}, ${loc.coordinates[0]}`;
+  if (typeof location === "object") {
+    if (Array.isArray(location.coordinates) && location.coordinates.length >= 2) {
+      return `${location.coordinates[0]}, ${location.coordinates[1]}`;
     }
-    if (loc.x !== undefined && loc.y !== undefined) {
-      return `${loc.y}, ${loc.x}`;
+    if (location.x !== undefined && location.y !== undefined) {
+      return `${location.x}, ${location.y}`;
     }
+    if (location.longitude !== undefined && location.latitude !== undefined) {
+      return `${location.longitude}, ${location.latitude}`;
+    }
+    return JSON.stringify(location);
   }
-  return String(loc);
+  return String(location);
 };
 
 type SubmitStep = "idle" | "uploading" | "analyzing" | "saving";
@@ -85,28 +89,86 @@ const submitStepLabels: Record<SubmitStep, string> = {
   saving: "Menyimpan data laporan ke database...",
 };
 
-const statusConfig: Record<
-  string,
-  { label: string; bg: string; text: string; border: string }
-> = {
-  pending: {
-    label: "⏳ Menunggu Verifikasi",
-    bg: "bg-amber-500/10",
-    text: "text-amber-700",
-    border: "border-amber-500/20",
-  },
-  in_progress: {
-    label: "🚜 Dalam Penanganan DLH",
-    bg: "bg-blue-500/10",
-    text: "text-blue-700",
-    border: "border-blue-500/20",
-  },
-  resolved: {
-    label: "♻️ Pemanfaatan Sirkular Selesai",
-    bg: "bg-[#88d937]/20",
-    text: "text-[#19382B]",
-    border: "border-[#88d937]/40",
-  },
+export const getReportStatusConfig = (statusRaw?: string) => {
+  const s = (statusRaw || "pending").toString().toLowerCase().trim();
+
+  // 1. Pending variations
+  if (s === "pending" || s === "menunggu" || s === "draft" || s === "unverified") {
+    return {
+      label: "⏳ Menunggu Verifikasi",
+      bg: "bg-amber-500/10",
+      text: "text-amber-700",
+      border: "border-amber-500/20",
+      isPending: true,
+    };
+  }
+
+  // 2. Verified variations
+  if (
+    s === "verified" ||
+    s === "terverifikasi" ||
+    s === "verifikasi" ||
+    s === "diverifikasi" ||
+    s === "approved" ||
+    s === "valid" ||
+    s === "verified_dlh" ||
+    s.includes("verif") ||
+    s.includes("ok") ||
+    s.includes("acc")
+  ) {
+    return {
+      label: "✅ Terverifikasi DLH",
+      bg: "bg-emerald-500/10",
+      text: "text-emerald-700",
+      border: "border-emerald-500/20",
+      isPending: false,
+    };
+  }
+
+  // 3. In Progress variations
+  if (
+    s === "in_progress" ||
+    s === "progress" ||
+    s === "proses" ||
+    s === "diproses" ||
+    s === "tindak_lanjut" ||
+    s === "penanganan" ||
+    s.includes("proses")
+  ) {
+    return {
+      label: "🚜 Dalam Penanganan DLH",
+      bg: "bg-blue-500/10",
+      text: "text-blue-700",
+      border: "border-blue-500/20",
+      isPending: false,
+    };
+  }
+
+  // 4. Resolved / Completed variations
+  if (
+    s === "resolved" ||
+    s === "completed" ||
+    s === "selesai" ||
+    s === "sirkular" ||
+    s.includes("selesai")
+  ) {
+    return {
+      label: "♻️ Pemanfaatan Sirkular Selesai",
+      bg: "bg-[#88d937]/20",
+      text: "text-[#19382B]",
+      border: "border-[#88d937]/40",
+      isPending: false,
+    };
+  }
+
+  // Fallback for custom status: Display actual status text dynamically
+  return {
+    label: `✅ ${statusRaw}`,
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-700",
+    border: "border-emerald-500/20",
+    isPending: false,
+  };
 };
 
 type ReportFormProps = {
@@ -132,42 +194,43 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [selectedHistoryItem, setSelectedHistoryItem] =
     useState<ReportHistoryItem | null>(null);
-  const [isDeletingId, setIsDeletingId] = useState<string | null>(null);
+  // Delete Report States
+  const [deleteConfirmItem, setDeleteConfirmItem] =
+    useState<ReportHistoryItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Report Deletion Handler (Only for pending status)
-  const handleDeleteReport = async (reportId: string, status: string) => {
-    if (status !== "pending") {
-      alert("Laporan yang sudah diverifikasi atau dalam proses penanganan DLH tidak dapat dibatalkan.");
-      return;
-    }
-
-    const confirmed = window.confirm(
-      "Apakah Anda yakin ingin membatalkan & menghapus laporan ini?"
-    );
-    if (!confirmed) return;
-
-    setIsDeletingId(reportId);
+  // Permanent Delete Handler
+  const handleDeleteReport = async () => {
+    if (!deleteConfirmItem) return;
+    setIsDeleting(true);
     try {
-      const { error } = await supabaseClient
+      const { data, error } = await supabaseClient
         .from("reports")
         .delete()
-        .eq("id", reportId);
+        .eq("id", deleteConfirmItem.id)
+        .select();
 
       if (error) {
         console.error("[ERROR] Delete report failed:", error.message);
-        alert(`Gagal menghapus laporan: ${error.message}`);
+        alert(`Gagal membatalkan laporan: ${error.message}`);
+      } else if (!data || data.length === 0) {
+        console.warn("[WARN] Supabase deleted 0 rows. Check RLS DELETE policy.");
+        alert(
+          "Data tidak terhapus di database Supabase (0 baris terhapus).\n\nHal ini disebabkan karena aturan Row Level Security (RLS) di Supabase belum memiliki izin DELETE.\n\nSilakan jalankan SQL Policy DELETE pada Supabase SQL Editor."
+        );
       } else {
-        setReportHistory((prev) => prev.filter((item) => item.id !== reportId));
-        if (selectedHistoryItem?.id === reportId) {
-          setSelectedHistoryItem(null);
-        }
+        // Data successfully deleted permanently from Supabase
+        setReportHistory((prev) =>
+          prev.filter((item) => item.id !== deleteConfirmItem.id)
+        );
+        setDeleteConfirmItem(null);
         onReportSubmitted?.();
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error("[ERROR] Delete report exception:", err);
-      alert("Terjadi kesalahan saat menghapus laporan.");
+      alert("Terjadi kesalahan sistem saat membatalkan laporan.");
     } finally {
-      setIsDeletingId(null);
+      setIsDeleting(false);
     }
   };
 
@@ -213,24 +276,27 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
         data: { user },
       } = await supabaseClient.auth.getUser();
 
-      let query = supabaseClient
-        .from("reports")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (user) {
-        query = query.eq("user_id", user.id);
+      if (!user?.id) {
+        setReportHistory([]);
+        setIsLoadingHistory(false);
+        return;
       }
 
-      const { data, error } = await query;
+      const { data, error } = await supabaseClient
+        .from("reports")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
       if (!error && data) {
         setReportHistory(data as ReportHistoryItem[]);
       } else if (error) {
         console.error("[ERROR] Fetching report history failed:", error.message);
+        setReportHistory([]);
       }
     } catch (err) {
       console.error("[ERROR] Fetching report history failed:", err);
+      setReportHistory([]);
     } finally {
       setIsLoadingHistory(false);
     }
@@ -265,7 +331,13 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        try {
+          await videoRef.current.play();
+        } catch (playErr: any) {
+          if (playErr.name !== "AbortError") {
+            console.warn("[WARN] Camera video play exception:", playErr);
+          }
+        }
       }
       setIsCameraActive(true);
     } catch (err: any) {
@@ -481,7 +553,11 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       }
 
       setSubmitStep("saving");
-      const insertPayload: Record<string, any> = {
+      const {
+        data: { user },
+      } = await supabaseClient.auth.getUser();
+
+      const basePayload: any = {
         image_url: imageUrl,
         description: data.description || "Laporan Pohon Rawan Tumbang",
         location: `POINT(${data.longitude} ${data.latitude})`,
@@ -492,26 +568,30 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
         status: "pending",
       };
 
-      if (session?.user?.id) {
-        insertPayload.user_id = session.user.id;
+      if (user?.id) {
+        basePayload.user_id = user.id;
       }
 
       const { error: dbError } = await supabaseClient
         .from("reports")
-        .insert(insertPayload);
+        .insert(basePayload);
 
       if (dbError) {
         console.error(`[ERROR] DB Insert error: ${dbError.message}`);
-        const fallbackPayload: Record<string, any> = {
-          image_url: imageUrl,
-          description: data.description || "Laporan Pohon Rawan Tumbang",
-          location: `POINT(${data.longitude} ${data.latitude})`,
-          risk_score: aiData.risk_score || 0,
-        };
-        if (session?.user?.id) {
-          fallbackPayload.user_id = session.user.id;
+
+        if (dbError.message.includes("user_id")) {
+          delete basePayload.user_id;
+          const { error: retryError } = await supabaseClient
+            .from("reports")
+            .insert(basePayload);
+
+          if (retryError) {
+            console.error(`[ERROR] Retry DB Insert error: ${retryError.message}`);
+            alert(`[Gagal Simpan Database] ${retryError.message}`);
+          }
+        } else {
+          alert(`[Gagal Simpan Database] ${dbError.message}`);
         }
-        await supabaseClient.from("reports").insert(fallbackPayload);
       }
 
       setSubmittedReport({
@@ -1042,7 +1122,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                 {reportHistory.map((item) => {
                   const riskLevel = getRiskLevel(item.risk_score);
                   const riskConf = riskLevelConfig[riskLevel];
-                  const st = statusConfig[item.status] || statusConfig["pending"];
+                  const st = getReportStatusConfig(item.status);
 
                   return (
                     <motion.div
@@ -1097,34 +1177,30 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                             </span>
                             <span className="flex items-center gap-1">
                               <MapPin size={12} />
-                              {formatLocation(item.location)}
+                              {formatLocationDisplay(item.location)}
                             </span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Actions: Delete (if pending) & Detail */}
+                      {/* Action Buttons: Cancel Report (ONLY if pending) & View Detail */}
                       <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                        {item.status === "pending" && (
+                        {st.isPending && (
                           <button
                             type="button"
-                            onClick={() => handleDeleteReport(item.id, item.status)}
-                            disabled={isDeletingId === item.id}
-                            className="bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-500/20 px-3 py-1.5 rounded-full text-xs font-bold transition-all flex items-center gap-1 shrink-0 disabled:opacity-50"
-                            title="Batalkan & Hapus Laporan Ini"
+                            onClick={() => setDeleteConfirmItem(item)}
+                            className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/60 px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+                            title="Batalkan Laporan Ini"
                           >
-                            {isDeletingId === item.id ? (
-                              <CircleNotch size={14} className="animate-spin" />
-                            ) : (
-                              <Trash size={14} weight="bold" />
-                            )}
-                            <span>Hapus</span>
+                            <Trash size={14} weight="bold" />
+                            <span>Batalkan</span>
                           </button>
                         )}
+
                         <button
                           type="button"
                           onClick={() => setSelectedHistoryItem(item)}
-                          className="bg-[#19382B] text-white hover:bg-[#234A39] px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 shrink-0"
+                          className="bg-[#19382B] text-white hover:bg-[#234A39] px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
                         >
                           <Eye size={14} weight="bold" />
                           <span>Lihat Detail AI</span>
@@ -1138,6 +1214,88 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
           </div>
         )}
       </div>
+
+      {/* ── Modal Alert Konfirmasi Pembatalan & Penghapusan Permanen Laporan ── */}
+      <AnimatePresence>
+        {deleteConfirmItem && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm font-sans">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl border border-black/10 text-center"
+            >
+              {/* Red Warning Icon Header */}
+              <div className="w-14 h-14 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto shadow-xs">
+                <Trash size={28} weight="fill" />
+              </div>
+
+              <div className="space-y-1.5">
+                <h3 className="text-lg font-extrabold text-[#111111] tracking-tight">
+                  Batalkan & Hapus Laporan?
+                </h3>
+                <p className="text-xs text-[#111111]/70 leading-relaxed max-w-xs mx-auto">
+                  Laporan ini <strong>belum diverifikasi oleh petugas</strong>. Apakah Anda yakin ingin membatalkannya? Data laporan akan <strong>terhapus secara permanen</strong> dari sistem.
+                </p>
+              </div>
+
+              {/* Card Ringkasan Laporan */}
+              <div className="bg-[#f8f9f5] border border-black/8 rounded-2xl p-3.5 flex items-center gap-3 text-left">
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/10 shrink-0 border border-black/5">
+                  <img
+                    src={deleteConfirmItem.image_url}
+                    alt="Thumbnail Laporan"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-bold text-[#111111] truncate">
+                    {deleteConfirmItem.description || "Laporan Pohon Rawan Tumbang"}
+                  </p>
+                  <p className="text-[10px] text-[#111111]/50 font-medium pt-0.5">
+                    Diposting: {new Date(deleteConfirmItem.created_at).toLocaleDateString("id-ID", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={() => setDeleteConfirmItem(null)}
+                  className="flex-1 bg-gray-100 hover:bg-gray-200 text-[#111111] py-2.5 rounded-full text-xs font-bold transition-all border border-black/5"
+                >
+                  Kembali (Batal)
+                </button>
+
+                <button
+                  type="button"
+                  disabled={isDeleting}
+                  onClick={handleDeleteReport}
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-full text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-60"
+                >
+                  {isDeleting ? (
+                    <>
+                      <CircleNotch size={16} className="animate-spin text-white" />
+                      <span>Menghapus...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Trash size={16} weight="bold" />
+                      <span>Ya, Hapus Permanen</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── Modal Detail Inspeksi AI untuk Progress Item ── */}
       <AnimatePresence>
@@ -1176,9 +1334,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               {/* Status Badge */}
               <div className="flex items-center justify-between flex-wrap gap-2">
                 {(() => {
-                  const st =
-                    statusConfig[selectedHistoryItem.status] ||
-                    statusConfig["pending"];
+                  const st = getReportStatusConfig(selectedHistoryItem.status);
                   const riskLevel = getRiskLevel(selectedHistoryItem.risk_score);
                   const riskConf = riskLevelConfig[riskLevel];
                   const modalDisplayScore =
@@ -1259,24 +1415,17 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               )}
 
               <div className="pt-2 space-y-2">
-                {selectedHistoryItem.status === "pending" && (
+                {getReportStatusConfig(selectedHistoryItem.status).isPending && (
                   <button
                     type="button"
-                    onClick={() =>
-                      handleDeleteReport(
-                        selectedHistoryItem.id,
-                        selectedHistoryItem.status
-                      )
-                    }
-                    disabled={isDeletingId === selectedHistoryItem.id}
-                    className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                    onClick={() => {
+                      setDeleteConfirmItem(selectedHistoryItem);
+                      setSelectedHistoryItem(null);
+                    }}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-2"
                   >
-                    {isDeletingId === selectedHistoryItem.id ? (
-                      <CircleNotch size={16} className="animate-spin" />
-                    ) : (
-                      <Trash size={16} weight="bold" />
-                    )}
-                    <span>Batalkan & Hapus Laporan Ini</span>
+                    <Trash size={16} weight="bold" />
+                    <span>Batalkan &amp; Hapus Laporan Ini</span>
                   </button>
                 )}
                 <button

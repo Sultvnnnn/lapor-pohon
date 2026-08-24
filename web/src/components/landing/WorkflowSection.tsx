@@ -12,33 +12,33 @@ export const WorkflowSection = () => {
     {
       step: "01",
       total: "/04",
-      title: "Foto & Kirim Laporan",
-      subtitle: "Warga mengambil foto pohon rawan tumbang di sekitar. Lokasi GPS otomatis terdeteksi.",
+      title: "Jepret & Laporkan",
+      subtitle: "Temukan pohon rawan? Foto saja pakai HP Anda. Lokasi akan terdeteksi secara otomatis.",
       pill: "1. Pelaporan",
       image: "https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=800&auto=format&fit=crop",
     },
     {
       step: "02",
       total: "/04",
-      title: "Analisis AI Otomatis",
-      subtitle: "Sistem AI menguji tingkat kemiringan & mengukur bahaya untuk menentukan prioritas.",
-      pill: "2. Deteksi AI",
+      title: "Analisis Cerdas",
+      subtitle: "Sistem kami akan langsung menghitung tingkat kemiringan dan potensi bahayanya dalam hitungan detik.",
+      pill: "2. Deteksi Cerdas",
       image: "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=800&auto=format&fit=crop",
     },
     {
       step: "03",
       total: "/04",
-      title: "Tindakan Petugas",
-      subtitle: "Dinas pertamanan memverifikasi laporan dan mendatangi lokasi untuk penanganan cepat.",
+      title: "Penanganan Cepat",
+      subtitle: "Petugas menerima data prioritas dan langsung meluncur ke lokasi untuk melakukan penanganan.",
       pill: "3. Penanganan",
       image: "https://images.unsplash.com/photo-1448375240586-882707db888b?q=80&w=800&auto=format&fit=crop",
     },
     {
       step: "04",
       total: "/04",
-      title: "Manfaat UMKM & Replant",
-      subtitle: "Sisa kayu tebangan disalurkan ke UMKM perajin, dan dinas menanam bibit pohon baru.",
-      pill: "4. Daur Ulang",
+      title: "Daur Ulang & Tanam Baru",
+      subtitle: "Kayu sisa disalurkan ke UMKM, dan petugas menanam bibit baru sebagai ganti pohon yang ditebang.",
+      pill: "4. Daur Ulang & Tanam",
       image: "https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?q=80&w=800&auto=format&fit=crop",
     },
   ];
@@ -69,10 +69,10 @@ export const WorkflowSection = () => {
   const scrollTo = (index: number) => {
     if (!scrollContainerRef.current) return;
     const container = scrollContainerRef.current;
-    const child = container.children[index] as HTMLElement;
-    if (child) {
-      const scrollPosition = child.offsetLeft - container.clientWidth / 2 + child.clientWidth / 2;
-      container.scrollTo({ left: scrollPosition, behavior: "smooth" });
+    const targetChild = container.children[index] as HTMLElement;
+    if (targetChild) {
+      const scrollLeft = targetChild.offsetLeft - (container.clientWidth - targetChild.clientWidth) / 2;
+      container.scrollTo({ left: scrollLeft, behavior: "smooth" });
     }
   };
 
@@ -100,11 +100,11 @@ export const WorkflowSection = () => {
               </span>
               <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#111111] leading-[1.3] sm:leading-[1.25]">
                 4 Langkah Mudah <br className="hidden sm:block" />
-                <span className="inline-block bg-[#ecefe6] px-3 sm:px-4 py-0.5 sm:py-1 rounded-full text-[#19382B] font-medium align-middle relative -top-0.5">Penggunaan</span> LaporPohon.
+                <span className="inline-block bg-[#ecefe6] px-3 sm:px-4 py-0.5 sm:py-1 rounded-full text-[#19382B] font-medium align-middle relative -top-0.5">LaporPohon.</span>
               </h2>
             </div>
             <p className="text-xs sm:text-sm text-[#111111]/60 max-w-md leading-relaxed pb-1">
-              Proses simpel dan transparan: dari foto pertama di HP Anda hingga tindakan petugas di lapangan dan daur ulang kayu.
+              Dari jepretan kamera hingga jadi karya. Semua proses berjalan transparan untuk keamanan bersama.
             </p>
           </motion.div>
         </div>
