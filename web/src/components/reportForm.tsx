@@ -50,12 +50,28 @@ type ReportHistoryItem = {
   created_at: string;
   image_url: string;
   description: string;
-  location: string;
+  location: any;
   risk_score: number;
   canopy_volume: number;
   biomass_estimate: number;
   bounding_box: BoundingBox[] | null;
   status: "pending" | "in_progress" | "resolved" | string;
+};
+
+const formatLocation = (loc: any): string => {
+  if (!loc) return "Lokasi tidak tersedia";
+  if (typeof loc === "string") {
+    return loc.replace("POINT(", "").replace(")", "").trim();
+  }
+  if (typeof loc === "object") {
+    if (Array.isArray(loc.coordinates) && loc.coordinates.length >= 2) {
+      return `${loc.coordinates[1]}, ${loc.coordinates[0]}`;
+    }
+    if (loc.x !== undefined && loc.y !== undefined) {
+      return `${loc.y}, ${loc.x}`;
+    }
+  }
+  return String(loc);
 };
 
 type SubmitStep = "idle" | "uploading" | "analyzing" | "saving";
@@ -1106,7 +1122,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                             </span>
                             <span className="flex items-center gap-1">
                               <MapPin size={12} />
-                              {item.location.replace("POINT(", "").replace(")", "")}
+                              {formatLocation(item.location)}
                             </span>
                           </div>
                         </div>
