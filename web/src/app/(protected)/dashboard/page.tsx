@@ -21,11 +21,12 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const fetchTotalReports = async () => {
-    const { count } = await supabase
+    const { count, data } = await supabase
       .from("reports")
-      .select("*", { count: "exact", head: true });
+      .select("id", { count: "exact" });
 
-    setTotalReports(count ?? 0);
+    const total = count ?? (data ? data.length : 0);
+    setTotalReports(total);
   };
 
   const fetchDashboardData = async () => {
@@ -59,6 +60,7 @@ export default function DashboardPage() {
   }, []);
 
   const handleReportSubmitted = async () => {
+    setTotalReports((prev) => prev + 1);
     fetchTotalReports();
   };
 
