@@ -100,7 +100,7 @@ export default function DashboardPage() {
             </div>
 
             <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight leading-tight">
-              Halo, {displayName}! 👋
+              Selamat datang, {displayName}!
             </h1>
 
             <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
