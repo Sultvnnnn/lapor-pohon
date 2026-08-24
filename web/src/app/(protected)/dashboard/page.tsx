@@ -25,12 +25,16 @@ export default function DashboardPage() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    let query = supabase.from("reports").select("id", { count: "exact" });
-    if (user) {
-      query = query.eq("user_id", user.id);
+    if (!user?.id) {
+      setTotalReports(0);
+      return;
     }
 
-    const { count, data } = await query;
+    const { count, data } = await supabase
+      .from("reports")
+      .select("id", { count: "exact" })
+      .eq("user_id", user.id);
+
     const total = count ?? (data ? data.length : 0);
     setTotalReports(total);
   };

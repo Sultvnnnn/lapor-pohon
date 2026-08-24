@@ -172,8 +172,8 @@ export const DashboardNavbar = ({
   };
 
   return (
-    <header className="sticky top-4 z-50 w-full px-4 sm:px-6 flex flex-col items-center pointer-events-none font-sans">
-      <nav className="pointer-events-auto w-full max-w-[960px] bg-[#ecefe6]/90 backdrop-blur-md border border-black/10 text-[#111111] rounded-full p-1.5 sm:p-2 pl-2.5 sm:pl-3.5 pr-2 sm:pr-2.5 flex items-center justify-between gap-2 sm:gap-4 transition-all shadow-md">
+    <header className="sticky top-7 sm:top-4 z-50 w-full px-4 sm:px-6 flex flex-col items-center pointer-events-none font-sans">
+      <nav className="pointer-events-auto w-full max-w-[1100px] bg-[#ecefe6]/90 backdrop-blur-md border border-black/10 text-[#111111] rounded-full p-1.5 sm:p-2 pl-3 sm:pl-4 pr-2 sm:pr-2.5 flex items-center justify-between gap-2 sm:gap-4 transition-all shadow-xs">
         {/* Left: Brand Logo & Title */}
         <Link
           href="/"

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
-  ArrowsLeftRight,
+  Camera,
   InstagramLogo,
   TwitterLogo,
   FacebookLogo,
@@ -16,7 +16,7 @@ import {
 
 export const HeroSection = () => {
   return (
-    <section id="beranda" className="py-8 sm:py-12 bg-white overflow-hidden font-sans flex items-center min-h-[90vh]">
+    <section id="beranda" className="py-12 sm:py-12 bg-white overflow-hidden font-sans flex items-center min-h-[90vh]">
       <div className="w-full max-w-[1300px] mx-auto px-4 sm:px-8 lg:px-12">
 
         {/* ==================================================== */}
@@ -68,9 +68,8 @@ export const HeroSection = () => {
               {/* Tampilan Desktop Baris 3 & Paragraf Subteks (Posisi Asli Desktop) */}
               <div className="flex flex-col-reverse lg:flex-row lg:items-end justify-between gap-4 pt-2">
                 <p className="text-[12px] sm:text-[13px] text-[#1a1a1a]/60 leading-relaxed max-w-[340px] sm:max-w-[440px] pb-1 sm:pb-2">
-                  Aplikasi cerdas pelaporan pohon rawan tumbang dengan AI
-                  <br className="hidden sm:inline" />
-                  {" "}deteksi risiko &amp; daur ulang kayu untuk UMKM lokal.
+                  Platform pelaporan pohon berisiko. Kami membantu mendeteksi bahaya lebih cepat
+                  dan menyalurkan sisa tebangannya untuk menghidupkan UMKM lokal
                 </p>
                 <h1 className="hidden sm:block text-3xl sm:text-4xl lg:text-6xl font-medium tracking-tight text-[#0b3d2c] leading-[1.1] italic font-serif">
                   kota aman.
@@ -81,29 +80,41 @@ export const HeroSection = () => {
             {/* 2. BENTO GRID KIRI */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 sm:gap-6 flex-1 items-stretch">
 
-              {/* Card 1 (Mobile Order 1, Desktop Right Top): 01 Card */}
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.1 }}
-                className="order-1 sm:order-2 sm:col-start-2 sm:row-start-1 bg-[#f4f5f0] rounded-[1.75rem] p-5 flex flex-col justify-between h-36 sm:h-40 border border-black/5 shrink-0"
+              {/* Card 1 (Mobile Order 1, Desktop Right Top): 01 Card - Clickable to /dashboard */}
+              <Link
+                href="/dashboard"
+                className="order-1 sm:order-2 sm:col-start-2 sm:row-start-1 block group"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-3xl font-medium text-[#1a1a1a]">01</span>
-                  <div className="flex items-center gap-1.5">
-                    <button className="w-7 h-7 rounded-full bg-white flex items-center justify-center text-[#1a1a1a] shadow-sm border border-black/5 hover:bg-gray-50">
-                      <ArrowsLeftRight size={12} weight="bold" />
-                    </button>
-                    <Link href="/dashboard" className="w-7 h-7 rounded-full bg-[#0b3d2c] flex items-center justify-center text-white hover:bg-[#07291d] transition-all">
-                      <ArrowRight size={12} weight="bold" />
-                    </Link>
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  whileHover={{ y: -4, scale: 1.01 }}
+                  transition={{ duration: 0.3 }}
+                  className="bg-[#f4f5f0] group-hover:bg-[#eaece2] rounded-[1.75rem] p-5 flex flex-col justify-between h-36 sm:h-40 border border-black/5 group-hover:border-black/15 group-hover:shadow-lg transition-all duration-300 shrink-0 cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-3xl font-medium text-[#1a1a1a] group-hover:text-[#0b3d2c] transition-colors">
+                      01
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#1a1a1a] shadow-xs border border-black/5 group-hover:scale-110 group-hover:bg-[#88d937] group-hover:text-[#0b3d2c] transition-all">
+                        <Camera size={15} weight="bold" />
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-[#0b3d2c] flex items-center justify-center text-white group-hover:bg-[#19382B] group-hover:scale-110 group-hover:translate-x-0.5 transition-all">
+                        <ArrowRight size={14} weight="bold" />
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-[#1a1a1a]/50 uppercase tracking-widest block mb-1">Cara Mudah</span>
-                  <h3 className="text-base font-bold text-[#1a1a1a]">Foto &amp; Laporkan Sekarang</h3>
-                </div>
-              </motion.div>
+                  <div>
+                    <span className="text-[10px] font-bold text-[#1a1a1a]/50 uppercase tracking-widest block mb-1 group-hover:text-[#0b3d2c]/70 transition-colors">
+                      Cara Mudah
+                    </span>
+                    <h3 className="text-base font-bold text-[#1a1a1a] group-hover:text-[#0b3d2c] transition-colors">
+                      Foto &amp; Laporkan!
+                    </h3>
+                  </div>
+                </motion.div>
+              </Link>
 
               {/* Card 2 (Mobile Order 2, Desktop Left Full Column): Manfaat Utama Platform */}
               <motion.div
@@ -121,7 +132,7 @@ export const HeroSection = () => {
 
                 {/* Kartu White Kasus Utama Melekat di Bawah Kontainer */}
                 <div className="relative z-10 bg-white rounded-[1.75rem] p-4 sm:p-5 shadow-md border border-black/5 space-y-3">
-                  <h4 className="text-[15px] font-bold text-[#1a1a1a]">Manfaat Utama Platform</h4>
+                  <h4 className="text-[15px] font-bold text-[#1a1a1a]">Cegah Bahaya, Dukung UMKM</h4>
                   <div className="space-y-1">
                     <a href="#alur" className="flex items-center justify-between py-2 border-b border-black/5 group">
                       <div className="flex items-center gap-3">
@@ -160,7 +171,7 @@ export const HeroSection = () => {
                       <span className="bg-white/90 text-[#1a1a1a] text-[8px] font-bold px-2 py-1 rounded-full shadow-sm">#Sirkular</span>
                     </div>
                   </div>
-                  <h4 className="relative z-10 text-[13px] font-bold text-[#1a1a1a]">Limbah Kayu ke UMKM</h4>
+                  <h4 className="relative z-10 text-[13px] font-bold text-[#1a1a1a]">Limbah Kayu Jadi Karya</h4>
                 </div>
 
                 {/* 2 Small Square Cards */}
@@ -170,14 +181,14 @@ export const HeroSection = () => {
                       <span className="text-[11px] font-bold text-[#111111]">Lacak Laporan</span>
                       <Sparkle size={12} className="text-[#88d937]" weight="fill" />
                     </div>
-                    <p className="text-[9px] text-[#111111]/50 leading-snug">Pantau respon petugas</p>
+                    <p className="text-[9px] text-[#111111]/50 leading-snug">Pantau Status Laporan</p>
                   </div>
                   <div className="flex-1 bg-white border border-black/5 rounded-2xl p-3.5 flex flex-col justify-center min-h-[60px]">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[11px] font-bold text-[#111111]">Manfaat UMKM</span>
                       <Recycle size={12} className="text-[#88d937]" weight="fill" />
                     </div>
-                    <p className="text-[9px] text-[#111111]/50 leading-snug">Kayu untuk perajin lokal</p>
+                    <p className="text-[9px] text-[#111111]/50 leading-snug">Bahan Baku Gratis UMKM</p>
                   </div>
                 </div>
               </motion.div>
@@ -202,8 +213,8 @@ export const HeroSection = () => {
 
               <div className="relative z-10 h-full p-6 lg:p-8 flex flex-col justify-end">
                 <h3 className="text-2xl sm:text-3xl font-bold text-white mb-2 leading-tight">Wujudkan<br />Kota Aman &amp; Hijau</h3>
-                <p className="text-[12px] text-white/80 leading-relaxed max-w-[200px] mb-8">
-                  Bersama menjaga lingkungan Kota Semarang dari bahaya pohon tumbang.
+                <p className="text-[12px] text-white/80 leading-relaxed max-w-[220px] mb-8">
+                  Jaga kota kita dari bahaya pohon tumbang, mulai dari langkah kecil.
                 </p>
 
                 {/* Social Icons */}
