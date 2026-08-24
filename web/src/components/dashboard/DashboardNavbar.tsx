@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Tree,
   SignOut,
@@ -10,9 +10,9 @@ import {
   Leaf,
   MapTrifold,
   House,
+  BookOpen,
   List,
   X,
-  Sparkle,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
@@ -22,13 +22,15 @@ interface DashboardNavbarProps {
   userRole?: string;
 }
 
-/* ── 1. Desktop Sidebar Component (Mewah & Interaktif ala DESIGN.md) ── */
+/* ── 1. Desktop Sidebar Component (Fixed Floating Capsule + Floating Bubble Tooltips) ── */
 export const DashboardSidebar = ({
   userEmail,
   userRole,
 }: DashboardNavbarProps) => {
   const router = useRouter();
+  const pathname = usePathname();
   const supabaseClient = createClient();
+  const [hoveredItem, setHoveredItem] = useState<string | null>(null);
 
   const handleSignOut = async () => {
     await supabaseClient.auth.signOut();
@@ -37,131 +39,271 @@ export const DashboardSidebar = ({
   };
 
   return (
-    <motion.aside
-      initial={{ opacity: 0, x: -24 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-      className="hidden md:flex flex-col justify-between w-64 h-screen sticky top-0 bg-white border-r border-black/5 p-5 shrink-0 z-40 font-sans shadow-xs relative overflow-hidden"
-    >
-      {/* Texture Background Overlay */}
-      <div
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
-        style={{
-          backgroundImage: `radial-gradient(circle, #19382B 1px, transparent 1px)`,
-          backgroundSize: "20px 20px",
-        }}
-      />
-
-      {/* ── Sidebar Header ── */}
-      <div className="space-y-6 relative z-10">
-        <Link
-          href="/"
-          className="flex items-center gap-3 group px-1"
-          title="Kembali ke Beranda Utama"
+    <aside className="hidden md:flex flex-col justify-between h-[calc(100vh-2rem)] sticky top-4 left-4 w-16 bg-white border border-black/5 shadow-xs rounded-[2rem] py-5 px-2.5 shrink-0 z-50 font-sans items-center overflow-visible">
+      {/* ── Top: Brand Logo & Title ── */}
+      <div className="flex flex-col gap-6 w-full items-center">
+        {/* Brand Logo Link */}
+        <div
+          className="relative flex items-center justify-center"
+          onMouseEnter={() => setHoveredItem("brand")}
+          onMouseLeave={() => setHoveredItem(null)}
         >
-          <div className="w-10 h-10 rounded-full bg-[#19382B] text-white flex items-center justify-center shadow-sm group-hover:scale-105 group-hover:bg-[#234A39] transition-all">
-            <Tree size={22} weight="fill" />
-          </div>
-          <div>
-            <span className="font-bold text-[#111111] text-base tracking-tight block leading-tight group-hover:text-[#19382B] transition-colors">
-              LaporPohon
-            </span>
-            <div className="flex items-center gap-1 mt-0.5">
-              <span className="text-[9px] uppercase font-bold tracking-wider text-[#19382B] bg-[#88d937]/30 px-2 py-0.5 rounded-full inline-block">
-                Dashboard AI
-              </span>
-            </div>
-          </div>
-        </Link>
+          <Link
+            href="/"
+            className="w-10 h-10 rounded-full bg-[#19382B] text-white flex items-center justify-center shadow-xs hover:scale-105 hover:bg-[#234A39] transition-all"
+            title="Beranda Utama"
+          >
+            <Tree size={20} weight="fill" />
+          </Link>
 
-        {/* Live System Status Pill */}
-        <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-2.5 flex items-center gap-2 text-[11px] font-medium text-[#111111]/70">
-          <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse shrink-0" />
-          <span className="truncate">Sistem AI YOLOv8 Siap</span>
-          <Sparkle size={12} weight="fill" className="text-[#88d937] shrink-0 ml-auto" />
+          {/* Floating Bubble Tooltip */}
+          <AnimatePresence>
+            {hoveredItem === "brand" && (
+              <motion.div
+                initial={{ opacity: 0, x: -8, scale: 0.92 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -8, scale: 0.92 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10 flex flex-col gap-0.5"
+              >
+                <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
+                <span className="text-xs font-extrabold text-white tracking-tight">LaporPohon</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* ── Sidebar Navigation Group ── */}
-        <div className="space-y-1.5 pt-1">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-[#111111]/40 px-3 pb-1">
-            Menu Utama
-          </p>
-
-          <motion.div whileHover={{ x: 4 }} transition={{ duration: 0.2 }}>
+        {/* ── Navigation Links ── */}
+        <nav className="flex flex-col gap-3 w-full items-center">
+          {/* Beranda Utama */}
+          <div
+            className="relative flex items-center justify-center"
+            onMouseEnter={() => setHoveredItem("beranda")}
+            onMouseLeave={() => setHoveredItem(null)}
+          >
             <Link
               href="/"
-              className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-[#111111]/70 hover:bg-[#ecefe6] hover:text-[#19382B] transition-all group"
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                pathname === "/"
+                  ? "bg-[#19382B] text-white shadow-xs"
+                  : "text-[#111111]/70 hover:bg-[#ecefe6] hover:text-[#19382B] hover:scale-105"
+              }`}
             >
-              <House size={18} weight="bold" className="group-hover:scale-110 transition-transform" />
-              <span>Beranda Utama</span>
+              <House size={19} weight={pathname === "/" ? "fill" : "regular"} />
             </Link>
-          </motion.div>
 
-          <motion.div whileHover={{ x: 4 }} transition={{ duration: 0.2 }} className="relative">
+            <AnimatePresence>
+              {hoveredItem === "beranda" && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8, scale: 0.92 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -8, scale: 0.92 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10"
+                >
+                  <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
+                  <span>Beranda Utama</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Laporan AI */}
+          <div
+            className="relative flex items-center justify-center"
+            onMouseEnter={() => setHoveredItem("laporan")}
+            onMouseLeave={() => setHoveredItem(null)}
+          >
             <Link
               href="/dashboard"
-              className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-[#19382B] text-white shadow-sm transition-all"
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                pathname === "/dashboard"
+                  ? "bg-[#19382B] text-white shadow-xs"
+                  : "text-[#111111]/70 hover:bg-[#ecefe6] hover:text-[#19382B] hover:scale-105"
+              }`}
             >
-              <div className="flex items-center gap-3">
-                <Layout size={18} weight="bold" />
-                <span>Laporan AI</span>
-              </div>
-              <span className="w-2 h-2 rounded-full bg-[#88d937] animate-pulse" />
+              <Layout size={19} weight={pathname === "/dashboard" ? "fill" : "regular"} />
             </Link>
-          </motion.div>
 
-          <div className="opacity-60 cursor-not-allowed">
-            <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-medium text-gray-400 bg-gray-50/50">
-              <MapTrifold size={18} />
-              <span>Peta Sebaran (Segera)</span>
-            </div>
+            <AnimatePresence>
+              {hoveredItem === "laporan" && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8, scale: 0.92 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -8, scale: 0.92 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10"
+                >
+                  <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
+                  <span>Laporan AI</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          <div className="opacity-60 cursor-not-allowed">
-            <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-medium text-gray-400 bg-gray-50/50">
-              <Leaf size={18} />
-              <span>Katalog Kayu (Segera)</span>
-            </div>
+          {/* Panduan */}
+          <div
+            className="relative flex items-center justify-center"
+            onMouseEnter={() => setHoveredItem("panduan")}
+            onMouseLeave={() => setHoveredItem(null)}
+          >
+            <Link
+              href="/panduan"
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                pathname === "/panduan"
+                  ? "bg-[#19382B] text-white shadow-xs"
+                  : "text-[#111111]/70 hover:bg-[#ecefe6] hover:text-[#19382B] hover:scale-105"
+              }`}
+            >
+              <BookOpen size={19} weight={pathname === "/panduan" ? "fill" : "regular"} />
+            </Link>
+
+            <AnimatePresence>
+              {hoveredItem === "panduan" && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8, scale: 0.92 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -8, scale: 0.92 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10"
+                >
+                  <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
+                  <span>Panduan</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-        </div>
+
+          {/* Peta Sebaran */}
+          <div
+            className="relative flex items-center justify-center"
+            onMouseEnter={() => setHoveredItem("peta")}
+            onMouseLeave={() => setHoveredItem(null)}
+          >
+            <div className="w-10 h-10 rounded-full text-gray-400 opacity-60 flex items-center justify-center cursor-not-allowed">
+              <MapTrifold size={19} weight="regular" />
+            </div>
+
+            <AnimatePresence>
+              {hoveredItem === "peta" && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8, scale: 0.92 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -8, scale: 0.92 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10 flex items-center gap-2"
+                >
+                  <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
+                  <span>Peta Sebaran</span>
+                  <span className="text-[9px] font-extrabold bg-white/20 px-1.5 py-0.5 rounded-full">SEGERA</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Katalog Kayu */}
+          <div
+            className="relative flex items-center justify-center"
+            onMouseEnter={() => setHoveredItem("katalog")}
+            onMouseLeave={() => setHoveredItem(null)}
+          >
+            <div className="w-10 h-10 rounded-full text-gray-400 opacity-60 flex items-center justify-center cursor-not-allowed">
+              <Leaf size={19} weight="regular" />
+            </div>
+
+            <AnimatePresence>
+              {hoveredItem === "katalog" && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8, scale: 0.92 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -8, scale: 0.92 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10 flex items-center gap-2"
+                >
+                  <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
+                  <span>Katalog Kayu</span>
+                  <span className="text-[9px] font-extrabold bg-white/20 px-1.5 py-0.5 rounded-full">SEGERA</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </nav>
       </div>
 
-      {/* ── Sidebar Footer / User Profile & Sign Out ── */}
-      <div className="space-y-3 pt-4 border-t border-black/5 relative z-10">
-        <div className="flex items-center gap-3 p-2.5 rounded-2xl bg-[#ecefe6]/60 border border-black/5 shadow-xs hover:bg-[#ecefe6] transition-colors">
-          <div className="w-9 h-9 rounded-full bg-[#19382B] text-[#e3f4d7] flex items-center justify-center text-xs font-bold uppercase shrink-0 shadow-xs">
+      {/* ── Bottom: User Profile & Sign Out ── */}
+      <div className="flex flex-col gap-3 w-full items-center">
+        {/* User Profile */}
+        <div
+          className="relative flex items-center justify-center"
+          onMouseEnter={() => setHoveredItem("user")}
+          onMouseLeave={() => setHoveredItem(null)}
+        >
+          <div className="w-10 h-10 rounded-full bg-[#ecefe6] text-[#19382B] flex items-center justify-center text-xs font-bold uppercase shadow-xs cursor-pointer hover:scale-105 transition-all">
             {userEmail ? userEmail[0] : "U"}
           </div>
-          <div className="overflow-hidden min-w-0 flex-1">
-            <p className="font-semibold text-xs text-[#111111] truncate leading-tight">
-              {userEmail || "Pengguna"}
-            </p>
-            <p className="text-[10px] text-[#111111]/60 capitalize mt-0.5 font-medium">
-              Peran: {userRole || "Warga"}
-            </p>
-          </div>
+
+          <AnimatePresence>
+            {hoveredItem === "user" && (
+              <motion.div
+                initial={{ opacity: 0, x: -8, scale: 0.92 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -8, scale: 0.92 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10 flex flex-col gap-0.5"
+              >
+                <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
+                <span className="text-xs font-extrabold text-white truncate max-w-[150px]">
+                  {userEmail || "Pengguna"}
+                </span>
+                <span className="text-[9px] font-medium text-white/70 capitalize">
+                  Peran: {userRole || "Warga"}
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        <motion.button
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.98 }}
-          onClick={handleSignOut}
-          className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 py-2.5 rounded-2xl transition-all border border-red-200/60 shadow-xs"
+        {/* Sign Out */}
+        <div
+          className="relative flex items-center justify-center"
+          onMouseEnter={() => setHoveredItem("signout")}
+          onMouseLeave={() => setHoveredItem(null)}
         >
-          <SignOut size={16} weight="bold" />
-          <span>Keluar dari Akun</span>
-        </motion.button>
+          <button
+            onClick={handleSignOut}
+            className="w-10 h-10 rounded-full text-red-500 hover:bg-red-50 hover:text-red-600 flex items-center justify-center hover:scale-105 transition-all"
+            title="Keluar dari Akun"
+          >
+            <SignOut size={19} weight="bold" />
+          </button>
+
+          <AnimatePresence>
+            {hoveredItem === "signout" && (
+              <motion.div
+                initial={{ opacity: 0, x: -8, scale: 0.92 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -8, scale: 0.92 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-red-600 text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10"
+              >
+                <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-red-600" />
+                <span>Keluar dari Akun</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
-    </motion.aside>
+    </aside>
   );
 };
 
-/* ── 2. Mobile Top Header Component (Dipertahankan 100% tanpa perubahan) ── */
+/* ── 2. Mobile Top Header Component ── */
 export const DashboardNavbar = ({
   userEmail,
   userRole,
 }: DashboardNavbarProps) => {
   const router = useRouter();
+  const pathname = usePathname();
   const supabaseClient = createClient();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -172,89 +314,27 @@ export const DashboardNavbar = ({
   };
 
   return (
-    <header className="sticky top-7 sm:top-4 z-50 w-full px-4 sm:px-6 flex flex-col items-center pointer-events-none font-sans">
-      <nav className="pointer-events-auto w-full max-w-[1100px] bg-[#ecefe6]/90 backdrop-blur-md border border-black/10 text-[#111111] rounded-full p-1.5 sm:p-2 pl-3 sm:pl-4 pr-2 sm:pr-2.5 flex items-center justify-between gap-2 sm:gap-4 transition-all shadow-xs">
-        {/* Left: Brand Logo & Title */}
+    <header className="sticky top-7 sm:top-4 z-50 w-full px-4 sm:px-6 flex flex-col items-center pointer-events-none font-sans md:hidden">
+      <nav className="pointer-events-auto w-full max-w-[1100px] bg-white/95 backdrop-blur-md border border-black/10 text-[#111111] rounded-full p-1.5 sm:p-2 pl-3 sm:pl-4 pr-2 sm:pr-2.5 flex items-center justify-between gap-2 transition-all shadow-sm">
         <Link
           href="/"
           className="flex items-center gap-2.5 group shrink-0"
-          title="Kembali ke Beranda Utama"
+          title="Kembali ke Beranda"
         >
-          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#19382B] text-white flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs">
+          <div className="w-8 h-8 rounded-full bg-[#19382B] text-white flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs">
             <Tree size={18} weight="fill" />
           </div>
           <div className="flex items-center">
             <span className="font-bold text-[#111111] text-xs sm:text-sm tracking-tight font-sans">
               LaporPohon
             </span>
-            <span className="ml-1.5 text-[9px] sm:text-[10px] uppercase font-bold tracking-wider text-[#19382B] bg-[#88d937]/30 px-2 py-0.5 rounded-full">
-              Dashboard
-            </span>
           </div>
         </Link>
 
-        {/* Desktop Quick Nav Links */}
-        <div className="hidden md:flex items-center gap-1 sm:gap-1.5">
-          <Link
-            href="/"
-            className="px-3.5 py-1.5 rounded-full text-[12px] font-medium text-[#111111]/70 hover:text-[#19382B] hover:bg-white/50 transition-colors flex items-center gap-1.5"
-          >
-            <House size={15} weight="bold" />
-            <span>Beranda Utama</span>
-          </Link>
-          <Link
-            href="/dashboard"
-            className="bg-[#19382B] text-white px-4 py-1.5 sm:py-2 rounded-full text-[12px] font-bold transition-all flex items-center gap-1.5 shadow-xs"
-          >
-            <Layout size={15} weight="bold" />
-            <span>Laporan AI</span>
-          </Link>
-          <button
-            disabled
-            className="px-3 py-1.5 rounded-full text-[12px] font-medium text-[#111111]/40 flex items-center gap-1.5 cursor-not-allowed"
-          >
-            <MapTrifold size={15} />
-            <span>Peta Sebaran</span>
-          </button>
-          <button
-            disabled
-            className="px-3 py-1.5 rounded-full text-[12px] font-medium text-[#111111]/40 flex items-center gap-1.5 cursor-not-allowed"
-          >
-            <Leaf size={15} />
-            <span>Katalog Kayu</span>
-          </button>
-        </div>
-
-        {/* Right Desktop: User Info & Sign Out */}
-        <div className="hidden md:flex items-center gap-2 shrink-0">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/70 border border-black/5 text-xs font-medium text-[#111111]">
-            <div className="w-6 h-6 rounded-full bg-[#19382B] text-[#e3f4d7] flex items-center justify-center text-[10px] font-bold uppercase">
-              {userEmail ? userEmail[0] : "U"}
-            </div>
-            <div className="text-left">
-              <p className="font-semibold text-xs leading-tight truncate max-w-[120px]">
-                {userEmail || "Pengguna"}
-              </p>
-              <p className="text-[10px] text-[#111111]/60 capitalize leading-none">
-                Role: {userRole || "Warga"}
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={handleSignOut}
-            className="flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 px-3.5 py-1.5 sm:py-2 rounded-full transition-colors border border-red-200/60"
-          >
-            <SignOut size={15} weight="bold" />
-            <span>Keluar</span>
-          </button>
-        </div>
-
-        {/* Right Mobile: Circular Dark Green Hamburger Button */}
+        {/* Mobile Hamburger Button */}
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="flex md:hidden items-center justify-center w-8 h-8 rounded-full bg-[#19382B] text-white hover:bg-[#234A39] transition-all shadow-xs"
-          aria-label="Toggle Navigation Menu"
+          className="flex items-center justify-center w-8 h-8 rounded-full bg-[#19382B] text-white hover:bg-[#234A39] transition-all shadow-xs"
         >
           {isMobileMenuOpen ? (
             <X size={18} weight="bold" />
@@ -264,7 +344,6 @@ export const DashboardNavbar = ({
         </button>
       </nav>
 
-      {/* Mobile Menu Drawer Dropdown Panel */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <motion.div
@@ -272,9 +351,8 @@ export const DashboardNavbar = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.98 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="pointer-events-auto mt-2 w-full max-w-[960px] bg-[#ecefe6]/95 backdrop-blur-xl border border-black/10 text-[#111111] rounded-3xl p-4 flex flex-col gap-2.5 shadow-2xl md:hidden"
+            className="pointer-events-auto mt-2 w-full max-w-[960px] bg-white/95 backdrop-blur-xl border border-black/10 text-[#111111] rounded-3xl p-4 flex flex-col gap-2.5 shadow-xl"
           >
-            {/* User Profile Card inside Mobile Drawer */}
             <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/70 border border-black/5">
               <div className="w-9 h-9 rounded-full bg-[#19382B] text-[#e3f4d7] flex items-center justify-center text-xs font-bold uppercase shrink-0">
                 {userEmail ? userEmail[0] : "U"}
@@ -289,54 +367,54 @@ export const DashboardNavbar = ({
               </div>
             </div>
 
-            {/* Navigation links list */}
             <div className="flex flex-col gap-1 pt-1">
               <Link
                 href="/"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="px-4 py-2.5 rounded-2xl text-xs font-semibold text-[#111111]/80 hover:bg-black/5 hover:text-[#111111] flex items-center justify-between transition-colors"
+                className={`px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center gap-2 transition-colors ${
+                  pathname === "/"
+                    ? "bg-[#19382B] text-white shadow-xs"
+                    : "text-[#111111]/80 hover:bg-black/5 hover:text-[#111111]"
+                }`}
               >
-                <div className="flex items-center gap-2">
-                  <House size={16} weight="bold" />
-                  <span>Beranda Utama</span>
-                </div>
+                <House size={16} weight="bold" />
+                <span>Beranda Utama</span>
               </Link>
-
               <Link
                 href="/dashboard"
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="px-4 py-2.5 rounded-2xl text-xs font-semibold bg-[#19382B] text-white flex items-center justify-between transition-colors"
+                className={`px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center justify-between transition-colors ${
+                  pathname === "/dashboard"
+                    ? "bg-[#19382B] text-white shadow-xs"
+                    : "text-[#111111]/80 hover:bg-black/5 hover:text-[#111111]"
+                }`}
               >
                 <div className="flex items-center gap-2">
                   <Layout size={16} weight="bold" />
                   <span>Laporan AI</span>
                 </div>
-                <span className="w-1.5 h-1.5 rounded-full bg-[#88d937]" />
               </Link>
-
-              <button
-                disabled
-                className="px-4 py-2.5 rounded-2xl text-xs font-medium text-gray-400 bg-black/5 cursor-not-allowed text-left flex items-center gap-2 opacity-60"
+              <Link
+                href="/panduan"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center justify-between transition-colors ${
+                  pathname === "/panduan"
+                    ? "bg-[#19382B] text-white shadow-xs"
+                    : "text-[#111111]/80 hover:bg-black/5 hover:text-[#111111]"
+                }`}
               >
-                <MapTrifold size={16} />
-                <span>Peta Sebaran (Segera)</span>
-              </button>
-
-              <button
-                disabled
-                className="px-4 py-2.5 rounded-2xl text-xs font-medium text-gray-400 bg-black/5 cursor-not-allowed text-left flex items-center gap-2 opacity-60"
-              >
-                <Leaf size={16} />
-                <span>Katalog Kayu (Segera)</span>
-              </button>
+                <div className="flex items-center gap-2">
+                  <BookOpen size={16} weight="bold" />
+                  <span>Panduan</span>
+                </div>
+              </Link>
             </div>
 
             <div className="h-px w-full bg-black/10 my-1" />
 
-            {/* Sign Out Action Button */}
             <button
               onClick={handleSignOut}
-              className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 py-2.5 rounded-2xl transition-colors border border-red-200/60"
+              className="w-full flex items-center justify-center gap-2 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 py-2.5 rounded-2xl border border-red-200/60"
             >
               <SignOut size={16} weight="bold" />
               <span>Keluar dari Akun</span>

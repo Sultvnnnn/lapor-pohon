@@ -2,9 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
-import { MarqueeBanner } from "@/components/landing/MarqueeBanner";
 import { FeaturesSection } from "@/components/landing/FeaturesSection";
-import { QuoteHighlightSection } from "@/components/landing/QuoteHighlightSection";
 import { WorkflowSection } from "@/components/landing/WorkflowSection";
 import { StakeholdersSection } from "@/components/landing/StakeholdersSection";
 import { TeamSection } from "@/components/landing/TeamSection";
@@ -30,16 +28,11 @@ export default async function Home() {
         <HeroSection />
         <StakeholdersSection />
         <WorkflowSection />
-        {/* <MarqueeBanner /> */}
-        {/* <QuoteHighlightSection /> */}
         <FeaturesSection />
         <TeamSection />
       </main>
 
-      {/* Footer */}
       <Footer />
-
-      {/* Floating Scroll To Top Button */}
       <ScrollToTop />
     </div>
   );

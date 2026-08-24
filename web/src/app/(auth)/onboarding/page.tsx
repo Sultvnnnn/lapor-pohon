@@ -87,7 +87,7 @@ export default function OnboardingPage() {
     <div className="w-full space-y-6">
       <div className="text-center space-y-1">
         <h1 className="text-2xl font-bold text-[#111111] tracking-tight">
-          Selamat Datang! 👋
+          Selamat Datang!
         </h1>
         <p className="text-xs text-[#111111]/60">
           Pilih peran kamu untuk melanjutkan ke platform

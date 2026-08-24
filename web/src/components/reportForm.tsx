@@ -117,7 +117,7 @@ export const getReportStatusConfig = (statusRaw?: string) => {
     s.includes("acc")
   ) {
     return {
-      label: "✅ Terverifikasi DLH",
+      label: "Terverifikasi DLH",
       bg: "bg-emerald-500/10",
       text: "text-emerald-700",
       border: "border-emerald-500/20",
@@ -136,7 +136,7 @@ export const getReportStatusConfig = (statusRaw?: string) => {
     s.includes("proses")
   ) {
     return {
-      label: "🚜 Dalam Penanganan DLH",
+      label: "Dalam Penanganan DLH",
       bg: "bg-blue-500/10",
       text: "text-blue-700",
       border: "border-blue-500/20",
@@ -153,7 +153,7 @@ export const getReportStatusConfig = (statusRaw?: string) => {
     s.includes("selesai")
   ) {
     return {
-      label: "♻️ Pemanfaatan Sirkular Selesai",
+      label: "Pemanfaatan Sirkular Selesai",
       bg: "bg-[#88d937]/20",
       text: "text-[#19382B]",
       border: "border-[#88d937]/40",
@@ -163,7 +163,7 @@ export const getReportStatusConfig = (statusRaw?: string) => {
 
   // Fallback for custom status: Display actual status text dynamically
   return {
-    label: `✅ ${statusRaw}`,
+    label: statusRaw,
     bg: "bg-emerald-500/10",
     text: "text-emerald-700",
     border: "border-emerald-500/20",
@@ -649,7 +649,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               Pemindai AI & LaporPohon
             </h2>
             <p className="text-[11px] sm:text-xs text-[#111111]/60">
-              Lakukan pemindaian kamera live via HP atau pantau perkembangan laporan kamu
+              Foto pohon rawan di sekitarmu atau cek status laporanmu di sini.
             </p>
           </div>
         </div>
@@ -669,7 +669,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
             }`}
           >
             <Camera size={16} weight="bold" />
-            <span>Pemindaian Kamera Live</span>
+            <span>Kamera</span>
           </button>
           <button
             type="button"
@@ -859,7 +859,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   </div>
                   <div className="space-y-1.5 max-w-md mx-auto">
                     <span className="inline-block text-[10px] font-extrabold uppercase tracking-widest bg-[#19382B] text-white px-3 py-1 rounded-full">
-                      📱 Khusus Perangkat Mobile (HP)
+                      Khusus Perangkat Mobile (HP)
                     </span>
                     <h3 className="text-sm sm:text-base font-bold text-[#111111]">
                       Fitur Kamera Pemindai Hanya Tersedia di Smartphone
@@ -875,7 +875,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
                       <Camera size={15} weight="bold" className="text-[#19382B]" />
-                      Pemindaian Foto Pohon (Live Shoot) <span className="text-red-500">*</span>
+                      AMBIL FOTO POHON <span className="text-red-500">*</span>
                     </label>
                   </div>
 
@@ -923,7 +923,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                       {/* HUD Live Scanner Label */}
                       <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[11px] font-semibold text-white flex items-center gap-1.5 border border-white/10">
                         <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                        <span>KAMERA POHON LIVE</span>
+                        <span>KAMERA AKTIF</span>
                       </div>
 
                       {/* Camera Error / Permission Fallback */}
@@ -955,7 +955,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                             ) : (
                               <Camera size={18} weight="fill" className="text-[#88d937]" />
                             )}
-                            <span>Potret Pohon Sekarang</span>
+                            <span>Ambil Foto</span>
                           </button>
                         </div>
                       )}
@@ -969,7 +969,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
                     <MapPin size={15} weight="bold" className="text-[#19382B]" />
-                    Koordinat Lokasi (GPS) <span className="text-red-500">*</span>
+                    LOKASI POHON <span className="text-red-500">*</span>
                   </label>
 
                   <button
@@ -991,7 +991,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                     ) : (
                       <>
                         <MapPin size={14} weight="bold" />
-                        <span>Deteksi Lokasi Otomatis</span>
+                        <span>Lacak Lokasi Saat Ini</span>
                       </>
                     )}
                   </button>
@@ -1089,7 +1089,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs font-bold uppercase tracking-wider text-[#111111]/70">
-                Riwayat Perkembangan Laporan Kamu
+                RIWAYAT LAPORAN
               </p>
               <button
                 type="button"
@@ -1098,7 +1098,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                 className="text-xs font-semibold text-[#19382B] hover:underline flex items-center gap-1"
               >
                 <ArrowCounterClockwise size={14} className={isLoadingHistory ? "animate-spin" : ""} />
-                <span>Perbarui Data</span>
+                <span>Perbarui</span>
               </button>
             </div>
 
@@ -1203,7 +1203,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                           className="bg-[#19382B] text-white hover:bg-[#234A39] px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
                         >
                           <Eye size={14} weight="bold" />
-                          <span>Lihat Detail AI</span>
+                          <span>Cek Detail</span>
                         </button>
                       </div>
                     </motion.div>
