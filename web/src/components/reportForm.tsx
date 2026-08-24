@@ -514,7 +514,8 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 12000);
+        // Allow up to 45 seconds for Render PyTorch YOLOv8 AI inference
+        const timeoutId = setTimeout(() => controller.abort(), 45000);
 
         const aiResponse = await fetch(`${apiUrl}/api/analyze`, {
           method: "POST",
@@ -532,23 +533,20 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
         if (aiResponse.ok) {
           aiData = await aiResponse.json();
         } else {
-          console.warn(`[WARN] Backend AI returned status ${aiResponse.status}, using fail-safe AI calculation.`);
+          console.warn(`[WARN] Backend AI returned status ${aiResponse.status}, setting zero risk fallback.`);
         }
       } catch (aiErr) {
-        console.warn("[WARN] Backend AI endpoint unreachable or timed out, using fail-safe AI calculation:", aiErr);
+        console.warn("[WARN] Backend AI endpoint unreachable or timed out, setting zero risk fallback:", aiErr);
       }
 
       if (!aiData) {
-        const calcRisk = parseFloat((0.74 + Math.random() * 0.20).toFixed(2));
         aiData = {
-          risk_score: calcRisk,
-          canopy_volume: 163.2,
-          biomass_estimate: 2622.12,
-          bounding_boxes: [
-            { x: 0.2, y: 0.15, width: 0.6, height: 0.7, confidence: calcRisk }
-          ],
-          detections: 1,
-          status: "success",
+          risk_score: 0.0,
+          canopy_volume: 0.0,
+          biomass_estimate: 0.0,
+          bounding_boxes: [],
+          detections: 0,
+          status: "no_tree_detected",
         };
       }
 
