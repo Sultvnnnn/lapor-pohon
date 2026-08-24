@@ -20,11 +20,10 @@ export default function DashboardPage() {
   const [totalReports, setTotalReports] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  const fetchTotalReports = async (userId: string) => {
+  const fetchTotalReports = async () => {
     const { count } = await supabase
       .from("reports")
-      .select("*", { count: "exact", head: true })
-      .eq("user_id", userId);
+      .select("*", { count: "exact", head: true });
 
     setTotalReports(count ?? 0);
   };
@@ -45,9 +44,9 @@ export default function DashboardPage() {
         setDisplayName(
           profile?.full_name || user.email?.split("@")[0] || "Pengguna"
         );
-
-        await fetchTotalReports(user.id);
       }
+
+      await fetchTotalReports();
     } catch (err) {
       console.error("Error fetching dashboard data:", err);
     } finally {
@@ -60,12 +59,7 @@ export default function DashboardPage() {
   }, []);
 
   const handleReportSubmitted = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      fetchTotalReports(user.id);
-    }
+    fetchTotalReports();
   };
 
   return (

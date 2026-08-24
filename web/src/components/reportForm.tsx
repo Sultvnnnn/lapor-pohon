@@ -163,7 +163,6 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       const { data, error } = await supabaseClient
         .from("reports")
         .select("*")
-        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (!error && data) {
@@ -383,7 +382,6 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
       setSubmitStep("saving");
       const { error: dbError } = await supabaseClient.from("reports").insert({
-        user_id: session.user.id,
         image_url: imageUrl,
         description: data.description,
         location: `POINT(${data.longitude} ${data.latitude})`,
