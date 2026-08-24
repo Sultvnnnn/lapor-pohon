@@ -185,7 +185,7 @@ export default function RegisterPage() {
                   <input
                     type="text"
                     required
-                    placeholder="username_anda"
+                    placeholder="username_kamu"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="w-full bg-transparent text-sm font-semibold text-[#111111] outline-none placeholder:text-[#111111]/20 placeholder:font-normal"
@@ -209,7 +209,7 @@ export default function RegisterPage() {
                   <input
                     type="text"
                     required
-                    placeholder="Nama Lengkap Anda"
+                    placeholder="Nama Lengkap Kamu"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     className="w-full bg-transparent text-sm font-semibold text-[#111111] outline-none placeholder:text-[#111111]/20 placeholder:font-normal"

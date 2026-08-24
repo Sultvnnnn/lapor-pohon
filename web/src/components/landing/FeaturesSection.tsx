@@ -22,8 +22,8 @@ export const FeaturesSection = () => {
               Solusi Unggulan
             </span>
             <h2 className="text-3xl sm:text-4xl lg:text-5xl font-medium tracking-tight text-[#111111] leading-[1.3] sm:leading-[1.25]">
-              Tiga Solusi <br className="hidden sm:block" />
-              <span className="inline-block bg-[#ecefe6] px-3 sm:px-4 py-0.5 sm:py-1 rounded-full text-[#19382B] font-medium align-middle relative -top-0.5">dalam Satu Sentuhan.</span>
+              Satu Laporan <br className="hidden sm:block" />
+              <span className="inline-block bg-[#ecefe6] px-3 sm:px-4 py-0.5 sm:py-1 rounded-full text-[#19382B] font-medium align-middle relative -top-0.5">Memberi Dampak Baik</span>
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-[#111111]/60 max-w-md leading-relaxed pb-1">
@@ -45,7 +45,7 @@ export const FeaturesSection = () => {
             {/* Background Image */}
             <div
               className="absolute inset-0 bg-cover bg-center transition-transform duration-1000 group-hover:scale-105"
-              style={{ backgroundImage: `url('https://images.unsplash.com/photo-1542273917363-3b1817f69a2d?q=80&w=800&auto=format&fit=crop')` }}
+              style={{ backgroundImage: `url('/assets/feature_tree.svg')` }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
@@ -58,7 +58,7 @@ export const FeaturesSection = () => {
                 Deteksi Cerdas &amp; Cepat
               </h3>
               <p className="text-xs text-[#111111]/60 leading-relaxed mb-6">
-                Tidak perlu menunggu lama. Teknologi kami langsung menganalisis risiko dan kemiringan pohon hanya dari foto yang Anda kirim.
+                Tidak perlu menunggu lama. Teknologi kami langsung menganalisis risiko dan kemiringan pohon hanya dari foto yang kamu kirim.
               </p>
 
               <Link href="/dashboard" className="inline-flex items-center gap-2 border border-black/20 rounded-full px-5 py-2 text-xs font-bold text-[#111111] hover:bg-[#19382B] hover:text-white transition-all">
@@ -89,7 +89,7 @@ export const FeaturesSection = () => {
                     </span>
                   </div>
                   <h3 className="text-2xl sm:text-3xl font-bold text-white leading-tight">
-                    Kayu Sisa Jadi Berkah
+                    Siklus Kayu Berkelanjutan
                   </h3>
                   <p className="text-xs text-white/70 leading-relaxed">
                     Kami memastikan kayu tebangan tidak terbuang sia-sia, melainkan disalurkan langsung ke UMKM lokal untuk diolah menjadi karya bernilai.
@@ -128,7 +128,7 @@ export const FeaturesSection = () => {
                   Pantau Penanaman Kembali
                 </h3>
                 <p className="text-xs text-[#111111]/70 leading-relaxed">
-                  Setiap pohon yang ditebang akan diganti dengan bibit baru. Anda bisa memantau langsung proses penghijauan kembali kota kita.
+                  Setiap pohon yang ditebang akan diganti dengan bibit baru. Kamu bisa memantau langsung proses penghijauan kembali kota kita.
                 </p>
               </div>
 

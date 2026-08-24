@@ -104,7 +104,7 @@ export default function DashboardPage() {
             </h1>
 
             <p className="text-xs sm:text-sm text-white/80 leading-relaxed">
-              Gunakan perangkat HP Anda untuk memotret lokasi pohon rawan tumbang secara live di lokasi, atau pantau perkembangan laporan Anda melalui Tab <strong>Laporan Saya</strong>.
+              Gunakan perangkat HP kamu untuk memotret lokasi pohon rawan tumbang secara live di lokasi, atau pantau perkembangan laporan kamu melalui Tab <strong>Laporan Saya</strong>.
             </p>
           </div>
 

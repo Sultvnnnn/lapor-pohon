@@ -90,7 +90,7 @@ export default function OnboardingPage() {
           Selamat Datang! 👋
         </h1>
         <p className="text-xs text-[#111111]/60">
-          Pilih peran Anda untuk melanjutkan ke platform
+          Pilih peran kamu untuk melanjutkan ke platform
         </p>
       </div>
 

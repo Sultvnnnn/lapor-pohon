@@ -20,7 +20,7 @@ export const TeamSection = () => {
     {
       name: "Mayang Putri Mutiara",
       role: "Frontend Developer",
-      image: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=600&auto=format&fit=crop",
+      image: "/assets/mayang.svg",
       rotation: "-rotate-6",
       translate: "translate-y-4 sm:translate-y-6",
       zIndex: "z-10",
