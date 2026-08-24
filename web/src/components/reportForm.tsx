@@ -154,10 +154,20 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const fetchReportHistory = async () => {
     setIsLoadingHistory(true);
     try {
-      const { data, error } = await supabaseClient
+      const {
+        data: { user },
+      } = await supabaseClient.auth.getUser();
+
+      let query = supabaseClient
         .from("reports")
         .select("*")
         .order("created_at", { ascending: false });
+
+      if (user) {
+        query = query.eq("user_id", user.id);
+      }
+
+      const { data, error } = await query;
 
       if (!error && data) {
         setReportHistory(data as ReportHistoryItem[]);
@@ -470,7 +480,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       }
 
       setSubmitStep("saving");
-      const { error: dbError } = await supabaseClient.from("reports").insert({
+      const insertPayload: Record<string, any> = {
         image_url: imageUrl,
         description: data.description || "Laporan Pohon Rawan Tumbang",
         location: `POINT(${data.longitude} ${data.latitude})`,
@@ -479,16 +489,28 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
         biomass_estimate: aiData.biomass_estimate || 0,
         bounding_box: aiData.bounding_boxes || [],
         status: "pending",
-      });
+      };
+
+      if (session?.user?.id) {
+        insertPayload.user_id = session.user.id;
+      }
+
+      const { error: dbError } = await supabaseClient
+        .from("reports")
+        .insert(insertPayload);
 
       if (dbError) {
         console.error(`[ERROR] DB Insert error: ${dbError.message}`);
-        await supabaseClient.from("reports").insert({
+        const fallbackPayload: Record<string, any> = {
           image_url: imageUrl,
           description: data.description || "Laporan Pohon Rawan Tumbang",
           location: `POINT(${data.longitude} ${data.latitude})`,
           risk_score: aiData.risk_score || 0,
-        });
+        };
+        if (session?.user?.id) {
+          fallbackPayload.user_id = session.user.id;
+        }
+        await supabaseClient.from("reports").insert(fallbackPayload);
       }
 
       setSubmittedReport({
