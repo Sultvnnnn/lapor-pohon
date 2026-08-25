@@ -53,10 +53,7 @@ export default async function Home({
         <TeamSection />
       </main>
 
-      {/* Footer */}
       <Footer />
-
-      {/* Floating Scroll To Top Button */}
       <ScrollToTop />
     </div>
   );
