@@ -679,7 +679,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               Pemindai AI & LaporPohon
             </h2>
             <p className="text-[11px] sm:text-xs text-[#111111]/60">
-              Lakukan pemindaian kamera live via HP atau pantau perkembangan laporan kamu
+              Foto pohon rawan di sekitarmu atau cek status laporanmu di sini.
             </p>
           </div>
         </div>
@@ -699,7 +699,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
             }`}
           >
             <Camera size={16} weight="bold" />
-            <span>Pemindaian Kamera Live</span>
+            <span>Kamera</span>
           </button>
           <button
             type="button"
