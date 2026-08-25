@@ -46,10 +46,23 @@ export const proxy = async (request: NextRequest) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (user && (pathname === "/login" || pathname === "/register")) {
-    const homeUrl = request.nextUrl.clone();
-    homeUrl.pathname = "/dashboard";
-    return NextResponse.redirect(homeUrl);
+  if (user) {
+    if (pathname === "/login" || pathname === "/register") {
+      const homeUrl = request.nextUrl.clone();
+      homeUrl.pathname = "/dashboard";
+      return NextResponse.redirect(homeUrl);
+    }
+
+    if (pathname === "/") {
+      const fromDashboard =
+        request.nextUrl.searchParams.get("from") === "dashboard" ||
+        request.nextUrl.searchParams.has("landing");
+      if (!fromDashboard) {
+        const homeUrl = request.nextUrl.clone();
+        homeUrl.pathname = "/dashboard";
+        return NextResponse.redirect(homeUrl);
+      }
+    }
   }
 
   return supabaseResponse;

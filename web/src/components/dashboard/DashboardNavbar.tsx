@@ -55,7 +55,7 @@ export const DashboardSidebar = ({
       {/* ── Sidebar Header ── */}
       <div className="space-y-6 relative z-10">
         <Link
-          href="/"
+          href="/?from=dashboard"
           className="flex items-center gap-3 group px-1"
           title="Kembali ke Beranda Utama"
         >
@@ -89,7 +89,7 @@ export const DashboardSidebar = ({
 
           <motion.div whileHover={{ x: 4 }} transition={{ duration: 0.2 }}>
             <Link
-              href="/"
+              href="/?from=dashboard"
               className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-semibold text-[#111111]/70 hover:bg-[#ecefe6] hover:text-[#19382B] transition-all group"
             >
               <House size={18} weight="bold" className="group-hover:scale-110 transition-transform" />
@@ -176,7 +176,7 @@ export const DashboardNavbar = ({
       <nav className="pointer-events-auto w-full max-w-[1100px] bg-[#ecefe6]/90 backdrop-blur-md border border-black/10 text-[#111111] rounded-full p-1.5 sm:p-2 pl-3 sm:pl-4 pr-2 sm:pr-2.5 flex items-center justify-between gap-2 sm:gap-4 transition-all shadow-xs">
         {/* Left: Brand Logo & Title */}
         <Link
-          href="/"
+          href="/?from=dashboard"
           className="flex items-center gap-2.5 group shrink-0"
           title="Kembali ke Beranda Utama"
         >
@@ -196,7 +196,7 @@ export const DashboardNavbar = ({
         {/* Desktop Quick Nav Links */}
         <div className="hidden md:flex items-center gap-1 sm:gap-1.5">
           <Link
-            href="/"
+            href="/?from=dashboard"
             className="px-3.5 py-1.5 rounded-full text-[12px] font-medium text-[#111111]/70 hover:text-[#19382B] hover:bg-white/50 transition-colors flex items-center gap-1.5"
           >
             <House size={15} weight="bold" />
@@ -292,7 +292,7 @@ export const DashboardNavbar = ({
             {/* Navigation links list */}
             <div className="flex flex-col gap-1 pt-1">
               <Link
-                href="/"
+                href="/?from=dashboard"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="px-4 py-2.5 rounded-2xl text-xs font-semibold text-[#111111]/80 hover:bg-black/5 hover:text-[#111111] flex items-center justify-between transition-colors"
               >
