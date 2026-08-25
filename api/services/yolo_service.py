@@ -16,7 +16,7 @@ from services.metrics_calculator import calculate_all_metrics
 
 print(f"[INFO] Loading YOLO...")
 
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "best.pt")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "..", "models", "model_v4_1.pt")
 
 try:
     model = YOLO(MODEL_PATH)
