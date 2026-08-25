@@ -14,9 +14,12 @@ interface NavLinkItem {
 
 export const Navbar = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [userRole, setUserRole] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState("beranda");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const supabaseClient = createClient();
+
+  const dashboardHref = userRole === "admin" ? "/admin" : "/dashboard";
 
   useEffect(() => {
     const checkUser = async () => {
@@ -24,13 +27,34 @@ export const Navbar = () => {
         data: { user },
       } = await supabaseClient.auth.getUser();
       setIsLoggedIn(!!user);
+
+      if (user) {
+        const { data: profile } = await supabaseClient
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
+        setUserRole(profile?.role || null);
+      } else {
+        setUserRole(null);
+      }
     };
     checkUser();
 
     const {
       data: { subscription },
-    } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+    } = supabaseClient.auth.onAuthStateChange(async (_event, session) => {
       setIsLoggedIn(!!session?.user);
+      if (session?.user) {
+        const { data: profile } = await supabaseClient
+          .from("profiles")
+          .select("role")
+          .eq("id", session.user.id)
+          .maybeSingle();
+        setUserRole(profile?.role || null);
+      } else {
+        setUserRole(null);
+      }
     });
 
     return () => {
@@ -128,11 +152,11 @@ export const Navbar = () => {
         <div className="hidden md:flex items-center gap-1 sm:gap-2 shrink-0">
           {isLoggedIn ? (
             <Link
-              href="/dashboard"
+              href={dashboardHref}
               className="bg-[#19382B] hover:bg-[#234A39] text-white px-4 sm:px-5 py-1.5 sm:py-2 rounded-full text-[12px] font-bold transition-all flex items-center gap-1.5"
             >
               <Layout size={15} weight="bold" />
-              <span>Dashboard</span>
+              <span>{userRole === "admin" ? "Dashboard Admin" : "Dashboard"}</span>
             </Link>
           ) : (
             <>
@@ -201,12 +225,12 @@ export const Navbar = () => {
             <div className="flex items-center gap-2 pt-1">
               {isLoggedIn ? (
                 <Link
-                  href="/dashboard"
+                  href={dashboardHref}
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="w-full bg-[#19382B] text-white text-center py-2.5 rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5"
                 >
                   <Layout size={16} weight="bold" />
-                  <span>Dashboard Saya</span>
+                  <span>{userRole === "admin" ? "Dashboard Admin Saya" : "Dashboard Saya"}</span>
                 </Link>
               ) : (
                 <>

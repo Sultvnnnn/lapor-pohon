@@ -16,7 +16,9 @@ export default async function Home({
 }) {
   const params = await searchParams;
   const isFromDashboard =
-    params.from === "dashboard" || params.landing === "true";
+    params.from === "dashboard" ||
+    params.from === "admin" ||
+    params.landing === "true";
 
   const supabase = await createClient();
   const {
@@ -24,7 +26,17 @@ export default async function Home({
   } = await supabase.auth.getUser();
 
   if (user && !isFromDashboard) {
-    redirect("/dashboard");
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    if (profile?.role === "admin") {
+      redirect("/admin");
+    } else {
+      redirect("/dashboard");
+    }
   }
 
   return (
