@@ -74,7 +74,8 @@ export const AdminMapView = ({ reports, onSelectReport }: AdminMapViewProps) => 
 
       // Add marker per report
       validReports.forEach((report) => {
-        const risk = report.risk_score <= 1 ? Math.round(report.risk_score * 100) : Math.round(report.risk_score);
+        const rawRisk = typeof report.risk_score === "number" ? report.risk_score : 0;
+        const risk = rawRisk <= 1 ? Math.round(rawRisk * 100) : Math.round(rawRisk);
         
         let pinBg = "#10B981"; // Green (Low Risk)
         if (risk > 60) {
@@ -96,6 +97,9 @@ export const AdminMapView = ({ reports, onSelectReport }: AdminMapViewProps) => 
           icon: customIcon,
         }).addTo(map);
 
+        const safeLat = typeof report.latitude === "number" ? report.latitude.toFixed(4) : "-";
+        const safeLng = typeof report.longitude === "number" ? report.longitude.toFixed(4) : "-";
+
         const popupContent = `
           <div style="font-family: sans-serif; padding: 4px; max-width: 200px;">
             ${report.image_url ? `<img src="${report.image_url}" style="width:100%; height:110px; object-fit:cover; border-radius:8px; margin-bottom:6px;" />` : ''}
@@ -106,7 +110,7 @@ export const AdminMapView = ({ reports, onSelectReport }: AdminMapViewProps) => 
               Volume: ${report.canopy_volume || 0} m³
             </div>
             <div style="font-size:10px; color:#888;">
-              GPS: ${report.latitude.toFixed(4)}, ${report.longitude.toFixed(4)}
+              GPS: ${safeLat}, ${safeLng}
             </div>
           </div>
         `;

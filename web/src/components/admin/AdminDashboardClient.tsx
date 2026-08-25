@@ -75,37 +75,41 @@ export const AdminDashboardClient = ({
   // KPI Computations
   const totalReports = reports.length;
   const highRiskReports = reports.filter((r) => {
-    const risk = r.risk_score <= 1 ? Math.round(r.risk_score * 100) : Math.round(r.risk_score);
+    const rawRisk = typeof r.risk_score === "number" ? r.risk_score : 0;
+    const risk = rawRisk <= 1 ? Math.round(rawRisk * 100) : Math.round(rawRisk);
     return risk > 60;
   }).length;
-  const pendingReports = reports.filter((r) => r.status.toLowerCase().includes("pending")).length;
-  const completedReports = reports.filter((r) =>
-    r.status.toLowerCase().includes("completed") ||
-    r.status.toLowerCase().includes("selesai") ||
-    r.status.toLowerCase().includes("sirkular")
+  const pendingReports = reports.filter((r) =>
+    (r.status || "").toLowerCase().includes("pending")
   ).length;
+  const completedReports = reports.filter((r) => {
+    const st = (r.status || "").toLowerCase();
+    return st.includes("completed") || st.includes("selesai") || st.includes("sirkular");
+  }).length;
 
   // Filtered Reports
   const filteredReports = reports.filter((r) => {
     const matchesSearch =
-      r.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      r.user_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (r.user_id || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
       (r.description && r.description.toLowerCase().includes(searchQuery.toLowerCase()));
 
+    const st = (r.status || "").toLowerCase();
     const statusMatch =
       statusFilter === "all"
         ? true
         : statusFilter === "pending"
-        ? r.status.toLowerCase().includes("pending")
+        ? st.includes("pending")
         : statusFilter === "in_progress"
-        ? r.status.toLowerCase().includes("proses") || r.status.toLowerCase().includes("progress")
+        ? st.includes("proses") || st.includes("progress")
         : statusFilter === "completed"
-        ? r.status.toLowerCase().includes("selesai") || r.status.toLowerCase().includes("completed")
+        ? st.includes("selesai") || st.includes("completed")
         : statusFilter === "rejected"
-        ? r.status.toLowerCase().includes("ditolak") || r.status.toLowerCase().includes("rejected")
+        ? st.includes("ditolak") || st.includes("rejected")
         : true;
 
-    const risk = r.risk_score <= 1 ? Math.round(r.risk_score * 100) : Math.round(r.risk_score);
+    const rawRisk = typeof r.risk_score === "number" ? r.risk_score : 0;
+    const risk = rawRisk <= 1 ? Math.round(rawRisk * 100) : Math.round(rawRisk);
     const riskMatch =
       riskFilter === "all"
         ? true
@@ -373,10 +377,16 @@ export const AdminDashboardClient = ({
                   </tr>
                 ) : (
                   filteredReports.map((report) => {
-                    const riskLevel = getRiskLevel(report.risk_score);
+                    const rawRisk = typeof report.risk_score === "number" ? report.risk_score : 0;
+                    const riskLevel = getRiskLevel(rawRisk);
                     const riskConfig = riskLevelConfig[riskLevel];
                     const displayRisk =
-                      report.risk_score <= 1 ? Math.round(report.risk_score * 100) : Math.round(report.risk_score);
+                      rawRisk <= 1 ? Math.round(rawRisk * 100) : Math.round(rawRisk);
+
+                    const safeLat =
+                      typeof report.latitude === "number" ? report.latitude.toFixed(4) : "-";
+                    const safeLng =
+                      typeof report.longitude === "number" ? report.longitude.toFixed(4) : "-";
 
                     return (
                       <tr key={report.id} className="hover:bg-[#f8f9f5]/80 transition-colors">
@@ -390,7 +400,7 @@ export const AdminDashboardClient = ({
                             />
                             <div>
                               <p className="font-mono font-bold text-[#111111] text-[11px]">
-                                ID: #{report.id.slice(0, 8)}
+                                ID: #{report.id ? report.id.slice(0, 8) : "N/A"}
                               </p>
                               {report.description && (
                                 <p className="text-[10px] text-[#111111]/60 line-clamp-1 max-w-[140px]">
@@ -421,21 +431,23 @@ export const AdminDashboardClient = ({
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-1 text-[11px] font-medium text-[#111111]/80">
                             <MapPin size={14} weight="fill" className="text-[#19382B]" />
-                            <span>{report.latitude.toFixed(4)}, {report.longitude.toFixed(4)}</span>
+                            <span>{safeLat}, {safeLng}</span>
                           </div>
                         </td>
 
                         {/* Status & Tanggal */}
                         <td className="py-3.5 px-4">
                           <span className="font-bold text-[11px] text-[#19382B] block">
-                            {report.status}
+                            {report.status || "Pending"}
                           </span>
                           <span className="text-[10px] text-gray-400">
-                            {new Date(report.created_at).toLocaleDateString("id-ID", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                            })}
+                            {report.created_at
+                              ? new Date(report.created_at).toLocaleDateString("id-ID", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                })
+                              : "-"}
                           </span>
                         </td>
 

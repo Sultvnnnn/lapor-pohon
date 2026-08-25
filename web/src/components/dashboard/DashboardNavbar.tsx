@@ -111,23 +111,6 @@ export const DashboardSidebar = ({
             </Link>
           </motion.div>
 
-          {userRole === "admin" && (
-            <motion.div whileHover={{ x: 4 }} transition={{ duration: 0.2 }}>
-              <Link
-                href="/admin"
-                className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-bold bg-[#88d937] text-[#19382B] shadow-sm transition-all hover:bg-[#97e644]"
-              >
-                <div className="flex items-center gap-3">
-                  <ShieldCheck size={18} weight="fill" />
-                  <span>Panel Admin DLH</span>
-                </div>
-                <span className="text-[9px] uppercase tracking-wider font-extrabold bg-[#19382B] text-white px-2 py-0.5 rounded-full">
-                  Admin
-                </span>
-              </Link>
-            </motion.div>
-          )}
-
           <div className="opacity-60 cursor-not-allowed">
             <div className="flex items-center gap-3 px-3.5 py-2.5 rounded-2xl text-xs font-medium text-gray-400 bg-gray-50/50">
               <MapTrifold size={18} />
@@ -331,22 +314,6 @@ export const DashboardNavbar = ({
                 </div>
                 <span className="w-1.5 h-1.5 rounded-full bg-[#88d937]" />
               </Link>
-
-              {userRole === "admin" && (
-                <Link
-                  href="/admin"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="px-4 py-2.5 rounded-2xl text-xs font-bold bg-[#88d937] text-[#19382B] flex items-center justify-between transition-colors shadow-xs"
-                >
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck size={16} weight="fill" />
-                    <span>Panel Admin DLH</span>
-                  </div>
-                  <span className="text-[9px] uppercase tracking-wider font-extrabold bg-[#19382B] text-white px-2 py-0.5 rounded-full">
-                    Admin
-                  </span>
-                </Link>
-              )}
 
               <button
                 disabled
