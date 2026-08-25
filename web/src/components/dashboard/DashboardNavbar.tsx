@@ -7,6 +7,8 @@ import {
   Tree,
   SignOut,
   Layout,
+  Leaf,
+  MapTrifold,
   House,
   BookOpen,
   List,
@@ -20,7 +22,7 @@ interface DashboardNavbarProps {
   userRole?: string;
 }
 
-/* ── 1. Desktop Sidebar Component (Floating Capsule Sidebar + Floating Tooltips) ── */
+/* ── 1. Desktop Sidebar Component (Fixed Floating Capsule + Floating Bubble Tooltips) ── */
 export const DashboardSidebar = ({
   userEmail,
   userRole,
@@ -37,44 +39,43 @@ export const DashboardSidebar = ({
   };
 
   return (
-    <aside className="hidden md:flex flex-col items-center justify-between w-20 h-screen sticky top-0 py-6 shrink-0 z-40 font-sans pointer-events-none">
-      {/* Floating Dark Green Capsule */}
-      <div className="pointer-events-auto bg-[#19382B] text-white w-14 rounded-full p-2 flex flex-col items-center justify-between h-full shadow-2xl border border-white/10 relative">
-
-        {/* Top Section: Logo & Nav Links */}
-        <div className="flex flex-col items-center gap-6 w-full pt-1">
-          {/* Logo Brand */}
-          <div
-            className="relative flex items-center justify-center"
-            onMouseEnter={() => setHoveredItem("brand")}
-            onMouseLeave={() => setHoveredItem(null)}
+    <aside className="hidden md:flex flex-col justify-between h-[calc(100vh-2rem)] sticky top-4 left-4 w-16 bg-white border border-black/5 shadow-xs rounded-[2rem] py-5 px-2.5 shrink-0 z-50 font-sans items-center overflow-visible">
+      {/* ── Top: Brand Logo & Title ── */}
+      <div className="flex flex-col gap-6 w-full items-center">
+        {/* Brand Logo Link */}
+        <div
+          className="relative flex items-center justify-center"
+          onMouseEnter={() => setHoveredItem("brand")}
+          onMouseLeave={() => setHoveredItem(null)}
+        >
+          <Link
+            href="/?from=dashboard"
+            className="w-10 h-10 rounded-full bg-[#19382B] text-white flex items-center justify-center shadow-xs hover:scale-105 hover:bg-[#234A39] transition-all"
+            title="Beranda Utama"
           >
-            <Link
-              href="/?from=dashboard"
-              className="w-10 h-10 rounded-full bg-white/10 text-white flex items-center justify-center hover:bg-white/20 hover:scale-105 transition-all"
-            >
-              <Tree size={20} weight="fill" className="text-[#88d937]" />
-            </Link>
+            <Tree size={20} weight="fill" />
+          </Link>
 
-            <AnimatePresence>
-              {hoveredItem === "brand" && (
-                <motion.div
-                  initial={{ opacity: 0, x: -8, scale: 0.92 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: -8, scale: 0.92 }}
-                  transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10 flex flex-col gap-0.5"
-                >
-                  <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
-                  <span className="text-xs font-extrabold text-white tracking-tight">LaporPohon</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+          {/* Floating Bubble Tooltip */}
+          <AnimatePresence>
+            {hoveredItem === "brand" && (
+              <motion.div
+                initial={{ opacity: 0, x: -8, scale: 0.92 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -8, scale: 0.92 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10 flex flex-col gap-0.5"
+              >
+                <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
+                <span className="text-xs font-extrabold text-white tracking-tight">LaporPohon</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-          <div className="w-8 h-px bg-white/10" />
-
-          {/* Nav Link 1: Beranda Utama */}
+        {/* ── Navigation Links ── */}
+        <nav className="flex flex-col gap-3 w-full items-center">
+          {/* Beranda Utama */}
           <div
             className="relative flex items-center justify-center"
             onMouseEnter={() => setHoveredItem("beranda")}
@@ -84,11 +85,11 @@ export const DashboardSidebar = ({
               href="/?from=dashboard"
               className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                 pathname === "/"
-                  ? "bg-[#88d937] text-[#19382B] shadow-xs"
-                  : "text-white/70 hover:bg-white/10 hover:text-white hover:scale-105"
+                  ? "bg-[#19382B] text-white shadow-xs"
+                  : "text-[#111111]/70 hover:bg-[#ecefe6] hover:text-[#19382B] hover:scale-105"
               }`}
             >
-              <House size={19} weight={pathname === "/" ? "fill" : "bold"} />
+              <House size={19} weight={pathname === "/" ? "fill" : "regular"} />
             </Link>
 
             <AnimatePresence>
@@ -107,7 +108,7 @@ export const DashboardSidebar = ({
             </AnimatePresence>
           </div>
 
-          {/* Nav Link 2: Laporan AI */}
+          {/* Laporan AI */}
           <div
             className="relative flex items-center justify-center"
             onMouseEnter={() => setHoveredItem("laporan")}
@@ -117,11 +118,11 @@ export const DashboardSidebar = ({
               href="/dashboard"
               className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                 pathname === "/dashboard"
-                  ? "bg-[#88d937] text-[#19382B] shadow-xs"
-                  : "text-white/70 hover:bg-white/10 hover:text-white hover:scale-105"
+                  ? "bg-[#19382B] text-white shadow-xs"
+                  : "text-[#111111]/70 hover:bg-[#ecefe6] hover:text-[#19382B] hover:scale-105"
               }`}
             >
-              <Layout size={19} weight={pathname === "/dashboard" ? "fill" : "bold"} />
+              <Layout size={19} weight={pathname === "/dashboard" ? "fill" : "regular"} />
             </Link>
 
             <AnimatePresence>
@@ -140,7 +141,7 @@ export const DashboardSidebar = ({
             </AnimatePresence>
           </div>
 
-          {/* Nav Link 3: Panduan */}
+          {/* Panduan */}
           <div
             className="relative flex items-center justify-center"
             onMouseEnter={() => setHoveredItem("panduan")}
@@ -150,11 +151,11 @@ export const DashboardSidebar = ({
               href="/panduan"
               className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
                 pathname === "/panduan"
-                  ? "bg-[#88d937] text-[#19382B] shadow-xs"
-                  : "text-white/70 hover:bg-white/10 hover:text-white hover:scale-105"
+                  ? "bg-[#19382B] text-white shadow-xs"
+                  : "text-[#111111]/70 hover:bg-[#ecefe6] hover:text-[#19382B] hover:scale-105"
               }`}
             >
-              <BookOpen size={19} weight={pathname === "/panduan" ? "fill" : "bold"} />
+              <BookOpen size={19} weight={pathname === "/panduan" ? "fill" : "regular"} />
             </Link>
 
             <AnimatePresence>
@@ -167,75 +168,129 @@ export const DashboardSidebar = ({
                   className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10"
                 >
                   <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
-                  <span>Panduan Penggunaan</span>
+                  <span>Panduan</span>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
-        </div>
 
-        {/* Bottom Section: Profile Avatar & Sign Out */}
-        <div className="flex flex-col items-center gap-3 w-full pb-1">
-          {/* User Profile Avatar */}
+          {/* Peta Sebaran */}
           <div
             className="relative flex items-center justify-center"
-            onMouseEnter={() => setHoveredItem("user")}
+            onMouseEnter={() => setHoveredItem("peta")}
             onMouseLeave={() => setHoveredItem(null)}
           >
-            <div className="w-10 h-10 rounded-full bg-white/10 text-[#e3f4d7] border border-white/20 flex items-center justify-center text-xs font-bold uppercase cursor-pointer hover:bg-white/20 transition-all">
-              {userEmail ? userEmail[0] : "U"}
+            <div className="w-10 h-10 rounded-full text-gray-400 opacity-60 flex items-center justify-center cursor-not-allowed">
+              <MapTrifold size={19} weight="regular" />
             </div>
 
             <AnimatePresence>
-              {hoveredItem === "user" && (
+              {hoveredItem === "peta" && (
                 <motion.div
                   initial={{ opacity: 0, x: -8, scale: 0.92 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   exit={{ opacity: 0, x: -8, scale: 0.92 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10 flex flex-col gap-0.5"
+                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10 flex items-center gap-2"
                 >
                   <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
-                  <span className="text-xs font-extrabold text-white truncate max-w-[150px]">
-                    {userEmail || "Pengguna"}
-                  </span>
-                  <span className="text-[9px] font-medium text-white/70 capitalize">
-                    Peran: {userRole || "Warga"}
-                  </span>
+                  <span>Peta Sebaran</span>
+                  <span className="text-[9px] font-extrabold bg-white/20 px-1.5 py-0.5 rounded-full">SEGERA</span>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Sign Out */}
+          {/* Katalog Kayu */}
           <div
             className="relative flex items-center justify-center"
-            onMouseEnter={() => setHoveredItem("signout")}
+            onMouseEnter={() => setHoveredItem("katalog")}
             onMouseLeave={() => setHoveredItem(null)}
           >
-            <button
-              onClick={handleSignOut}
-              className="w-10 h-10 rounded-full text-red-400 hover:bg-red-500/20 hover:text-red-300 flex items-center justify-center hover:scale-105 transition-all"
-              title="Keluar dari Akun"
-            >
-              <SignOut size={19} weight="bold" />
-            </button>
+            <div className="w-10 h-10 rounded-full text-gray-400 opacity-60 flex items-center justify-center cursor-not-allowed">
+              <Leaf size={19} weight="regular" />
+            </div>
 
             <AnimatePresence>
-              {hoveredItem === "signout" && (
+              {hoveredItem === "katalog" && (
                 <motion.div
                   initial={{ opacity: 0, x: -8, scale: 0.92 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   exit={{ opacity: 0, x: -8, scale: 0.92 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-red-600 text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10"
+                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10 flex items-center gap-2"
                 >
-                  <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-red-600" />
-                  <span>Keluar dari Akun</span>
+                  <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
+                  <span>Katalog Kayu</span>
+                  <span className="text-[9px] font-extrabold bg-white/20 px-1.5 py-0.5 rounded-full">SEGERA</span>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
+        </nav>
+      </div>
+
+      {/* ── Bottom: User Profile & Sign Out ── */}
+      <div className="flex flex-col gap-3 w-full items-center">
+        {/* User Profile */}
+        <div
+          className="relative flex items-center justify-center"
+          onMouseEnter={() => setHoveredItem("user")}
+          onMouseLeave={() => setHoveredItem(null)}
+        >
+          <div className="w-10 h-10 rounded-full bg-[#ecefe6] text-[#19382B] flex items-center justify-center text-xs font-bold uppercase shadow-xs cursor-pointer hover:scale-105 transition-all">
+            {userEmail ? userEmail[0] : "U"}
+          </div>
+
+          <AnimatePresence>
+            {hoveredItem === "user" && (
+              <motion.div
+                initial={{ opacity: 0, x: -8, scale: 0.92 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -8, scale: 0.92 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10 flex flex-col gap-0.5"
+              >
+                <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
+                <span className="text-xs font-extrabold text-white truncate max-w-[150px]">
+                  {userEmail || "Pengguna"}
+                </span>
+                <span className="text-[9px] font-medium text-white/70 capitalize">
+                  Peran: {userRole || "Warga"}
+                </span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Sign Out */}
+        <div
+          className="relative flex items-center justify-center"
+          onMouseEnter={() => setHoveredItem("signout")}
+          onMouseLeave={() => setHoveredItem(null)}
+        >
+          <button
+            onClick={handleSignOut}
+            className="w-10 h-10 rounded-full text-red-500 hover:bg-red-50 hover:text-red-600 flex items-center justify-center hover:scale-105 transition-all"
+            title="Keluar dari Akun"
+          >
+            <SignOut size={19} weight="bold" />
+          </button>
+
+          <AnimatePresence>
+            {hoveredItem === "signout" && (
+              <motion.div
+                initial={{ opacity: 0, x: -8, scale: 0.92 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -8, scale: 0.92 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-red-600 text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10"
+              >
+                <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-red-600" />
+                <span>Keluar dari Akun</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </aside>
