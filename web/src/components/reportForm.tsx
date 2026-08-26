@@ -191,7 +191,15 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const [detectedAddress, setDetectedAddress] = useState<string>("");
 
   // Desktop Detection State
-  const [isDesktop, setIsDesktop] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === "undefined") return false;
+    const ua = navigator.userAgent;
+    const isMobileUA =
+      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+    const isIPadOS = ua.includes("Macintosh") && navigator.maxTouchPoints > 0;
+    const isMobileData = (navigator as any).userAgentData?.mobile ?? false;
+    return !(isMobileUA || isIPadOS || isMobileData);
+  });
 
   // User Reports History
   const [reportHistory, setReportHistory] = useState<ReportHistoryItem[]>([]);
@@ -255,16 +263,26 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
     },
   });
 
-  // Detect Desktop Device vs Mobile
+  // Detect Desktop Device vs Mobile / Tablet
   useEffect(() => {
     const checkDevice = () => {
-      const isTouch =
-        "ontouchstart" in window || navigator.maxTouchPoints > 0;
+      const ua = navigator.userAgent;
+      // 1. Standard Mobile & Tablet User Agent Regex
       const isMobileUA =
         /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-          navigator.userAgent
+          ua
         );
-      setIsDesktop(!isMobileUA && !isTouch);
+
+      // 2. iPadOS 13+ detection (reports as Macintosh, but has touch points)
+      const isIPadOS = ua.includes("Macintosh") && navigator.maxTouchPoints > 0;
+
+      // 3. UserAgentData API (Modern Chromium Browsers)
+      const isMobileData = (navigator as any).userAgentData?.mobile ?? false;
+
+      // Device is considered Mobile / Tablet if any of the above conditions are met
+      const isMobileOrTablet = isMobileUA || isIPadOS || isMobileData;
+
+      setIsDesktop(!isMobileOrTablet);
     };
 
     checkDevice();
@@ -318,6 +336,10 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
   // Start Camera Stream (Works on Desktop & Mobile)
   const startCamera = async () => {
+    if (isDesktop) {
+      stopCamera();
+      return;
+    }
     setCameraError(null);
     try {
       if (streamRef.current) {
@@ -331,6 +353,13 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
           height: { ideal: 720 },
         },
       });
+
+      // Safety check: Abort and stop stream if device is desktop or tab changed while getUserMedia was resolving
+      if (isDesktop || activeTab !== "scan") {
+        stream.getTracks().forEach((track) => track.stop());
+        setIsCameraActive(false);
+        return;
+      }
 
       streamRef.current = stream;
       if (videoRef.current) {
