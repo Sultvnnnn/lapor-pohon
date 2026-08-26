@@ -25,6 +25,7 @@ import {
   MagnifyingGlassMinus,
   ArrowsOut,
   ArrowsIn,
+  ArrowRight,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -44,12 +45,14 @@ type BoundingBox = {
 };
 
 type SubmittedReport = {
+  id?: string;
   imageUrl: string;
   boundingBoxes: BoundingBox[];
   riskScore: number;
   canopyVolume: number;
   biomassEstimate: number;
   detections: number;
+  rawReportItem?: ReportHistoryItem;
 };
 
 type ReportHistoryItem = {
@@ -95,13 +98,21 @@ const submitStepLabels: Record<SubmitStep, string> = {
   saving: "Menyimpan data laporan ke database...",
 };
 
+const loadingMessages = [
+  "Foto sedang dianalisis...",
+  "Tunggu sebentar...",
+  "Sedikit lagi...",
+  "Membutuhkan beberapa saat...",
+  "Mengkalkulasi tajuk & biomassa...",
+];
+
 export const getReportStatusConfig = (statusRaw?: string) => {
   const s = (statusRaw || "pending").toString().toLowerCase().trim();
 
   // 1. Pending variations
   if (s === "pending" || s === "menunggu" || s === "draft" || s === "unverified") {
     return {
-      label: "⏳ Menunggu Verifikasi",
+      label: "Menunggu Verifikasi",
       bg: "bg-amber-500/10",
       text: "text-amber-700",
       border: "border-amber-500/20",
@@ -142,7 +153,7 @@ export const getReportStatusConfig = (statusRaw?: string) => {
     s.includes("proses")
   ) {
     return {
-      label: "🚜 Dalam Penanganan DLH",
+      label: "Dalam Penanganan DLH",
       bg: "bg-blue-500/10",
       text: "text-blue-700",
       border: "border-blue-500/20",
@@ -256,14 +267,32 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
     setIsFullscreen((prev) => !prev);
   };
 
+  // Loading Animation Message Index & Success Alert States
+  const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+
+  // Cycle loading messages sequentially every 2.5 seconds during photo analysis
   useEffect(() => {
-    if (isFullscreen) {
+    if (!isSubmitting) {
+      setLoadingMessageIndex(0);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
+    }, 2200);
+
+    return () => clearInterval(interval);
+  }, [isSubmitting]);
+
+  useEffect(() => {
+    if (isFullscreen || showSuccessAlert) {
       document.body.classList.add("modal-open");
     } else {
       document.body.classList.remove("modal-open");
     }
     return () => document.body.classList.remove("modal-open");
-  }, [isFullscreen]);
+  }, [isFullscreen, showSuccessAlert]);
 
   const supabaseClient = createClient();
 
@@ -714,35 +743,44 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
         basePayload.user_id = user.id;
       }
 
-      const { error: dbError } = await supabaseClient
-        .from("reports")
-        .insert(basePayload);
+      let insertedReportItem: ReportHistoryItem | null = null;
 
-      if (dbError) {
+      const { data: insertedData, error: dbError } = await supabaseClient
+        .from("reports")
+        .insert(basePayload)
+        .select()
+        .single();
+
+      if (!dbError && insertedData) {
+        insertedReportItem = insertedData as ReportHistoryItem;
+      } else if (dbError) {
         console.error(`[ERROR] DB Insert error: ${dbError.message}`);
 
         if (dbError.message.includes("user_id")) {
           delete basePayload.user_id;
-          const { error: retryError } = await supabaseClient
+          const { data: retryData, error: retryError } = await supabaseClient
             .from("reports")
-            .insert(basePayload);
+            .insert(basePayload)
+            .select()
+            .single();
 
-          if (retryError) {
+          if (!retryError && retryData) {
+            insertedReportItem = retryData as ReportHistoryItem;
+          } else if (retryError) {
             console.error(`[ERROR] Retry DB Insert error: ${retryError.message}`);
-            alert(`[Gagal Simpan Database] ${retryError.message}`);
           }
-        } else {
-          alert(`[Gagal Simpan Database] ${dbError.message}`);
         }
       }
 
       setSubmittedReport({
+        id: insertedReportItem?.id,
         imageUrl,
         boundingBoxes: aiData.bounding_boxes || [],
         riskScore: aiData.risk_score || 0,
         canopyVolume: aiData.canopy_volume || 0,
         biomassEstimate: aiData.biomass_estimate || 0,
         detections: aiData.detections || 0,
+        rawReportItem: insertedReportItem || undefined,
       });
 
       formLogic.reset();
@@ -751,6 +789,8 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       // Automatically refresh history for Tab 2 and parent Dashboard count
       fetchReportHistory();
       onReportSubmitted?.();
+      // Show Success Alert Pop-up Modal!
+      setShowSuccessAlert(true);
     } catch (error) {
       const errorMessage =
         error instanceof Error
@@ -833,52 +873,44 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
           submittedReport ? (
             /* Result AI Inspection Card */
             <motion.div
+              id="ai-result-inspection-card"
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               className="space-y-6 pt-1"
             >
-              {/* Header Hasil */}
-              <div className="bg-[#19382B] text-white rounded-2xl p-5 shadow-xs space-y-3 relative overflow-hidden">
-                <div
-                  className="absolute inset-0 opacity-15 pointer-events-none"
-                  style={{
-                    backgroundImage: `radial-gradient(circle, #3E6B54 1px, transparent 1px)`,
-                    backgroundSize: "20px 20px",
-                  }}
-                />
-                <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-[#88d937] text-[#19382B] flex items-center justify-center shadow-xs">
-                      <CheckCircle size={22} weight="fill" />
-                    </div>
-                    <div>
-                      <h3 className="text-base sm:text-lg font-extrabold text-white tracking-tight">
-                        Laporan Berhasil Dianalisis!
-                      </h3>
-                      <p className="text-xs text-white/80">
-                        Hasil deteksi otomatis AI YOLOv8 & estimasi kayu sirkular
-                      </p>
-                    </div>
+              {/* Header Hasil (Minimalist Modern Landing Page Style) */}
+              <div className="bg-white border border-black/8 rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4 font-sans">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-2xl bg-[#19382B] text-[#88d937] flex items-center justify-center shrink-0 shadow-xs border border-black/5">
+                    <CheckCircle size={24} weight="fill" />
                   </div>
-
-                  {/* Risk Badge */}
-                  {(() => {
-                    const riskLevel = getRiskLevel(submittedReport.riskScore);
-                    const config = riskLevelConfig[riskLevel];
-                    const displayScore =
-                      submittedReport.riskScore <= 1
-                        ? Math.round(submittedReport.riskScore * 100)
-                        : Math.round(submittedReport.riskScore);
-                    return (
-                      <div
-                        className={`self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-full font-extrabold text-xs shadow-xs ${config.bgColor} ${config.textColor}`}
-                      >
-                        <ShieldWarning size={16} weight="fill" />
-                        <span>{config.label} ({displayScore}/100)</span>
-                      </div>
-                    );
-                  })()}
+                  <div className="space-y-0.5">
+                    <h3 className="text-base sm:text-lg font-bold text-[#111111] tracking-tight">
+                      Laporan Berhasil Dianalisis!
+                    </h3>
+                    <p className="text-xs text-[#111111]/60 font-medium">
+                      Hasil deteksi otomatis AI YOLOv8 &amp; estimasi biomassa sirkular
+                    </p>
+                  </div>
                 </div>
+
+                {/* Risk Badge */}
+                {(() => {
+                  const riskLevel = getRiskLevel(submittedReport.riskScore);
+                  const config = riskLevelConfig[riskLevel];
+                  const displayScore =
+                    submittedReport.riskScore <= 1
+                      ? Math.round(submittedReport.riskScore * 100)
+                      : Math.round(submittedReport.riskScore);
+                  return (
+                    <div
+                      className={`self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2 rounded-full font-extrabold text-xs shadow-xs border ${config.borderColor} ${config.bgColor} ${config.textColor}`}
+                    >
+                      <ShieldWarning size={16} weight="fill" />
+                      <span>{config.label} ({displayScore}/100)</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Case 0 Trees Detected Warning */}
@@ -1015,24 +1047,100 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
                       <Camera size={15} weight="bold" className="text-[#19382B]" />
-                      Pemindaian Foto Pohon (Live Shoot) <span className="text-red-500">*</span>
+                      Arahkan Kamera ke Pohon <span className="text-red-500">*</span>
                     </label>
                   </div>
 
                   {imagePreview ? (
-                    /* Preview hasil potret dari kamera (Clean & Borderless) */
+                    /* Preview hasil potret dari kamera (Blurred Preview + LaporPohon Logo Color Rise Loading Animation) */
                     <div className="relative flex flex-col items-center justify-center space-y-3 py-1">
-                      <div className="w-full flex items-center justify-center overflow-hidden rounded-2xl">
+                      <div className="w-full flex items-center justify-center overflow-hidden rounded-2xl relative group">
                         <img
                           src={imagePreview}
                           alt="Hasil Potret Pohon"
-                          className="max-h-72 sm:max-h-96 w-auto object-contain rounded-2xl shadow-md border border-black/10"
+                          className={`max-h-72 sm:max-h-96 w-auto object-contain rounded-2xl shadow-md border border-black/10 transition-all duration-300 ${isSubmitting ? "blur-[3px] scale-[1.01]" : ""
+                            }`}
                         />
+
+                        {/* ── 1. Loading Overlay: Foto Preview Blur + Border Bulat Putih dengan Gambar Pohon Terisi Warna Naik-Turun (Sesuai Awal, Tanpa Laser) ── */}
+                        {isSubmitting && (
+                          <div className="absolute inset-0 bg-black/55 backdrop-blur-xs rounded-2xl flex flex-col items-center justify-center p-4 sm:p-6 text-center font-sans space-y-4 overflow-hidden z-20 shadow-inner">
+                            {/* Animasi Logo Pohon dalam Border Bulat Putih (Hijau Muda -> Hijau Tua #19382B) */}
+                            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white shadow-2xl border border-white/50 flex items-center justify-center relative overflow-hidden shrink-0">
+                              {/* 1. Base Tree Graphic (Hijau Muda) */}
+                              <Tree size={40} weight="fill" className="text-[#d1dabe] absolute drop-shadow-xs" />
+
+                              {/* 2. Overlaid Tree Graphic (Hijau Tua #19382B) dengan animasi tinggi terisi naik-turun */}
+                              <motion.div
+                                animate={{ height: ["0%", "100%", "0%"] }}
+                                transition={{
+                                  duration: 2.0,
+                                  repeat: Infinity,
+                                  ease: "easeInOut",
+                                }}
+                                className="absolute bottom-0 left-0 right-0 overflow-hidden flex items-end justify-center"
+                              >
+                                <div className="w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center relative">
+                                  <Tree size={40} weight="fill" className="text-[#19382B] absolute drop-shadow-xs" />
+                                </div>
+                              </motion.div>
+                            </div>
+
+                            {/* Cycling Text Messages */}
+                            <div className="space-y-1 text-white">
+                              <AnimatePresence mode="wait">
+                                <motion.h4
+                                  key={loadingMessageIndex}
+                                  initial={{ opacity: 0, y: 5 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -5 }}
+                                  transition={{ duration: 0.2 }}
+                                  className="text-sm sm:text-base font-extrabold tracking-tight drop-shadow-sm"
+                                >
+                                  {loadingMessages[loadingMessageIndex]}
+                                </motion.h4>
+                              </AnimatePresence>
+
+                              <p className="text-[11px] text-white/80 font-semibold drop-shadow-xs">
+                                {submitStepLabels[submitStep] || "Sistem AI sedang memproses foto..."}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* ── 2. Alert Peringatan: Objek Bukan Pohon / Tidak Terdeteksi (Langsung di Atas Preview Foto) ── */}
+                        {submittedReport && ((submittedReport as any).detections === 0 || (submittedReport as any).riskScore === 0) && !isSubmitting && (
+                          <div className="absolute inset-0 bg-black/75 backdrop-blur-xs rounded-2xl flex flex-col items-center justify-center p-4 sm:p-6 text-center font-sans space-y-3.5 z-20 shadow-inner">
+                            <div className="w-14 h-14 rounded-2xl bg-amber-400 text-amber-950 flex items-center justify-center shadow-lg border border-white/20 shrink-0">
+                              <WarningCircle size={32} weight="fill" />
+                            </div>
+                            <div className="space-y-1 text-white">
+                              <h4 className="text-sm sm:text-base font-extrabold tracking-tight text-amber-300">
+                                Objek Bukan Pohon / Tidak Terdeteksi! ⚠️
+                              </h4>
+                              <p className="text-xs text-white/85 font-medium max-w-xs leading-relaxed">
+                                Sistem AI tidak mendeteksi objek pohon rawan pada foto ini. Silakan ambil ulang foto dengan objek pohon yang lebih jelas.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSubmittedReport(null);
+                                handleRetakePhoto();
+                              }}
+                              className="bg-amber-400 hover:bg-amber-300 text-amber-950 px-5 py-2.5 rounded-full text-xs font-extrabold shadow-md transition-all flex items-center gap-1.5 active:scale-95 shrink-0"
+                            >
+                              <ArrowCounterClockwise size={15} weight="bold" />
+                              <span>Potret Ulang Foto Sekarang</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <button
                         type="button"
+                        disabled={isSubmitting}
                         onClick={handleRetakePhoto}
-                        className="flex items-center gap-1.5 bg-[#19382B] text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-xs hover:bg-[#234A39] transition-all active:scale-95 shrink-0"
+                        className="flex items-center gap-1.5 bg-[#19382B] text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-xs hover:bg-[#234A39] transition-all active:scale-95 shrink-0 disabled:opacity-50"
                       >
                         <ArrowCounterClockwise size={15} weight="bold" />
                         <span>Potret Ulang Foto</span>
@@ -1105,11 +1213,10 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                       {/* Redesigned Camera Action Bar: Zoom Badges + Shutter Bar */}
                       {isCameraActive && (
                         <div
-                          className={`absolute left-0 right-0 flex flex-col items-center gap-2.5 z-20 px-4 pointer-events-none transition-all duration-200 ${
-                            isFullscreen
-                              ? "bottom-16 sm:bottom-20 pb-8"
-                              : "bottom-4"
-                          }`}
+                          className={`absolute left-0 right-0 flex flex-col items-center gap-2.5 z-20 px-4 pointer-events-none transition-all duration-200 ${isFullscreen
+                            ? "bottom-16 sm:bottom-20 pb-8"
+                            : "bottom-4"
+                            }`}
                         >
                           {/* 1. Informasi Zoom Minimalis (Hanya Muncul Saat Kamera Di-Zoom > 1x) */}
                           <AnimatePresence>
@@ -1185,9 +1292,9 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   {/* Address / Location Details Card */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="space-y-1 overflow-hidden">
-                      <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#111111]/50">
+                      <div className="flex items-center gap-1 text-[10px] font-bold tracking-wider text-[#111111]/50">
                         <MapPin size={13} weight="fill" className="text-[#19382B] shrink-0" />
-                        <span>Alamat Terdeteksi</span>
+                        <span>Deteksi Alamat</span>
                       </div>
                       <p className="text-xs sm:text-sm font-bold text-[#111111] leading-snug line-clamp-2">
                         {detectedAddress ? (
@@ -1308,8 +1415,8 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
         {activeTab === "progress" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-xs font-bold uppercase tracking-wider text-[#111111]/70">
-                Riwayat Perkembangan Laporan Kamu
+              <p className="text-xs font-bold tracking-wider text-[#111111]/70">
+                Riwayat Laporan
               </p>
               <button
                 type="button"
@@ -1654,6 +1761,113 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   className="w-full bg-gray-100 text-[#111111] py-2.5 rounded-full text-xs font-bold hover:bg-gray-200 transition-all"
                 >
                   Tutup Detail
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+
+
+
+
+      {/* ── 2. Modal Alert Pop-up Laporan Berhasil (Clean Minimalist dengan Button Close & Redirect) ── */}
+      <AnimatePresence>
+        {showSuccessAlert && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/45 backdrop-blur-md font-sans">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 15 }}
+              transition={{ type: "spring", stiffness: 350, damping: 25 }}
+              className="bg-[#fbfbf9] rounded-[2.2rem] max-w-xs sm:max-w-sm w-full p-6 sm:p-8 space-y-5 text-center shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] border border-black/8 relative overflow-hidden"
+            >
+              {/* Button Close (X) di Sudut Kanan Atas */}
+              <button
+                type="button"
+                onClick={() => setShowSuccessAlert(false)}
+                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-black/5 hover:bg-black/10 flex items-center justify-center text-[#111111]/60 hover:text-[#111111] transition-all active:scale-90"
+              >
+                <X size={18} weight="bold" />
+              </button>
+
+              {/* Minimalist Header Badge (Bulat Sempurna) */}
+              <div className="w-14 h-14 rounded-full bg-[#19382B] text-[#88d937] flex items-center justify-center mx-auto shadow-md border border-white/10 shrink-0">
+                <CheckCircle size={32} weight="fill" />
+              </div>
+
+              {/* Title & Subtitle */}
+              <div className="space-y-1">
+                <h3 className="text-lg sm:text-xl font-bold text-[#111111] tracking-tight">
+                  Laporan Berhasil!
+                </h3>
+                <p className="text-xs sm:text-sm text-[#111111]/60 font-medium leading-relaxed">
+                  Foto &amp; lokasi pohon rawan telah tersimpan di sistem.
+                </p>
+              </div>
+
+              {/* Minimalist Summary Card */}
+              {submittedReport && (
+                <div className="bg-white border border-black/5 rounded-2xl p-3.5 text-left space-y-2.5 shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">Status AI</span>
+                    {(() => {
+                      const rl = getRiskLevel(submittedReport.riskScore);
+                      const conf = riskLevelConfig[rl];
+                      const score = submittedReport.riskScore <= 1 ? Math.round(submittedReport.riskScore * 100) : Math.round(submittedReport.riskScore);
+                      return (
+                        <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full ${conf.bgColor} ${conf.textColor}`}>
+                          {conf.label} ({score}/100)
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs font-bold text-[#111111] pt-1 border-t border-black/5">
+                    <span className="text-[11px] text-[#111111]/50 font-medium">Estimasi Tajuk &amp; Biomassa</span>
+                    <span className="text-xs font-extrabold text-[#19382B]">
+                      {submittedReport.canopyVolume} m³ ({submittedReport.biomassEstimate} kg)
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-2 pt-1">
+                {/* Primary Button: Redirect to Detail Laporan (Berdasarkan ID Laporan) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSuccessAlert(false);
+                    if (submittedReport?.rawReportItem) {
+                      setActiveTab("progress");
+                      setSelectedHistoryItem(submittedReport.rawReportItem);
+                    } else {
+                      setTimeout(() => {
+                        const resultCard = document.getElementById("ai-result-inspection-card");
+                        if (resultCard) {
+                          resultCard.scrollIntoView({ behavior: "smooth" });
+                        }
+                      }, 100);
+                    }
+                  }}
+                  className="w-full bg-[#19382B] hover:bg-[#234A39] text-white py-3 rounded-full text-xs sm:text-sm font-bold transition-all shadow-xs active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <span>Lihat Detail Laporan</span>
+                  <ArrowRight size={16} weight="bold" />
+                </button>
+
+                {/* Secondary Button: Buka Pantau Laporan Saya */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowSuccessAlert(false);
+                    setActiveTab("progress");
+                  }}
+                  className="w-full bg-white hover:bg-gray-100 text-[#111111] py-2.5 rounded-full text-xs font-bold transition-all border border-black/10 active:scale-95"
+                >
+                  <span>Buka Pantau Laporan Saya</span>
                 </button>
               </div>
             </motion.div>

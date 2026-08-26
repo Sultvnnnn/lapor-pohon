@@ -18,9 +18,9 @@ interface TeamMember {
 export const TeamSection = () => {
   const team: TeamMember[] = [
     {
-      name: "Mayang Putri Mutiara",
-      role: "Frontend Developer",
-      image: "/assets/mayang.svg",
+      name: "Sultan Abdul Fatah",
+      role: "AI & System Engineer",
+      image: "/assets/sultan.svg",
       rotation: "-rotate-6",
       translate: "translate-y-4 sm:translate-y-6",
       zIndex: "z-10",
@@ -30,9 +30,9 @@ export const TeamSection = () => {
       },
     },
     {
-      name: "Sultan Abdul Fatah",
-      role: "AI & System Engineer",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=600&auto=format&fit=crop",
+      name: "Mayang Putri Mutiara",
+      role: "Frontend Developer",
+      image: "/assets/mayang.svg",
       rotation: "rotate-0",
       translate: "translate-y-0",
       zIndex: "z-20",
@@ -44,7 +44,7 @@ export const TeamSection = () => {
     {
       name: "Sahrul Solihin",
       role: "Fullstack Developer",
-      image: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=600&auto=format&fit=crop",
+      image: "/assets/sahrul.svg",
       rotation: "rotate-6",
       translate: "translate-y-6 sm:translate-y-8",
       zIndex: "z-10",
