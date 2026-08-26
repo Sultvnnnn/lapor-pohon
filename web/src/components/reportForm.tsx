@@ -545,7 +545,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
     const ctx = canvas.getContext("2d");
     if (ctx) {
-      if (zoomLevel > 1 && !hasHardwareZoom) {
+      if (zoomLevel > 1) {
         const vWidth = video.videoWidth || canvas.width;
         const vHeight = video.videoHeight || canvas.height;
         const sw = vWidth / zoomLevel;
