@@ -253,31 +253,8 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const viewfinderRef = useRef<HTMLDivElement>(null);
 
   const toggleFullscreen = () => {
-    setIsFullscreen((prev) => {
-      const nextState = !prev;
-      if (nextState) {
-        if (viewfinderRef.current?.requestFullscreen) {
-          viewfinderRef.current.requestFullscreen().catch(() => {});
-        }
-      } else {
-        if (document.fullscreenElement) {
-          document.exitFullscreen().catch(() => {});
-        }
-      }
-      return nextState;
-    });
+    setIsFullscreen((prev) => !prev);
   };
-
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      if (!document.fullscreenElement) {
-        setIsFullscreen(false);
-      }
-    };
-    document.addEventListener("fullscreenchange", handleFullscreenChange);
-    return () =>
-      document.removeEventListener("fullscreenchange", handleFullscreenChange);
-  }, []);
 
   const supabaseClient = createClient();
 
@@ -554,6 +531,11 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const capturePhoto = () => {
     if (!videoRef.current || !canvasRef.current) return;
     setIsCapturing(true);
+
+    // Auto exit Fullscreen Mode immediately when user captures a photo
+    if (isFullscreen) {
+      setIsFullscreen(false);
+    }
 
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -1030,19 +1012,21 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
                   {imagePreview ? (
                     /* Preview hasil potret dari kamera */
-                    <div className="relative rounded-2xl overflow-hidden bg-black/5 border border-black/10 max-h-80 flex flex-col items-center justify-center p-3">
-                      <img
-                        src={imagePreview}
-                        alt="Hasil Potret Pohon"
-                        className="max-h-72 object-contain rounded-xl shadow-xs"
-                      />
-                      <div className="flex items-center gap-2 mt-3">
+                    <div className="relative rounded-2xl overflow-hidden bg-black/5 border border-black/10 p-3 sm:p-4 flex flex-col items-center justify-center space-y-3">
+                      <div className="w-full flex items-center justify-center overflow-hidden rounded-xl bg-black/10">
+                        <img
+                          src={imagePreview}
+                          alt="Hasil Potret Pohon"
+                          className="max-h-72 sm:max-h-96 w-auto object-contain rounded-xl shadow-xs"
+                        />
+                      </div>
+                      <div className="flex items-center justify-center gap-2 pt-1">
                         <button
                           type="button"
                           onClick={handleRetakePhoto}
-                          className="flex items-center gap-1.5 bg-[#19382B] text-white px-4 py-2 rounded-full text-xs font-bold shadow-xs hover:bg-[#234A39] transition-all"
+                          className="flex items-center gap-1.5 bg-[#19382B] text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-xs hover:bg-[#234A39] transition-all active:scale-95 shrink-0"
                         >
-                          <ArrowCounterClockwise size={14} weight="bold" />
+                          <ArrowCounterClockwise size={15} weight="bold" />
                           <span>Potret Ulang Foto</span>
                         </button>
                       </div>
@@ -1116,7 +1100,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                         <div
                           className={`absolute left-0 right-0 flex flex-col items-center gap-2.5 z-20 px-4 pointer-events-none transition-all duration-200 ${
                             isFullscreen
-                              ? "bottom-12 sm:bottom-16 pb-6"
+                              ? "bottom-16 sm:bottom-20 pb-8"
                               : "bottom-4"
                           }`}
                         >
