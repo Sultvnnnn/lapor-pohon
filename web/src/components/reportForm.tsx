@@ -1113,7 +1113,13 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
                       {/* Redesigned Camera Action Bar: Zoom Badges + Shutter Bar */}
                       {isCameraActive && (
-                        <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center gap-2.5 z-20 px-4 pointer-events-none">
+                        <div
+                          className={`absolute left-0 right-0 flex flex-col items-center gap-2.5 z-20 px-4 pointer-events-none transition-all duration-200 ${
+                            isFullscreen
+                              ? "bottom-12 sm:bottom-16 pb-6"
+                              : "bottom-4"
+                          }`}
+                        >
                           {/* 1. Informasi Zoom Minimalis (Hanya Muncul Saat Kamera Di-Zoom > 1x) */}
                           <AnimatePresence>
                             {zoomLevel > 1 && (
