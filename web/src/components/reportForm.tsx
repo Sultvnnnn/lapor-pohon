@@ -20,6 +20,7 @@ import {
   Eye,
   X,
   Trash,
+  MapTrifold,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -27,6 +28,7 @@ import { reportSchema, ReportFormValues } from "@/lib/validations/reportSchema";
 import { uploadReportImage } from "@/lib/storageUtils";
 import { createClient } from "@/lib/supabase/client";
 import { TreeImageWithBoundingBox } from "@/components/TreeImageWithBoundingBox";
+import { LocationMapModal } from "@/components/dashboard/LocationMapModal";
 import { getRiskLevel, riskLevelConfig } from "@/lib/riskLevel";
 
 type BoundingBox = {
@@ -185,6 +187,8 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const [capturedFile, setCapturedFile] = useState<File | null>(null);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationSuccess, setLocationSuccess] = useState(false);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+  const [detectedAddress, setDetectedAddress] = useState<string>("");
 
   // Desktop Detection State
   const [isDesktop, setIsDesktop] = useState(false);
@@ -374,7 +378,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
     };
   }, [activeTab, isDesktop, imagePreview, submittedReport]);
 
-  // Auto-get Location
+  // Auto-get Location via Device GPS & Reverse Geocode
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
       alert("Fitur lokasi GPS tidak didukung oleh peramban kamu.");
@@ -385,13 +389,32 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
     setLocationSuccess(false);
 
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const lat = parseFloat(position.coords.latitude.toFixed(6));
         const lng = parseFloat(position.coords.longitude.toFixed(6));
 
         formLogic.setValue("latitude", lat as any);
         formLogic.setValue("longitude", lng as any);
         formLogic.trigger(["latitude", "longitude"]);
+
+        // Perform reverse geocoding via Nominatim
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`,
+            { headers: { "Accept-Language": "id,en" } }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.display_name) {
+              setDetectedAddress(data.display_name);
+            } else {
+              setDetectedAddress(`Lokasi GPS (${lat}, ${lng})`);
+            }
+          }
+        } catch (err) {
+          console.warn("[WARN] Reverse geocode failed:", err);
+          setDetectedAddress(`Lokasi GPS (${lat}, ${lng})`);
+        }
 
         setIsGettingLocation(false);
         setLocationSuccess(true);
@@ -405,6 +428,15 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
+  };
+
+  // Handler for Location selection from Interactive Leaflet Map Modal
+  const handleLocationSelectedFromMap = (lat: number, lng: number, addressStr: string) => {
+    formLogic.setValue("latitude", lat as any);
+    formLogic.setValue("longitude", lng as any);
+    formLogic.trigger(["latitude", "longitude"]);
+    setDetectedAddress(addressStr);
+    setLocationSuccess(true);
   };
 
   // Capture Photo from Camera Frame & Auto Get GPS Location
@@ -647,7 +679,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               Pemindai AI & LaporPohon
             </h2>
             <p className="text-[11px] sm:text-xs text-[#111111]/60">
-              Lakukan pemindaian kamera live via HP atau pantau perkembangan laporan kamu
+              Foto pohon rawan di sekitarmu atau cek status laporanmu di sini.
             </p>
           </div>
         </div>
@@ -667,7 +699,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
             }`}
           >
             <Camera size={16} weight="bold" />
-            <span>Pemindaian Kamera Live</span>
+            <span>Kamera</span>
           </button>
           <button
             type="button"
@@ -962,71 +994,82 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                 </div>
               )}
 
-              {/* Location Inputs & GPS Auto-detect */}
-              <div className="space-y-3">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
-                    <MapPin size={15} weight="bold" className="text-[#19382B]" />
-                    Koordinat Lokasi (GPS) <span className="text-red-500">*</span>
-                  </label>
+              {/* Location Selection & Map Picker (Ganti Input Manual Lat/Lng) */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
+                  <MapPin size={15} weight="bold" className="text-[#19382B]" />
+                  Titik Lokasi Pohon <span className="text-red-500">*</span>
+                </label>
 
-                  <button
-                    type="button"
-                    onClick={handleGetLocation}
-                    disabled={isGettingLocation}
-                    className="self-start sm:self-auto flex items-center gap-1.5 text-xs font-semibold text-[#19382B] hover:text-[#234A39] bg-[#ecefe6] hover:bg-[#e1e6d7] px-3.5 py-1.5 rounded-full transition-colors disabled:opacity-50 border border-black/5"
-                  >
-                    {isGettingLocation ? (
-                      <>
-                        <CircleNotch size={14} className="animate-spin text-[#19382B]" />
-                        <span>Mendeteksi GPS...</span>
-                      </>
-                    ) : locationSuccess ? (
-                      <>
-                        <CheckCircle size={14} weight="fill" className="text-green-600" />
-                        <span>Lokasi Terisi!</span>
-                      </>
-                    ) : (
-                      <>
-                        <MapPin size={14} weight="bold" />
-                        <span>Deteksi Lokasi Otomatis</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  <div>
-                    <input
-                      type="number"
-                      step="any"
-                      disabled={isDesktop}
-                      placeholder="Latitude (Contoh: -6.9932)"
-                      {...formLogic.register("latitude", { valueAsNumber: true })}
-                      className="w-full bg-[#f8f9f5] border border-black/8 rounded-full px-4 py-2.5 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#19382B] focus:bg-white transition-all text-[#111111] disabled:opacity-60 disabled:cursor-not-allowed"
-                    />
-                    {formLogic.formState.errors.latitude && (
-                      <p className="text-red-500 text-xs font-medium pt-1 pl-2">
-                        {formLogic.formState.errors.latitude.message}
+                <div className="bg-[#f8f9f5] border border-black/8 rounded-2xl p-4 space-y-3">
+                  {/* Address / Location Details Card */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="space-y-1 overflow-hidden">
+                      <div className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#111111]/50">
+                        <MapPin size={13} weight="fill" className="text-[#19382B] shrink-0" />
+                        <span>Alamat Terdeteksi</span>
+                      </div>
+                      <p className="text-xs sm:text-sm font-bold text-[#111111] leading-snug line-clamp-2">
+                        {detectedAddress ? (
+                          detectedAddress
+                        ) : formLogic.watch("latitude") && formLogic.watch("longitude") ? (
+                          `Titik Koordinat (${formLogic.watch("latitude")}, ${formLogic.watch("longitude")})`
+                        ) : (
+                          "Belum ada lokasi dipilih. Silakan klik Deteksi GPS Otomatis atau Pilih di Peta."
+                        )}
                       </p>
+                      {formLogic.watch("latitude") && formLogic.watch("longitude") && (
+                        <p className="text-[11px] font-semibold text-[#19382B]">
+                          GPS: {formLogic.watch("latitude")}, {formLogic.watch("longitude")}
+                        </p>
+                      )}
+                    </div>
+
+                    {locationSuccess && (
+                      <span className="inline-flex items-center gap-1 bg-green-500/10 text-green-700 border border-green-500/20 px-2.5 py-1 rounded-full text-[10px] font-extrabold shrink-0">
+                        <CheckCircle size={13} weight="fill" />
+                        Lokasi Terisi
+                      </span>
                     )}
                   </div>
 
-                  <div>
-                    <input
-                      type="number"
-                      step="any"
+                  {/* Dual Action Buttons: GPS Detect + Open Interactive Map Picker */}
+                  <div className="flex items-center gap-2 pt-1 flex-col sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={handleGetLocation}
+                      disabled={isGettingLocation || isDesktop}
+                      className="w-full sm:flex-1 bg-[#19382B] text-white hover:bg-[#234A39] py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50"
+                    >
+                      {isGettingLocation ? (
+                        <>
+                          <CircleNotch size={15} className="animate-spin text-white" />
+                          <span>Mendeteksi GPS...</span>
+                        </>
+                      ) : (
+                        <>
+                          <MapPin size={15} weight="bold" />
+                          <span>Deteksi GPS Otomatis</span>
+                        </>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsMapModalOpen(true)}
                       disabled={isDesktop}
-                      placeholder="Longitude (Contoh: 110.4203)"
-                      {...formLogic.register("longitude", { valueAsNumber: true })}
-                      className="w-full bg-[#f8f9f5] border border-black/8 rounded-full px-4 py-2.5 text-xs sm:text-sm font-medium focus:outline-none focus:border-[#19382B] focus:bg-white transition-all text-[#111111] disabled:opacity-60 disabled:cursor-not-allowed"
-                    />
-                    {formLogic.formState.errors.longitude && (
-                      <p className="text-red-500 text-xs font-medium pt-1 pl-2">
-                        {formLogic.formState.errors.longitude.message}
-                      </p>
-                    )}
+                      className="w-full sm:flex-1 bg-white text-[#111111] hover:bg-gray-100 border border-black/10 py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50"
+                    >
+                      <MapTrifold size={15} weight="bold" className="text-[#19382B]" />
+                      <span>Pilih / Ubah di Peta</span>
+                    </button>
                   </div>
+
+                  {(formLogic.formState.errors.latitude || formLogic.formState.errors.longitude) && (
+                    <p className="text-red-500 text-xs font-semibold pt-1">
+                      ⚠️ Silakan klik &apos;Deteksi GPS Otomatis&apos; atau &apos;Pilih di Peta&apos; untuk menentukan titik lokasi.
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1438,6 +1481,15 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Interactive Location Map Picker Modal (Leaflet / OpenStreetMap) */}
+      <LocationMapModal
+        isOpen={isMapModalOpen}
+        onClose={() => setIsMapModalOpen(false)}
+        initialLat={formLogic.watch("latitude") || -6.9932}
+        initialLng={formLogic.watch("longitude") || 110.4203}
+        onSelectLocation={handleLocationSelectedFromMap}
+      />
     </div>
   );
 };

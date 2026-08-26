@@ -19,6 +19,10 @@ export default async function DashboardPage() {
     .eq("id", user.id)
     .maybeSingle();
 
+  if (profile?.role === "admin") {
+    redirect("/admin");
+  }
+
   const { count, data } = await supabase
     .from("reports")
     .select("id", { count: "exact" })

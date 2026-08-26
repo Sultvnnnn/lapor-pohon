@@ -46,10 +46,40 @@ export const proxy = async (request: NextRequest) => {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (user && (pathname === "/" || pathname === "/login" || pathname === "/register")) {
-    const homeUrl = request.nextUrl.clone();
-    homeUrl.pathname = "/dashboard";
-    return NextResponse.redirect(homeUrl);
+  if (user) {
+    // Fetch profile role to handle Admin vs Regular user routing
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const isAdmin = profile?.role === "admin";
+    const defaultTarget = isAdmin ? "/admin" : "/dashboard";
+
+    if (pathname === "/login" || pathname === "/register") {
+      const homeUrl = request.nextUrl.clone();
+      homeUrl.pathname = defaultTarget;
+      return NextResponse.redirect(homeUrl);
+    }
+
+    if (pathname === "/") {
+      const fromDashboard =
+        request.nextUrl.searchParams.get("from") === "dashboard" ||
+        request.nextUrl.searchParams.get("from") === "admin" ||
+        request.nextUrl.searchParams.has("landing");
+      if (!fromDashboard) {
+        const homeUrl = request.nextUrl.clone();
+        homeUrl.pathname = defaultTarget;
+        return NextResponse.redirect(homeUrl);
+      }
+    }
+
+    if (isAdmin && pathname === "/dashboard") {
+      const adminUrl = request.nextUrl.clone();
+      adminUrl.pathname = "/admin";
+      return NextResponse.redirect(adminUrl);
+    }
   }
 
   return supabaseResponse;
