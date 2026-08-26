@@ -87,11 +87,30 @@ def run_inference(image_url: str) -> dict:
     main_idx = areas.index(max(areas))
     main_box = xywh_all[main_idx]
 
+    cx_px = float(main_box[0])
+    cy_px = float(main_box[1])
     box_width_px = float(main_box[2])
     box_height_px = float(main_box[3])
     avg_confidence = sum(confidences) / len(confidences)
 
-    metrics = calculate_all_metrics(box_width_px, box_height_px, image_width_px, image_height_px)
+    # Format data bounding box pohon utama
+    tree_bbox_data = {
+        "x_center": cx_px,
+        "y_center": cy_px,
+        "width_px": box_width_px,
+        "height_px": box_height_px
+    }
+
+    # (MOCK/Kosong sementara, menunggu calibration-api selesai)
+    mock_person_bboxes = []
+
+    # Panggil kalkulator dengan parameter baru
+    metrics = calculate_all_metrics(
+        tree_bbox=tree_bbox_data,
+        person_bboxes=mock_person_bboxes,
+        image_width_px=image_width_px,
+        image_height_px=image_height_px
+    )
 
     return {
         **metrics,
