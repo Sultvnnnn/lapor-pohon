@@ -36,7 +36,7 @@ export default async function ProtectedLayout({
       <DashboardSidebar userEmail={user.email} userRole={profile.role} />
 
       {/* Mobile Top Header (sticky on top-4, identical to landing page) */}
-      <div className="md:hidden w-full sticky top-4 z-50 pt-2 pb-1">
+      <div className="md:hidden w-full sticky top-4 z-30 pt-2 pb-1 mobile-header-wrapper">
         <DashboardNavbar userEmail={user.email} userRole={profile.role} />
       </div>
 

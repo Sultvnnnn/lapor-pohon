@@ -314,7 +314,7 @@ export const DashboardNavbar = ({
   };
 
   return (
-    <header className="sticky top-7 sm:top-4 z-50 w-full px-4 sm:px-6 flex flex-col items-center pointer-events-none font-sans md:hidden">
+    <header className="sticky top-7 sm:top-4 z-30 w-full px-4 sm:px-6 flex flex-col items-center pointer-events-none font-sans md:hidden">
       <nav className="pointer-events-auto w-full max-w-[1100px] bg-white/95 backdrop-blur-md border border-black/10 text-[#111111] rounded-full p-1.5 sm:p-2 pl-3 sm:pl-4 pr-2 sm:pr-2.5 flex items-center justify-between gap-2 transition-all shadow-sm">
         <Link
           href="/?from=dashboard"

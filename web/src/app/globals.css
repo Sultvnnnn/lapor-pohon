@@ -137,3 +137,11 @@ html {
     -moz-osx-font-smoothing: grayscale;
   }
 }
+
+/* Automatically hide mobile navbar header whenever any full screen overlay or modal is active */
+body:has(.fixed.inset-0) header.sticky,
+body:has(.z-\\[9999\\]) header.sticky,
+body.modal-open header.sticky,
+body.modal-open .mobile-header-wrapper {
+  display: none !important;
+}

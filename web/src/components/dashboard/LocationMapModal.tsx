@@ -66,6 +66,16 @@ export const LocationMapModal = ({
     }
   };
 
+  // Toggle body modal-open class to hide mobile header navbar completely when map modal is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add("modal-open");
+    } else {
+      document.body.classList.remove("modal-open");
+    }
+    return () => document.body.classList.remove("modal-open");
+  }, [isOpen]);
+
   // Synchronize state and map view whenever modal opens with updated initial location (from auto GPS detection)
   useEffect(() => {
     if (isOpen && initialLat && initialLng) {
@@ -253,7 +263,7 @@ export const LocationMapModal = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm font-sans">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm font-sans">
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 15 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}

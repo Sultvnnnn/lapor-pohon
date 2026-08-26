@@ -256,6 +256,15 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
     setIsFullscreen((prev) => !prev);
   };
 
+  useEffect(() => {
+    if (isFullscreen) {
+      document.body.classList.add("modal-open");
+    } else {
+      document.body.classList.remove("modal-open");
+    }
+    return () => document.body.classList.remove("modal-open");
+  }, [isFullscreen]);
+
   const supabaseClient = createClient();
 
   const formLogic = useForm<ReportFormValues>({
@@ -1035,7 +1044,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                       ref={viewfinderRef}
                       className={
                         isFullscreen
-                          ? "fixed inset-0 z-50 bg-black flex items-center justify-center p-0 m-0 overflow-hidden"
+                          ? "fixed inset-0 z-[9999] bg-black flex items-center justify-center p-0 m-0 overflow-hidden"
                           : "relative rounded-2xl overflow-hidden bg-black border-2 border-[#19382B] min-h-[280px] sm:min-h-[340px] flex items-center justify-center shadow-md"
                       }
                     >
@@ -1429,7 +1438,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       {/* ── Modal Alert Konfirmasi Pembatalan & Penghapusan Permanen Laporan ── */}
       <AnimatePresence>
         {deleteConfirmItem && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm font-sans">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm font-sans">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1511,7 +1520,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       {/* ── Modal Detail Inspeksi AI untuk Progress Item ── */}
       <AnimatePresence>
         {selectedHistoryItem && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
