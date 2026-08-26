@@ -21,6 +21,8 @@ import {
   X,
   Trash,
   MapTrifold,
+  MagnifyingGlassPlus,
+  MagnifyingGlassMinus,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -191,15 +193,8 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const [detectedAddress, setDetectedAddress] = useState<string>("");
 
   // Desktop Detection State
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window === "undefined") return false;
-    const ua = navigator.userAgent;
-    const isMobileUA =
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-    const isIPadOS = ua.includes("Macintosh") && navigator.maxTouchPoints > 0;
-    const isMobileData = (navigator as any).userAgentData?.mobile ?? false;
-    return !(isMobileUA || isIPadOS || isMobileData);
-  });
+  const [isMounted, setIsMounted] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
 
   // User Reports History
   const [reportHistory, setReportHistory] = useState<ReportHistoryItem[]>([]);
@@ -210,6 +205,55 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const [deleteConfirmItem, setDeleteConfirmItem] =
     useState<ReportHistoryItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Camera Live Shoot States & Refs
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  // Camera Zoom Controls States
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [minZoom, setMinZoom] = useState<number>(1);
+  const [maxZoom, setMaxZoom] = useState<number>(5);
+  const [zoomStep, setZoomStep] = useState<number>(0.5);
+  const [hasHardwareZoom, setHasHardwareZoom] = useState<boolean>(false);
+
+  const handleZoom = async (newZoom: number) => {
+    const clamped = Math.min(Math.max(newZoom, minZoom), maxZoom);
+    const rounded = Math.round(clamped * 10) / 10;
+    setZoomLevel(rounded);
+
+    if (streamRef.current) {
+      const track = streamRef.current.getVideoTracks()[0];
+      if (track && typeof track.getCapabilities === "function") {
+        const caps = track.getCapabilities() as any;
+        if (caps?.zoom) {
+          try {
+            await track.applyConstraints({
+              advanced: [{ zoom: rounded }] as any,
+            });
+          } catch (e) {
+            console.warn("[WARN] Hardware zoom applyConstraints exception:", e);
+          }
+        }
+      }
+    }
+  };
+
+  const handleZoomIn = () => handleZoom(zoomLevel + zoomStep);
+  const handleZoomOut = () => handleZoom(zoomLevel - zoomStep);
+
+  const supabaseClient = createClient();
+
+  const formLogic = useForm<ReportFormValues>({
+    resolver: zodResolver(reportSchema) as any,
+    defaultValues: {
+      description: "",
+    },
+  });
 
   // Permanent Delete Handler
   const handleDeleteReport = async () => {
@@ -246,25 +290,9 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
     }
   };
 
-  // Camera Live Shoot States & Refs
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isCameraActive, setIsCameraActive] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const [isCapturing, setIsCapturing] = useState(false);
-  const streamRef = useRef<MediaStream | null>(null);
-
-  const supabaseClient = createClient();
-
-  const formLogic = useForm<ReportFormValues>({
-    resolver: zodResolver(reportSchema) as any,
-    defaultValues: {
-      description: "",
-    },
-  });
-
   // Detect Desktop Device vs Mobile / Tablet
   useEffect(() => {
+    setIsMounted(true);
     const checkDevice = () => {
       const ua = navigator.userAgent;
       // 1. Standard Mobile & Tablet User Agent Regex
@@ -362,6 +390,25 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       }
 
       streamRef.current = stream;
+
+      // Check hardware camera zoom capabilities
+      const track = stream.getVideoTracks()[0];
+      if (track && typeof track.getCapabilities === "function") {
+        const caps = track.getCapabilities() as any;
+        if (caps?.zoom) {
+          setHasHardwareZoom(true);
+          if (caps.zoom.min) setMinZoom(caps.zoom.min);
+          if (caps.zoom.max) setMaxZoom(Math.min(caps.zoom.max, 10));
+          if (caps.zoom.step) setZoomStep(caps.zoom.step);
+        } else {
+          setHasHardwareZoom(false);
+          setMinZoom(1);
+          setMaxZoom(5);
+          setZoomStep(0.5);
+        }
+      }
+      setZoomLevel(1);
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         try {
@@ -396,6 +443,8 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
   // Manage Camera Life Cycle (Only for Mobile devices)
   useEffect(() => {
+    if (!isMounted) return;
+
     if (activeTab === "scan" && !isDesktop && !imagePreview && !submittedReport) {
       startCamera();
     } else {
@@ -405,7 +454,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
     return () => {
       stopCamera();
     };
-  }, [activeTab, isDesktop, imagePreview, submittedReport]);
+  }, [activeTab, isDesktop, imagePreview, submittedReport, isMounted]);
 
   // Auto-get Location via Device GPS & Reverse Geocode
   const handleGetLocation = () => {
@@ -481,7 +530,17 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
     const ctx = canvas.getContext("2d");
     if (ctx) {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      if (zoomLevel > 1 && !hasHardwareZoom) {
+        const vWidth = video.videoWidth || canvas.width;
+        const vHeight = video.videoHeight || canvas.height;
+        const sw = vWidth / zoomLevel;
+        const sh = vHeight / zoomLevel;
+        const sx = (vWidth - sw) / 2;
+        const sy = (vHeight - sh) / 2;
+        ctx.drawImage(video, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+      } else {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      }
       const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
       setImagePreview(dataUrl);
 
@@ -721,11 +780,10 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               setActiveTab("scan");
               if (imagePreview) setImagePreview(null);
             }}
-            className={`flex-1 py-2.5 rounded-full font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-              activeTab === "scan"
-                ? "bg-[#19382B] text-white shadow-xs"
-                : "text-[#111111]/60 hover:text-[#111111]"
-            }`}
+            className={`flex-1 py-2.5 rounded-full font-bold text-xs flex items-center justify-center gap-2 transition-all ${activeTab === "scan"
+              ? "bg-[#19382B] text-white shadow-xs"
+              : "text-[#111111]/60 hover:text-[#111111]"
+              }`}
           >
             <Camera size={16} weight="bold" />
             <span>Kamera</span>
@@ -736,11 +794,10 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               setActiveTab("progress");
               stopCamera();
             }}
-            className={`flex-1 py-2.5 rounded-full font-bold text-xs flex items-center justify-center gap-2 transition-all ${
-              activeTab === "progress"
-                ? "bg-[#19382B] text-white shadow-xs"
-                : "text-[#111111]/60 hover:text-[#111111]"
-            }`}
+            className={`flex-1 py-2.5 rounded-full font-bold text-xs flex items-center justify-center gap-2 transition-all ${activeTab === "progress"
+              ? "bg-[#19382B] text-white shadow-xs"
+              : "text-[#111111]/60 hover:text-[#111111]"
+              }`}
           >
             <ChartLineUp size={16} weight="bold" />
             <span>Laporan Saya</span>
@@ -964,7 +1021,11 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                         ref={videoRef}
                         playsInline
                         muted
-                        className="w-full h-full object-cover min-h-[280px] sm:min-h-[340px]"
+                        className="w-full h-full object-cover min-h-[280px] sm:min-h-[340px] transition-transform duration-150 ease-out"
+                        style={{
+                          transform: `scale(${zoomLevel})`,
+                          transformOrigin: "center center",
+                        }}
                       />
 
                       {/* Corner Target Reticles Overlay */}
@@ -977,12 +1038,6 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                           <span className="w-5 h-5 border-b-2 border-l-2 border-[#88d937] rounded-bl-md" />
                           <span className="w-5 h-5 border-b-2 border-r-2 border-[#88d937] rounded-br-md" />
                         </div>
-                      </div>
-
-                      {/* HUD Live Scanner Label */}
-                      <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full text-[11px] font-semibold text-white flex items-center gap-1.5 border border-white/10">
-                        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                        <span>KAMERA POHON LIVE</span>
                       </div>
 
                       {/* Camera Error / Permission Fallback */}
@@ -1000,22 +1055,65 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                         </div>
                       )}
 
-                      {/* Capture Button Bar */}
+                      {/* Redesigned Camera Action Bar: Zoom Badges + Shutter Bar */}
                       {isCameraActive && (
-                        <div className="absolute bottom-4 left-0 right-0 flex items-center justify-center z-10 px-4">
-                          <button
-                            type="button"
-                            onClick={capturePhoto}
-                            disabled={isCapturing}
-                            className="bg-[#19382B] hover:bg-[#234A39] text-white px-6 py-3 rounded-full text-xs font-bold transition-all shadow-lg flex items-center gap-2 border border-white/20 active:scale-95"
-                          >
-                            {isCapturing ? (
-                              <CircleNotch size={18} className="animate-spin text-[#88d937]" />
-                            ) : (
-                              <Camera size={18} weight="fill" className="text-[#88d937]" />
+                        <div className="absolute bottom-4 left-0 right-0 flex flex-col items-center gap-2.5 z-20 px-4 pointer-events-none">
+                          {/* 1. Informasi Zoom Minimalis (Hanya Muncul Saat Kamera Di-Zoom > 1x) */}
+                          <AnimatePresence>
+                            {zoomLevel > 1 && (
+                              <motion.div
+                                initial={{ opacity: 0, y: 4, scale: 0.95 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 4, scale: 0.95 }}
+                                transition={{ duration: 0.15 }}
+                                className="pointer-events-auto bg-black/60 backdrop-blur-md px-2.5 py-0.5 rounded-full border border-white/15 text-white shadow-md"
+                              >
+                                <span className="text-[11px] font-bold tracking-tight text-white/95">
+                                  {zoomLevel.toFixed(1)}x
+                                </span>
+                              </motion.div>
                             )}
-                            <span>Potret Pohon Sekarang</span>
-                          </button>
+                          </AnimatePresence>
+
+                          {/* 2. Bar Tombol Utama: Zoom (-) di Kiri | Shutter Bulat di Tengah | Zoom (+) di Kanan */}
+                          <div className="w-full max-w-xs flex items-center justify-between pointer-events-auto px-2">
+                            {/* Icon Kaca Pembesar (-) di Kiri */}
+                            <button
+                              type="button"
+                              onClick={handleZoomOut}
+                              disabled={zoomLevel <= minZoom}
+                              className="w-11 h-11 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/25 text-white flex items-center justify-center transition-all active:scale-90 disabled:opacity-30 shadow-md"
+                              title="Zoom Out (-)"
+                            >
+                              <MagnifyingGlassMinus size={20} weight="bold" />
+                            </button>
+
+                            {/* Tombol Kamera Bulat Besar di Tengah (Shutter Button) */}
+                            <button
+                              type="button"
+                              onClick={capturePhoto}
+                              disabled={isCapturing}
+                              className="w-16 h-16 rounded-full bg-white border-4 border-white/40 shadow-2xl flex items-center justify-center active:scale-90 transition-all hover:scale-105 shrink-0"
+                              title="Potret Pohon"
+                            >
+                              {isCapturing ? (
+                                <CircleNotch size={26} className="animate-spin text-[#19382B]" />
+                              ) : (
+                                <div className="w-12 h-12 rounded-full bg-white border-2 border-black/15 shadow-inner" />
+                              )}
+                            </button>
+
+                            {/* Icon Kaca Pembesar (+) di Kanan */}
+                            <button
+                              type="button"
+                              onClick={handleZoomIn}
+                              disabled={zoomLevel >= maxZoom}
+                              className="w-11 h-11 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur-md border border-white/25 text-white flex items-center justify-center transition-all active:scale-90 disabled:opacity-30 shadow-md"
+                              title="Zoom In (+)"
+                            >
+                              <MagnifyingGlassPlus size={20} weight="bold" />
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1127,11 +1225,10 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               <button
                 type="submit"
                 disabled={isSubmitting || isDesktop}
-                className={`w-full py-3.5 px-6 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 group active:scale-[0.99] ${
-                  isDesktop
-                    ? "bg-gray-300 text-gray-600 cursor-not-allowed shadow-none"
-                    : "bg-[#19382B] hover:bg-[#234A39] text-white hover:shadow-lg disabled:opacity-60"
-                }`}
+                className={`w-full py-3.5 px-6 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 group active:scale-[0.99] ${isDesktop
+                  ? "bg-gray-300 text-gray-600 cursor-not-allowed shadow-none"
+                  : "bg-[#19382B] hover:bg-[#234A39] text-white hover:shadow-lg disabled:opacity-60"
+                  }`}
               >
                 {isDesktop ? (
                   <>

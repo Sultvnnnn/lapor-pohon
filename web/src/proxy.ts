@@ -4,7 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 // page yg bisa diakses tanpa login
 const PUBLIC_PATHS = ["/", "/login", "/register", "/auth/callback"];
 
-export const proxy = async (request: NextRequest) => {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -90,3 +90,5 @@ export const config = {
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
+
+export default proxy;
