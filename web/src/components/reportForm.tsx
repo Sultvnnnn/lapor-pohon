@@ -1011,25 +1011,23 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   </div>
 
                   {imagePreview ? (
-                    /* Preview hasil potret dari kamera */
-                    <div className="relative rounded-2xl overflow-hidden bg-black/5 border border-black/10 p-3 sm:p-4 flex flex-col items-center justify-center space-y-3">
-                      <div className="w-full flex items-center justify-center overflow-hidden rounded-xl bg-black/10">
+                    /* Preview hasil potret dari kamera (Clean & Borderless) */
+                    <div className="relative flex flex-col items-center justify-center space-y-3 py-1">
+                      <div className="w-full flex items-center justify-center overflow-hidden rounded-2xl">
                         <img
                           src={imagePreview}
                           alt="Hasil Potret Pohon"
-                          className="max-h-72 sm:max-h-96 w-auto object-contain rounded-xl shadow-xs"
+                          className="max-h-72 sm:max-h-96 w-auto object-contain rounded-2xl shadow-md border border-black/10"
                         />
                       </div>
-                      <div className="flex items-center justify-center gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={handleRetakePhoto}
-                          className="flex items-center gap-1.5 bg-[#19382B] text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-xs hover:bg-[#234A39] transition-all active:scale-95 shrink-0"
-                        >
-                          <ArrowCounterClockwise size={15} weight="bold" />
-                          <span>Potret Ulang Foto</span>
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRetakePhoto}
+                        className="flex items-center gap-1.5 bg-[#19382B] text-white px-5 py-2.5 rounded-full text-xs font-bold shadow-xs hover:bg-[#234A39] transition-all active:scale-95 shrink-0"
+                      >
+                        <ArrowCounterClockwise size={15} weight="bold" />
+                        <span>Potret Ulang Foto</span>
+                      </button>
                     </div>
                   ) : (
                     /* Jendela Bidik Kamera Live (Scanner Viewfinder) */

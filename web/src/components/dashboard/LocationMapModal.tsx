@@ -66,6 +66,36 @@ export const LocationMapModal = ({
     }
   };
 
+  // Synchronize state and map view whenever modal opens with updated initial location (from auto GPS detection)
+  useEffect(() => {
+    if (isOpen && initialLat && initialLng) {
+      setSelectedLat(initialLat);
+      setSelectedLng(initialLng);
+      fetchAddress(initialLat, initialLng);
+    }
+  }, [isOpen, initialLat, initialLng]);
+
+  // Invalidate Leaflet map size after Framer Motion modal animation finishes
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const timer = setTimeout(() => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.invalidateSize();
+        const targetLat = selectedLat || initialLat;
+        const targetLng = selectedLng || initialLng;
+        if (targetLat && targetLng) {
+          mapInstanceRef.current.setView([targetLat, targetLng], 16);
+          if (markerInstanceRef.current) {
+            markerInstanceRef.current.setLatLng([targetLat, targetLng]);
+          }
+        }
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [isOpen, selectedLat, selectedLng, initialLat, initialLng]);
+
   // Initialize Leaflet Map dynamically on client side
   useEffect(() => {
     if (!isOpen || !mapContainerRef.current) return;
@@ -91,53 +121,62 @@ export const LocationMapModal = ({
         iconAnchor: [20, 40],
       });
 
-      if (!mapInstanceRef.current) {
-        const map = L.map(mapContainerRef.current, {
-          zoomControl: false,
-        }).setView([currentLat, currentLng], 16);
-
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-          maxZoom: 19,
-        }).addTo(map);
-
-        L.control.zoom({ position: "topright" }).addTo(map);
-
-        const marker = L.marker([currentLat, currentLng], {
-          draggable: true,
-          icon: customPinIcon,
-        }).addTo(map);
-
-        marker.on("dragend", (e: any) => {
-          const latlng = e.target.getLatLng();
-          const newLat = parseFloat(latlng.lat.toFixed(6));
-          const newLng = parseFloat(latlng.lng.toFixed(6));
-          setSelectedLat(newLat);
-          setSelectedLng(newLng);
-          fetchAddress(newLat, newLng);
-        });
-
-        map.on("click", (e: any) => {
-          const newLat = parseFloat(e.latlng.lat.toFixed(6));
-          const newLng = parseFloat(e.latlng.lng.toFixed(6));
-          marker.setLatLng([newLat, newLng]);
-          setSelectedLat(newLat);
-          setSelectedLng(newLng);
-          fetchAddress(newLat, newLng);
-        });
-
-        mapInstanceRef.current = map;
-        markerInstanceRef.current = marker;
-
-        fetchAddress(currentLat, currentLng);
-      } else {
-        mapInstanceRef.current.invalidateSize();
-        mapInstanceRef.current.setView([currentLat, currentLng], 16);
-        if (markerInstanceRef.current) {
-          markerInstanceRef.current.setLatLng([currentLat, currentLng]);
+      // Always clean up any existing stale map instance before creating a new map
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.remove();
+        } catch (e) {
+          // ignore cleanup error
         }
-        fetchAddress(currentLat, currentLng);
+        mapInstanceRef.current = null;
+        markerInstanceRef.current = null;
       }
+
+      const map = L.map(mapContainerRef.current, {
+        zoomControl: false,
+      }).setView([currentLat, currentLng], 16);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        maxZoom: 19,
+      }).addTo(map);
+
+      L.control.zoom({ position: "topright" }).addTo(map);
+
+      const marker = L.marker([currentLat, currentLng], {
+        draggable: true,
+        icon: customPinIcon,
+      }).addTo(map);
+
+      marker.on("dragend", (e: any) => {
+        const latlng = e.target.getLatLng();
+        const newLat = parseFloat(latlng.lat.toFixed(6));
+        const newLng = parseFloat(latlng.lng.toFixed(6));
+        setSelectedLat(newLat);
+        setSelectedLng(newLng);
+        fetchAddress(newLat, newLng);
+      });
+
+      map.on("click", (e: any) => {
+        const newLat = parseFloat(e.latlng.lat.toFixed(6));
+        const newLng = parseFloat(e.latlng.lng.toFixed(6));
+        marker.setLatLng([newLat, newLng]);
+        setSelectedLat(newLat);
+        setSelectedLng(newLng);
+        fetchAddress(newLat, newLng);
+      });
+
+      mapInstanceRef.current = map;
+      markerInstanceRef.current = marker;
+
+      fetchAddress(currentLat, currentLng);
+
+      // Force size recalculation after modal animation finishes
+      setTimeout(() => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.invalidateSize();
+        }
+      }, 300);
     };
 
     initMap();
@@ -147,15 +186,31 @@ export const LocationMapModal = ({
     };
   }, [isOpen]);
 
-  // Clean up Leaflet instance when modal unmounts
+  // Clean up Leaflet map instance whenever modal closes or unmounts
   useEffect(() => {
+    if (!isOpen) {
+      if (mapInstanceRef.current) {
+        try {
+          mapInstanceRef.current.remove();
+        } catch (e) {
+          // ignore
+        }
+        mapInstanceRef.current = null;
+        markerInstanceRef.current = null;
+      }
+    }
     return () => {
       if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
+        try {
+          mapInstanceRef.current.remove();
+        } catch (e) {
+          // ignore
+        }
         mapInstanceRef.current = null;
+        markerInstanceRef.current = null;
       }
     };
-  }, []);
+  }, [isOpen]);
 
   // GPS Location button inside map
   const handleGPSDetect = () => {
@@ -265,7 +320,7 @@ export const LocationMapModal = ({
                     Alamat Terdeteksi
                   </span>
                   <span>
-                    Lat: {selectedLat.toFixed(5)} | Lng: {selectedLng.toFixed(5)}
+                    Lat: {selectedLat.toFixed(6)} | Lng: {selectedLng.toFixed(6)}
                   </span>
                 </div>
                 <p className="text-xs text-[#111111] font-semibold leading-relaxed line-clamp-2">
