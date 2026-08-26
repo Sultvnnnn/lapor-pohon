@@ -23,6 +23,8 @@ import {
   MapTrifold,
   MagnifyingGlassPlus,
   MagnifyingGlassMinus,
+  ArrowsOut,
+  ArrowsIn,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -245,6 +247,37 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
   const handleZoomIn = () => handleZoom(zoomLevel + zoomStep);
   const handleZoomOut = () => handleZoom(zoomLevel - zoomStep);
+
+  // Camera Fullscreen Mode State & Handlers
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const viewfinderRef = useRef<HTMLDivElement>(null);
+
+  const toggleFullscreen = () => {
+    setIsFullscreen((prev) => {
+      const nextState = !prev;
+      if (nextState) {
+        if (viewfinderRef.current?.requestFullscreen) {
+          viewfinderRef.current.requestFullscreen().catch(() => {});
+        }
+      } else {
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+      return nextState;
+    });
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement) {
+        setIsFullscreen(false);
+      }
+    };
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+    return () =>
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+  }, []);
 
   const supabaseClient = createClient();
 
@@ -1016,7 +1049,14 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                     </div>
                   ) : (
                     /* Jendela Bidik Kamera Live (Scanner Viewfinder) */
-                    <div className="relative rounded-2xl overflow-hidden bg-black border-2 border-[#19382B] min-h-[280px] sm:min-h-[340px] flex items-center justify-center shadow-md">
+                    <div
+                      ref={viewfinderRef}
+                      className={
+                        isFullscreen
+                          ? "fixed inset-0 z-50 bg-black flex items-center justify-center p-0 m-0 overflow-hidden"
+                          : "relative rounded-2xl overflow-hidden bg-black border-2 border-[#19382B] min-h-[280px] sm:min-h-[340px] flex items-center justify-center shadow-md"
+                      }
+                    >
                       <video
                         ref={videoRef}
                         playsInline
@@ -1027,6 +1067,22 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                           transformOrigin: "center center",
                         }}
                       />
+
+                      {/* Tombol Fullscreen / Exit Fullscreen (Di Kanan Atas Viewfinder) */}
+                      {isCameraActive && (
+                        <button
+                          type="button"
+                          onClick={toggleFullscreen}
+                          className="absolute top-3 right-3 bg-black/60 hover:bg-black/80 backdrop-blur-md text-white p-2.5 rounded-full border border-white/20 shadow-lg z-30 active:scale-90 transition-all flex items-center justify-center"
+                          title={isFullscreen ? "Keluar Layar Penuh" : "Kamera Layar Penuh"}
+                        >
+                          {isFullscreen ? (
+                            <ArrowsIn size={18} weight="bold" />
+                          ) : (
+                            <ArrowsOut size={18} weight="bold" />
+                          )}
+                        </button>
+                      )}
 
                       {/* Corner Target Reticles Overlay */}
                       <div className="absolute inset-4 pointer-events-none border border-white/20 rounded-xl flex flex-col justify-between p-2">
