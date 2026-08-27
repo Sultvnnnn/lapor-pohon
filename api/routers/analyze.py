@@ -14,9 +14,9 @@ router = APIRouter()
 @router.post("/analyze", response_model=AnalyzeResponse)
 async def analyze_tree(
     request: ReportRequest,
-    #user: dict = Depends(verify_token),
+    user: dict = Depends(verify_token),
 ):
-    #print(f"[INFO] Permintaan dari user: {user.get('sub')}")
+    print(f"[INFO] Permintaan dari user: {user.get('sub')}")
     print(f"[INFO] Menerima permintaan analisis. Tautan gambar: {request.image_url}")
     print(f"[INFO] Lokasi laporan: ({request.latitude}, {request.longitude})")
     
