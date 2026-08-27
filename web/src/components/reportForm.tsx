@@ -26,6 +26,8 @@ import {
   ArrowsOut,
   ArrowsIn,
   ArrowRight,
+  Calendar,
+  NotePencil,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -66,6 +68,9 @@ type ReportHistoryItem = {
   biomass_estimate: number;
   bounding_box: BoundingBox[] | null;
   status: "pending" | "in_progress" | "resolved" | string;
+  admin_note?: string;
+  proof_image_url?: string;
+  scheduled_at?: string;
 };
 
 const formatLocationDisplay = (location: any): string => {
@@ -112,48 +117,25 @@ export const getReportStatusConfig = (statusRaw?: string) => {
   // 1. Pending variations
   if (s === "pending" || s === "menunggu" || s === "draft" || s === "unverified") {
     return {
-      label: "Menunggu Verifikasi",
-      bg: "bg-amber-500/10",
-      text: "text-amber-700",
-      border: "border-amber-500/20",
+      label: "🔴 Menunggu Verifikasi",
+      bg: "bg-[#111111]/5",
+      text: "text-[#111111]/70",
+      border: "border-black/10",
       isPending: true,
     };
   }
 
-  // 2. Verified variations
+  // 2. Terverifikasi DLH
   if (
+    s === "terverifikasi dlh" ||
     s === "verified" ||
     s === "terverifikasi" ||
     s === "verifikasi" ||
     s === "diverifikasi" ||
-    s === "approved" ||
-    s === "valid" ||
-    s === "verified_dlh" ||
-    s.includes("verif") ||
-    s.includes("ok") ||
-    s.includes("acc")
+    s.includes("verif")
   ) {
     return {
-      label: "✅ Terverifikasi DLH",
-      bg: "bg-emerald-500/10",
-      text: "text-emerald-700",
-      border: "border-emerald-500/20",
-      isPending: false,
-    };
-  }
-
-  // 3. In Progress variations
-  if (
-    s === "in_progress" ||
-    s === "progress" ||
-    s === "proses" ||
-    s === "diproses" ||
-    s === "tindak_lanjut" ||
-    s === "penanganan" ||
-    s.includes("proses")
-  ) {
-    return {
-      label: "Dalam Penanganan DLH",
+      label: "🔵 Terverifikasi DLH",
       bg: "bg-blue-500/10",
       text: "text-blue-700",
       border: "border-blue-500/20",
@@ -161,26 +143,91 @@ export const getReportStatusConfig = (statusRaw?: string) => {
     };
   }
 
-  // 4. Resolved / Completed variations
+  // 3. Proses Survei Lapangan
   if (
-    s === "resolved" ||
-    s === "completed" ||
-    s === "selesai" ||
-    s === "sirkular" ||
-    s.includes("selesai")
+    s === "proses survei lapangan" ||
+    s.includes("survei") ||
+    s.includes("survey")
   ) {
     return {
-      label: "♻️ Pemanfaatan Sirkular Selesai",
-      bg: "bg-[#88d937]/20",
-      text: "text-[#19382B]",
-      border: "border-[#88d937]/40",
+      label: "🟣 Proses Survei Lapangan",
+      bg: "bg-purple-500/10",
+      text: "text-purple-700",
+      border: "border-purple-500/20",
+      isPending: false,
+    };
+  }
+
+  // 4. Penjadwalan Pemangkasan
+  if (
+    s === "penjadwalan pemangkasan" ||
+    s.includes("jadwal") ||
+    s.includes("penjadwalan") ||
+    s.includes("scheduled")
+  ) {
+    return {
+      label: "🟡 Penjadwalan Pemangkasan",
+      bg: "bg-amber-500/10",
+      text: "text-amber-800",
+      border: "border-amber-500/20",
+      isPending: false,
+    };
+  }
+
+  // 5. Sedang Ditangani Lapangan
+  if (
+    s === "sedang ditangani lapangan" ||
+    s === "in_progress" ||
+    s === "progress" ||
+    s.includes("ditangani") ||
+    s.includes("penanganan")
+  ) {
+    return {
+      label: "🟠 Sedang Ditangani Lapangan",
+      bg: "bg-orange-500/10",
+      text: "text-orange-700",
+      border: "border-orange-500/20",
+      isPending: false,
+    };
+  }
+
+  // 6. Selesai Penanganan
+  if (
+    s === "selesai penanganan" ||
+    s === "selesai" ||
+    s === "resolved" ||
+    s === "completed" ||
+    s.includes("selesai") ||
+    s.includes("sirkular")
+  ) {
+    return {
+      label: "🟢 Selesai Penanganan",
+      bg: "bg-emerald-500/15",
+      text: "text-emerald-800",
+      border: "border-emerald-500/30",
+      isPending: false,
+    };
+  }
+
+  // 7. Ditolak / Laporan Tidak Valid
+  if (
+    s.includes("ditolak") ||
+    s.includes("rejected") ||
+    s.includes("invalid") ||
+    s.includes("batal")
+  ) {
+    return {
+      label: "🔴 Ditolak / Tidak Valid",
+      bg: "bg-red-500/10",
+      text: "text-red-700",
+      border: "border-red-500/20",
       isPending: false,
     };
   }
 
   // Fallback for custom status: Display actual status text dynamically
   return {
-    label: `✅ ${statusRaw}`,
+    label: `📌 ${statusRaw}`,
     bg: "bg-emerald-500/10",
     text: "text-emerald-700",
     border: "border-emerald-500/20",
@@ -1780,11 +1827,60 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               {selectedHistoryItem.description && (
                 <div className="bg-[#f8f9f5] border border-black/5 p-3.5 rounded-2xl space-y-1">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">
-                    Catatan Pelapor
+                    Catatan Pelapor (Warga)
                   </p>
                   <p className="text-xs text-[#111111] font-medium leading-relaxed">
                     {selectedHistoryItem.description}
                   </p>
+                </div>
+              )}
+
+              {/* Jadwal Penanganan Pemangkasan (Jika Ada) */}
+              {selectedHistoryItem.scheduled_at && (
+                <div className="bg-amber-50/90 border border-amber-300 p-3.5 rounded-2xl space-y-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                    <Calendar size={14} weight="bold" className="text-amber-700" />
+                    Jadwal Penanganan Pemangkasan DLH:
+                  </p>
+                  <p className="text-xs font-extrabold text-amber-950">
+                    {new Date(selectedHistoryItem.scheduled_at).toLocaleString("id-ID", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })} WIB
+                  </p>
+                </div>
+              )}
+
+              {/* Catatan / Instruksi Petugas DLH */}
+              {selectedHistoryItem.admin_note && (
+                <div className="bg-[#19382B]/5 border border-[#19382B]/15 p-3.5 rounded-2xl space-y-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#19382B] flex items-center gap-1.5">
+                    <NotePencil size={14} weight="bold" />
+                    Catatan Resmi Dinas LH:
+                  </p>
+                  <p className="text-xs font-semibold text-[#111111] leading-relaxed">
+                    {selectedHistoryItem.admin_note}
+                  </p>
+                </div>
+              )}
+
+              {/* Foto Bukti Penanganan Selesai (Jika Ada) */}
+              {selectedHistoryItem.proof_image_url && (
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                    <CheckCircle size={15} weight="fill" className="text-emerald-600" />
+                    Foto Bukti Selesai Penanganan
+                  </p>
+                  <div className="rounded-2xl overflow-hidden border-2 border-emerald-500/30 shadow-xs">
+                    <img
+                      src={selectedHistoryItem.proof_image_url}
+                      alt="Foto Bukti Selesai Penanganan DLH"
+                      className="w-full h-44 object-cover"
+                    />
+                  </div>
                 </div>
               )}
 
