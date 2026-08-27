@@ -270,20 +270,39 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   // Loading Animation Message Index & Success Alert States
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState(0);
 
-  // Cycle loading messages sequentially every 2.5 seconds during photo analysis
+  // Cycle loading messages & calculate progress sequentially during photo analysis
   useEffect(() => {
     if (!isSubmitting) {
       setLoadingMessageIndex(0);
+      setSubmitProgress(0);
       return;
+    }
+
+    if (submitStep === "uploading") {
+      setSubmitProgress((prev) => Math.max(prev, 15));
+    } else if (submitStep === "saving") {
+      setSubmitProgress((prev) => Math.max(prev, 90));
     }
 
     const interval = setInterval(() => {
       setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
-    }, 2200);
+
+      setSubmitProgress((prev) => {
+        if (submitStep === "uploading") {
+          return Math.min(prev + 5, 30);
+        } else if (submitStep === "analyzing") {
+          return prev < 88 ? prev + 2 : prev;
+        } else if (submitStep === "saving") {
+          return prev < 98 ? prev + 1 : 98;
+        }
+        return prev;
+      });
+    }, 350);
 
     return () => clearInterval(interval);
-  }, [isSubmitting]);
+  }, [isSubmitting, submitStep]);
 
   useEffect(() => {
     if (isFullscreen || showSuccessAlert) {
@@ -789,6 +808,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       // Automatically refresh history for Tab 2 and parent Dashboard count
       fetchReportHistory();
       onReportSubmitted?.();
+      setSubmitProgress(100);
       // Show Success Alert Pop-up Modal!
       setShowSuccessAlert(true);
     } catch (error) {
@@ -1381,32 +1401,59 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                 )}
               </div>
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting || isDesktop}
-                className={`w-full py-3.5 px-6 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 group active:scale-[0.99] ${isDesktop
-                  ? "bg-gray-300 text-gray-600 cursor-not-allowed shadow-none"
-                  : "bg-[#19382B] hover:bg-[#234A39] text-white hover:shadow-lg disabled:opacity-60"
-                  }`}
-              >
+              {/* Submit Button / Progress Bar (Matching Design Reference) */}
+              <AnimatePresence mode="wait">
                 {isDesktop ? (
-                  <>
+                  <motion.div
+                    key="desktop-disabled"
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    className="w-full py-3.5 px-6 rounded-full text-xs sm:text-sm font-bold bg-gray-300 text-gray-600 cursor-not-allowed flex items-center justify-center gap-2"
+                  >
                     <DeviceMobile size={18} weight="bold" />
                     <span>Pelaporan Hanya Melalui Perangkat Mobile (HP)</span>
-                  </>
+                  </motion.div>
                 ) : isSubmitting ? (
-                  <>
-                    <CircleNotch size={18} className="animate-spin text-[#88d937]" />
-                    <span>{submitStepLabels[submitStep]}</span>
-                  </>
+                  <motion.div
+                    key="submitting-progress"
+                    initial={{ opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.97 }}
+                    transition={{ duration: 0.2 }}
+                    className="w-full bg-white border border-black/10 rounded-full py-3.5 px-6 shadow-md flex items-center justify-center font-sans h-[52px]"
+                  >
+                    {/* Outer Progress Pill Track */}
+                    <div className="w-full h-2.5 sm:h-3 bg-[#d1dabe]/35 rounded-full relative flex items-center overflow-visible border border-black/5">
+                      {/* Progress Trail: Hijau Muda (#d1dabe) at start -> Deep Green (#19382b) at end */}
+                      <div
+                        className="h-full bg-gradient-to-r from-[#d1dabe] via-[#5c7c56] to-[#19382b] rounded-full transition-all duration-300 ease-out shadow-xs"
+                        style={{ width: `${Math.max(submitProgress, 4)}%` }}
+                      />
+
+                      {/* Standalone Tree Icon Moving Along Track */}
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-300 ease-out z-20 pointer-events-none flex items-center justify-center"
+                        style={{ left: `${Math.min(Math.max(submitProgress, 4), 96)}%` }}
+                      >
+                        <Tree size={24} weight="fill" className="text-[#19382b] drop-shadow-md" />
+                      </div>
+                    </div>
+                  </motion.div>
                 ) : (
-                  <>
+                  <motion.button
+                    key="submit-idle"
+                    type="submit"
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    className="w-full py-3.5 px-6 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 group active:scale-[0.99] bg-[#19382B] hover:bg-[#234A39] text-white hover:shadow-lg"
+                  >
                     <Sparkle size={18} weight="fill" className="text-[#88d937]" />
                     <span>Kirim & Analisis Risiko Pohon</span>
-                  </>
+                  </motion.button>
                 )}
-              </button>
+              </AnimatePresence>
             </form>
           )
         )}
