@@ -741,7 +741,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       } = await supabaseClient.auth.getSession();
 
       const token = session?.access_token || "";
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://lapor-pohon.onrender.com";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://lapor-pohon-api-37a8088cbfaf.herokuapp.com";
 
       let aiData: any = null;
       try {
