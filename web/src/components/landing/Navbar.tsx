@@ -110,9 +110,8 @@ export const Navbar = () => {
   };
 
   return (
-    <header className="sticky top-7 sm:top-4 z-50 w-full px-4 sm:px-6 flex flex-col items-center pointer-events-none font-sans">
+    <header className="sticky top-7 sm:top-4 z-50 w-full px-4 sm:px-6 flex flex-col items-center pointer-events-none font-sans relative">
       <nav className="pointer-events-auto w-full max-w-[960px] bg-[#ecefe6]/90 backdrop-blur-md border border-black/10 text-[#111111] rounded-full p-1.5 sm:p-2 pl-2.5 sm:pl-3.5 pr-2 sm:pr-2.5 flex items-center justify-between gap-2 sm:gap-4 transition-all">
-
         {/* Left: Brand Logo & Title */}
         <Link href="/" className="flex items-center gap-2.5 group shrink-0">
           <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-[#19382B] text-white flex items-center justify-center group-hover:scale-105 transition-transform">
@@ -196,7 +195,7 @@ export const Navbar = () => {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.98 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="pointer-events-auto mt-2 w-full max-w-[960px] bg-[#ecefe6]/95 backdrop-blur-xl border border-black/10 text-[#111111] rounded-3xl p-4 flex flex-col gap-2 shadow-2xl md:hidden"
+            className="pointer-events-auto absolute top-full left-4 right-4 mt-2 max-w-[960px] mx-auto bg-[#ecefe6]/95 backdrop-blur-xl border border-black/10 text-[#111111] rounded-3xl p-4 flex flex-col gap-2 shadow-2xl md:hidden z-50"
           >
             {/* Section links list */}
             <div className="flex flex-col gap-1">
