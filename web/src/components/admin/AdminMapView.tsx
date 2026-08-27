@@ -2,11 +2,13 @@
 
 import { useEffect, useRef } from "react";
 import { Tree, ShieldWarning, MapPin } from "@phosphor-icons/react";
+import { parseCoordinates } from "./AdminDashboardClient";
 
 type ReportItem = {
   id: string;
   latitude: number;
   longitude: number;
+  location?: any;
   risk_score: number;
   canopy_volume: number;
   image_url?: string;
@@ -35,17 +37,20 @@ export const AdminMapView = ({ reports, onSelectReport }: AdminMapViewProps) => 
 
       if (!isMounted || !mapContainerRef.current) return;
 
-      // Default center: Semarang or average of report locations
+      // Parse coordinates for all reports
+      const mappedReports = reports
+        .map((r) => {
+          const coords = parseCoordinates(r);
+          return coords ? { ...r, latitude: coords.lat, longitude: coords.lng } : null;
+        })
+        .filter((r): r is ReportItem => r !== null);
+
       let defaultLat = -6.9932;
       let defaultLng = 110.4203;
 
-      const validReports = reports.filter(
-        (r) => typeof r.latitude === "number" && typeof r.longitude === "number"
-      );
-
-      if (validReports.length > 0) {
-        defaultLat = validReports[0].latitude;
-        defaultLng = validReports[0].longitude;
+      if (mappedReports.length > 0) {
+        defaultLat = mappedReports[0].latitude;
+        defaultLng = mappedReports[0].longitude;
       }
 
       if (!mapInstanceRef.current) {
@@ -73,7 +78,7 @@ export const AdminMapView = ({ reports, onSelectReport }: AdminMapViewProps) => 
       });
 
       // Add marker per report
-      validReports.forEach((report) => {
+      mappedReports.forEach((report) => {
         const rawRisk = typeof report.risk_score === "number" ? report.risk_score : 0;
         const risk = rawRisk <= 1 ? Math.round(rawRisk * 100) : Math.round(rawRisk);
         
