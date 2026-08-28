@@ -794,60 +794,65 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
         data: { user },
       } = await supabaseClient.auth.getUser();
 
-      const basePayload: any = {
-        image_url: imageUrl,
-        description: data.description || "Laporan Pohon Rawan Tumbang",
-        location: `POINT(${data.longitude} ${data.latitude})`,
-        risk_score: aiData.risk_score || 0,
-        canopy_volume: aiData.canopy_volume || 0,
-        biomass_estimate: aiData.biomass_estimate || 0,
-        bounding_box: aiData.bounding_boxes || [],
-        status: "pending",
-      };
+        const combinedBoundingBoxes = [
+          ...(Array.isArray(aiData.bounding_boxes) ? aiData.bounding_boxes : []),
+          ...(Array.isArray(aiData.person_boxes) ? aiData.person_boxes : []),
+        ];
 
-      if (user?.id) {
-        basePayload.user_id = user.id;
-      }
+        const basePayload: any = {
+          image_url: imageUrl,
+          description: data.description || "Laporan Pohon Rawan Tumbang",
+          location: `POINT(${data.longitude} ${data.latitude})`,
+          risk_score: aiData.risk_score || 0,
+          canopy_volume: aiData.canopy_volume || 0,
+          biomass_estimate: aiData.biomass_estimate || 0,
+          bounding_box: combinedBoundingBoxes,
+          status: "pending",
+        };
 
-      let insertedReportItem: ReportHistoryItem | null = null;
+        if (user?.id) {
+          basePayload.user_id = user.id;
+        }
 
-      const { data: insertedData, error: dbError } = await supabaseClient
-        .from("reports")
-        .insert(basePayload)
-        .select()
-        .single();
+        let insertedReportItem: ReportHistoryItem | null = null;
 
-      if (!dbError && insertedData) {
-        insertedReportItem = insertedData as ReportHistoryItem;
-      } else if (dbError) {
-        console.error(`[ERROR] DB Insert error: ${dbError.message}`);
+        const { data: insertedData, error: dbError } = await supabaseClient
+          .from("reports")
+          .insert(basePayload)
+          .select()
+          .single();
 
-        if (dbError.message.includes("user_id")) {
-          delete basePayload.user_id;
-          const { data: retryData, error: retryError } = await supabaseClient
-            .from("reports")
-            .insert(basePayload)
-            .select()
-            .single();
+        if (!dbError && insertedData) {
+          insertedReportItem = insertedData as ReportHistoryItem;
+        } else if (dbError) {
+          console.error(`[ERROR] DB Insert error: ${dbError.message}`);
 
-          if (!retryError && retryData) {
-            insertedReportItem = retryData as ReportHistoryItem;
-          } else if (retryError) {
-            console.error(`[ERROR] Retry DB Insert error: ${retryError.message}`);
+          if (dbError.message.includes("user_id")) {
+            delete basePayload.user_id;
+            const { data: retryData, error: retryError } = await supabaseClient
+              .from("reports")
+              .insert(basePayload)
+              .select()
+              .single();
+
+            if (!retryError && retryData) {
+              insertedReportItem = retryData as ReportHistoryItem;
+            } else if (retryError) {
+              console.error(`[ERROR] Retry DB Insert error: ${retryError.message}`);
+            }
           }
         }
-      }
 
-      setSubmittedReport({
-        id: insertedReportItem?.id,
-        imageUrl,
-        boundingBoxes: aiData.bounding_boxes || [],
-        riskScore: aiData.risk_score || 0,
-        canopyVolume: aiData.canopy_volume || 0,
-        biomassEstimate: aiData.biomass_estimate || 0,
-        detections: aiData.detections || 0,
-        rawReportItem: insertedReportItem || undefined,
-      });
+        setSubmittedReport({
+          id: insertedReportItem?.id,
+          imageUrl,
+          boundingBoxes: combinedBoundingBoxes,
+          riskScore: aiData.risk_score || 0,
+          canopyVolume: aiData.canopy_volume || 0,
+          biomassEstimate: aiData.biomass_estimate || 0,
+          detections: aiData.detections || 0,
+          rawReportItem: insertedReportItem || undefined,
+        });
 
       formLogic.reset();
       setCapturedFile(null);
@@ -1782,7 +1787,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               {/* Bounding Box Image Visualizer */}
               <div className="space-y-1.5">
                 <p className="text-xs font-bold uppercase tracking-wider text-[#111111]/50">
-                  Hasil Deteksi Bounding Box YOLOv8
+                  Hasil Analisis Deteksi Radar Pohon Digital
                 </p>
                 <div className="rounded-2xl overflow-hidden border border-black/5 bg-[#ecefe6]/40 p-2">
                   <TreeImageWithBoundingBox

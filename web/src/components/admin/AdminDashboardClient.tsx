@@ -117,12 +117,15 @@ export type AdminReportItem = {
   risk_score: number;
   canopy_volume: number;
   biomass_estimate: number;
-  bounding_boxes: any;
+  bounding_boxes?: any;
+  bounding_box?: any;
   status: string;
   description?: string;
   admin_note?: string;
   proof_image_url?: string;
   scheduled_at?: string;
+  tree_species?: string;
+  tree_type?: string;
   created_at: string;
   reporter_name?: string;
   reporter_email?: string;
@@ -457,6 +460,42 @@ export const AdminDashboardClient = ({
       } else if (!updatedRows || updatedRows.length === 0) {
         alert("Peringatan RLS Supabase: 0 baris ter-update. RLS Policy di Supabase memblokir izin UPDATE untuk akun Admin. Silakan jalankan skrip SQL RLS Policy yang disediakan di Supabase SQL Editor.");
         return;
+      }
+
+      // Insert or Update biomass_catalogs entry when report is verified/approved/completed
+      try {
+        const treeSpeciesName = selectedReport.tree_species || selectedReport.tree_type || "Pohon Kayu Olahan";
+        const calculatedBiomassKg = selectedReport.biomass_estimate
+          ? Number(selectedReport.biomass_estimate)
+          : selectedReport.canopy_volume
+          ? Number(selectedReport.canopy_volume) * 10
+          : 100.0;
+
+        const { data: existingCatalog } = await supabaseClient
+          .from("biomass_catalogs")
+          .select("id")
+          .eq("report_id", selectedReport.id)
+          .maybeSingle();
+
+        if (!existingCatalog) {
+          await supabaseClient.from("biomass_catalogs").insert({
+            report_id: selectedReport.id,
+            wood_type: treeSpeciesName,
+            volume_kg: calculatedBiomassKg,
+            status: "available",
+          });
+        } else {
+          await supabaseClient
+            .from("biomass_catalogs")
+            .update({
+              wood_type: treeSpeciesName,
+              volume_kg: calculatedBiomassKg,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existingCatalog.id);
+        }
+      } catch (biomassErr) {
+        console.warn("[NOTICE] biomass_catalogs auto-sync notice:", biomassErr);
       }
 
       // Update local state and refetch from Supabase database
@@ -881,19 +920,23 @@ export const AdminDashboardClient = ({
                     </label>
 
                     <div className="rounded-2xl overflow-hidden border border-black/10 bg-black/5 shadow-xs">
-                      {Array.isArray(selectedReport.bounding_boxes) && selectedReport.bounding_boxes.length > 0 ? (
-                        <TreeImageWithBoundingBox
-                          imageUrl={selectedReport.image_url}
-                          boundingBoxes={selectedReport.bounding_boxes}
-                          alt="Deteksi AI Pohon Rawan"
-                        />
-                      ) : (
-                        <img
-                          src={selectedReport.image_url}
-                          alt="Foto Pohon Rawan"
-                          className="w-full h-56 sm:h-64 object-cover"
-                        />
-                      )}
+                      {(() => {
+                        const rawBoxes = selectedReport.bounding_box || selectedReport.bounding_boxes;
+                        const hasBoxes = Array.isArray(rawBoxes) && rawBoxes.length > 0;
+                        return hasBoxes ? (
+                          <TreeImageWithBoundingBox
+                            imageUrl={selectedReport.image_url}
+                            boundingBoxes={rawBoxes}
+                            alt="Deteksi AI Pohon Rawan"
+                          />
+                        ) : (
+                          <img
+                            src={selectedReport.image_url}
+                            alt="Foto Pohon Rawan"
+                            className="w-full h-56 sm:h-64 object-cover"
+                          />
+                        );
+                      })()}
                     </div>
                   </div>
 
@@ -940,7 +983,7 @@ export const AdminDashboardClient = ({
                   <div className="bg-[#f8f9f5] border border-black/8 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/50">
-                        Hasil Analisis AI YOLOv8
+                        Hasil Analisis Radar Pohon AI
                       </span>
                       {(() => {
                         const rawRisk = typeof selectedReport.risk_score === "number" ? selectedReport.risk_score : 0;

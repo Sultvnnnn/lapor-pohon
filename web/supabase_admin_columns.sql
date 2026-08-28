@@ -1,17 +1,67 @@
 -- ====================================================================
--- SCRIPT SOLUSI ENUM & MIGRASI SUPABASE SQL EDITOR - LAPORPOHON
+-- SCRIPT TABEL BIOMASS_CATALOGS & SUPABASE MIGRATION - LAPORPOHON
 -- Jalankan skrip ini di Dashboard Supabase > SQL Editor
--- untuk mengonversi status ke TEXT, RLS Policy, dan kolom baru
 -- ====================================================================
 
--- ── 1. UBAH TIPE KOLOM STATUS MENJADI TEXT (MENGATASI ERROR ENUM REPORT_STATUS) ──
+-- ── 1. BUAT TYPE BIOMASS_STATUS JIKA BELUM ADA ──
+DO $$ BEGIN
+    CREATE TYPE public.biomass_status AS ENUM ('available', 'claimed', 'sold_out');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+-- ── 2. BUAT TABEL BIOMASS_CATALOGS ──
+CREATE TABLE IF NOT EXISTS public.biomass_catalogs (
+  id uuid not null default gen_random_uuid (),
+  report_id uuid null,
+  wood_type text not null default 'Pohon Kayu Olahan',
+  volume_kg double precision not null default 100.0,
+  status public.biomass_status not null default 'available'::biomass_status,
+  claimed_by uuid null,
+  created_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  updated_at timestamp with time zone not null default timezone ('utc'::text, now()),
+  constraint biomass_catalogs_pkey primary key (id),
+  constraint biomass_catalogs_claimed_by_fkey foreign KEY (claimed_by) references profiles (id) on delete set null,
+  constraint biomass_catalogs_report_id_fkey foreign KEY (report_id) references reports (id) on delete CASCADE
+);
+
+-- ── 3. ATUR ROW LEVEL SECURITY (RLS) POLICY UNTUK BIOMASS_CATALOGS ──
+ALTER TABLE public.biomass_catalogs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow select for all authenticated users" ON public.biomass_catalogs;
+CREATE POLICY "Allow select for all authenticated users"
+ON public.biomass_catalogs FOR SELECT
+TO authenticated
+USING (true);
+
+DROP POLICY IF EXISTS "Allow update for authenticated users" ON public.biomass_catalogs;
+CREATE POLICY "Allow update for authenticated users"
+ON public.biomass_catalogs FOR UPDATE
+TO authenticated
+USING (true)
+WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow insert for authenticated users" ON public.biomass_catalogs;
+CREATE POLICY "Allow insert for authenticated users"
+ON public.biomass_catalogs FOR INSERT
+TO authenticated
+WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow delete for authenticated users" ON public.biomass_catalogs;
+CREATE POLICY "Allow delete for authenticated users"
+ON public.biomass_catalogs FOR DELETE
+TO authenticated
+USING (true);
+
+-- ── 4. GRANT PERMISSION TOKENS ──
+GRANT ALL ON TABLE public.biomass_catalogs TO authenticated;
+GRANT ALL ON TABLE public.biomass_catalogs TO anon;
+GRANT ALL ON TABLE public.biomass_catalogs TO service_role;
+
+-- ── 5. UPDATE SKEMA TABEL REPORTS (FALLBACK COMPATIBILITY) ──
 ALTER TABLE public.reports 
 ALTER COLUMN status TYPE TEXT USING status::text;
 
-ALTER TABLE public.reports 
-ALTER COLUMN status SET DEFAULT 'pending';
-
--- ── 2. TAMBAH KOLOM BARU PADA TABEL REPORTS ──
 ALTER TABLE public.reports 
 ADD COLUMN IF NOT EXISTS admin_note TEXT;
 
@@ -27,42 +77,5 @@ ADD COLUMN IF NOT EXISTS claimed_by_name TEXT;
 ALTER TABLE public.reports 
 ADD COLUMN IF NOT EXISTS tree_type TEXT;
 
--- ── 3. ATUR ROW LEVEL SECURITY (RLS) POLICY ──
-ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
-
--- 3a. Policy SELECT (Melihat semua laporan)
-DROP POLICY IF EXISTS "Allow select for authenticated" ON public.reports;
-CREATE POLICY "Allow select for authenticated"
-ON public.reports FOR SELECT
-TO authenticated
-USING (true);
-
--- 3b. Policy UPDATE (Memperbarui status/catatan/foto bukti laporan)
-DROP POLICY IF EXISTS "Allow update for authenticated" ON public.reports;
-CREATE POLICY "Allow update for authenticated"
-ON public.reports FOR UPDATE
-TO authenticated
-USING (true)
-WITH CHECK (true);
-
--- 3c. Policy INSERT (Membuat laporan baru)
-DROP POLICY IF EXISTS "Allow insert for authenticated" ON public.reports;
-CREATE POLICY "Allow insert for authenticated"
-ON public.reports FOR INSERT
-TO authenticated
-WITH CHECK (true);
-
--- 3d. Policy DELETE (Menghapus laporan)
-DROP POLICY IF EXISTS "Allow delete for authenticated" ON public.reports;
-CREATE POLICY "Allow delete for authenticated"
-ON public.reports FOR DELETE
-TO authenticated
-USING (true);
-
--- ── 4. HAK AKSES PERMISSION TOKENS ──
-GRANT ALL ON TABLE public.reports TO authenticated;
-GRANT ALL ON TABLE public.reports TO anon;
-GRANT ALL ON TABLE public.reports TO service_role;
-
--- ── 5. MUAT ULANG CACHE SKEMA POSTGREST SUPABASE ──
+-- ── 6. MUAT ULANG CACHE SKEMA POSTGREST SUPABASE ──
 NOTIFY pgrst, 'reload schema';
