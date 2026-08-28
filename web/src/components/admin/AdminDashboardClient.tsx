@@ -983,7 +983,7 @@ export const AdminDashboardClient = ({
                   <div className="bg-[#f8f9f5] border border-black/8 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/50">
-                        Hasil Analisis AI YOLOv8
+                        Hasil Analisis Radar Pohon AI
                       </span>
                       {(() => {
                         const rawRisk = typeof selectedReport.risk_score === "number" ? selectedReport.risk_score : 0;

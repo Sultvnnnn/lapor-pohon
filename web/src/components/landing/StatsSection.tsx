@@ -9,7 +9,7 @@ export const StatsSection = () => {
       icon: Tree,
       value: "1,240+",
       label: "Laporan Terverifikasi",
-      subtext: "Dianalisis presisi oleh AI YOLOv8",
+      subtext: "Dianalisis presisi oleh Sistem AI Radar Pohon",
       color: "text-[#19382B]",
       bgColor: "bg-white",
     },

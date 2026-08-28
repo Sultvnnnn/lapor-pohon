@@ -1787,7 +1787,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               {/* Bounding Box Image Visualizer */}
               <div className="space-y-1.5">
                 <p className="text-xs font-bold uppercase tracking-wider text-[#111111]/50">
-                  Hasil Deteksi Bounding Box YOLOv8
+                  Hasil Analisis Deteksi Radar Pohon Digital
                 </p>
                 <div className="rounded-2xl overflow-hidden border border-black/5 bg-[#ecefe6]/40 p-2">
                   <TreeImageWithBoundingBox
