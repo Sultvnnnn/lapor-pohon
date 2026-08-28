@@ -459,6 +459,42 @@ export const AdminDashboardClient = ({
         return;
       }
 
+      // Insert or Update biomass_catalogs entry when report is verified/approved/completed
+      try {
+        const treeSpeciesName = selectedReport.tree_species || selectedReport.tree_type || "Pohon Kayu Olahan";
+        const calculatedBiomassKg = selectedReport.biomass_estimate
+          ? Number(selectedReport.biomass_estimate)
+          : selectedReport.canopy_volume
+          ? Number(selectedReport.canopy_volume) * 10
+          : 100.0;
+
+        const { data: existingCatalog } = await supabaseClient
+          .from("biomass_catalogs")
+          .select("id")
+          .eq("report_id", selectedReport.id)
+          .maybeSingle();
+
+        if (!existingCatalog) {
+          await supabaseClient.from("biomass_catalogs").insert({
+            report_id: selectedReport.id,
+            wood_type: treeSpeciesName,
+            volume_kg: calculatedBiomassKg,
+            status: "available",
+          });
+        } else {
+          await supabaseClient
+            .from("biomass_catalogs")
+            .update({
+              wood_type: treeSpeciesName,
+              volume_kg: calculatedBiomassKg,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", existingCatalog.id);
+        }
+      } catch (biomassErr) {
+        console.warn("[NOTICE] biomass_catalogs auto-sync notice:", biomassErr);
+      }
+
       // Update local state and refetch from Supabase database
       await fetchAllReportsAndProfiles();
 

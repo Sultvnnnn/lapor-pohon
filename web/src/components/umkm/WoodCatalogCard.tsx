@@ -1,23 +1,37 @@
 "use client";
 
 import { ReportItem } from "./SemarangRiskMap";
-import { Tree, CheckCircle, MapPin, Storefront, HandPalm, Info, CalendarCheck } from "@phosphor-icons/react";
+import { Tree, CheckCircle, MapPin, Storefront, HandPalm, Info } from "@phosphor-icons/react";
+
+export type BiomassCatalogItem = {
+  id: string;
+  report_id: string;
+  wood_type: string;
+  volume_kg: number;
+  status: "available" | "claimed" | "sold_out" | string;
+  claimed_by?: string | null;
+  claimed_by_name?: string | null;
+  created_at: string;
+  updated_at: string;
+  reports?: ReportItem | null;
+};
 
 interface WoodCatalogCardProps {
-  report: ReportItem;
-  onClaim: (report: ReportItem) => void;
+  item: BiomassCatalogItem;
+  onClaim: (item: BiomassCatalogItem) => void;
   onViewDetail: (report: ReportItem) => void;
   isClaiming?: boolean;
 }
 
 export const WoodCatalogCard = ({
-  report,
+  item,
   onClaim,
   onViewDetail,
   isClaiming = false,
 }: WoodCatalogCardProps) => {
-  const isSoldOut = !!report.claimed_by_name;
-  const imageDisplay = report.proof_image_url || report.image_url;
+  const report = item.reports;
+  const isSoldOut = item.status === "claimed" || item.status === "sold_out" || !!item.claimed_by_name;
+  const imageDisplay = report?.proof_image_url || report?.image_url;
 
   return (
     <div className="bg-white border border-black/5 hover:border-[#19382B]/30 rounded-[2rem] p-5 shadow-xs space-y-4 transition-all font-sans relative overflow-hidden group">
@@ -50,7 +64,7 @@ export const WoodCatalogCard = ({
 
         <div className="absolute bottom-3 right-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-xl text-white text-[10px] font-bold flex items-center gap-1">
           <MapPin weight="bold" className="w-3 h-3 text-[#88d937]" />
-          <span>Semarang</span>
+          <span>Lokasi Terverifikasi</span>
         </div>
       </div>
 
@@ -59,31 +73,31 @@ export const WoodCatalogCard = ({
         <div className="flex items-start justify-between gap-2">
           <div>
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#19382B] bg-[#ecefe6] px-2.5 py-0.5 rounded-full inline-block">
-              {report.tree_type || "Pohon Kayu Olahan"}
+              {item.wood_type || report?.tree_type || "Pohon Kayu Olahan"}
             </span>
             <h4 className="text-sm sm:text-base font-bold text-[#111111] tracking-tight mt-1 line-clamp-1">
-              {report.admin_note || report.description || "Hasil Penebangan & Pemangkasan DLH Semarang"}
+              {report?.admin_note || report?.description || "Katalog Kayu Hasil Penanganan Petugas"}
             </h4>
           </div>
         </div>
 
-        {/* Info Ukuran Kayu & Biomassa */}
+        {/* Info Ukuran Kayu & Biomassa (volume_kg) */}
         <div className="grid grid-cols-2 gap-2 text-xs pt-1">
           <div className="bg-[#f8f9f5] border border-black/5 p-2.5 rounded-xl">
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#111111]/50 block">
-              Volume Kayu
+              Biomassa Kayu (kg)
             </span>
             <span className="text-sm font-extrabold text-[#19382B]">
-              {report.canopy_volume ? report.canopy_volume.toFixed(2) : "0.00"} m³
+              {item.volume_kg ? item.volume_kg.toFixed(1) : "100.0"} kg
             </span>
           </div>
 
           <div className="bg-[#f8f9f5] border border-black/5 p-2.5 rounded-xl">
             <span className="text-[10px] font-bold uppercase tracking-widest text-[#111111]/50 block">
-              Estimasi Biomassa
+              Volume Kanopi
             </span>
             <span className="text-sm font-extrabold text-[#19382B]">
-              {report.biomass_estimate ? report.biomass_estimate.toFixed(2) : "0.00"} kg
+              {report?.canopy_volume ? report.canopy_volume.toFixed(2) : "0.00"} m³
             </span>
           </div>
         </div>
@@ -97,13 +111,13 @@ export const WoodCatalogCard = ({
             Telah Di-klaim oleh:
           </span>
           <p className="text-xs font-black text-[#111111]">
-            {report.claimed_by_name}
+            {item.claimed_by_name || "UMKM Terdaftar"}
           </p>
         </div>
       ) : (
         <div className="flex items-center gap-2 pt-1">
           <button
-            onClick={() => onClaim(report)}
+            onClick={() => onClaim(item)}
             disabled={isClaiming}
             className="flex-1 bg-[#88d937] hover:bg-[#78c92a] text-[#111111] font-bold py-3 px-4 rounded-full text-xs transition-all shadow-sm flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 uppercase tracking-wider"
           >
@@ -111,13 +125,15 @@ export const WoodCatalogCard = ({
             <span>{isClaiming ? "Memproses Klaim..." : "KLAIM KAYU INI"}</span>
           </button>
 
-          <button
-            onClick={() => onViewDetail(report)}
-            className="bg-[#ecefe6] hover:bg-gray-200 text-[#111111] font-bold p-3 rounded-full text-xs transition-all shadow-xs"
-            title="Lihat Detail Lengkap"
-          >
-            <Info weight="bold" className="w-4 h-4 text-[#19382B]" />
-          </button>
+          {report && (
+            <button
+              onClick={() => onViewDetail(report)}
+              className="bg-[#ecefe6] hover:bg-gray-200 text-[#111111] font-bold p-3 rounded-full text-xs transition-all shadow-xs"
+              title="Lihat Detail Lengkap"
+            >
+              <Info weight="bold" className="w-4 h-4 text-[#19382B]" />
+            </button>
+          )}
         </div>
       )}
     </div>

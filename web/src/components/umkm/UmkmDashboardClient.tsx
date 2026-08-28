@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { SemarangRiskMap, ReportItem } from "./SemarangRiskMap";
 import { UmkmReportModal } from "./UmkmReportModal";
 import { ReportDetailModal } from "./ReportDetailModal";
-import { WoodCatalogCard } from "./WoodCatalogCard";
+import { WoodCatalogCard, BiomassCatalogItem } from "./WoodCatalogCard";
 import {
   Tree,
   Warning,
@@ -35,6 +35,7 @@ export const UmkmDashboardClient = ({
   const supabase = createClient();
   const [displayName] = useState<string>(initialDisplayName);
   const [reports, setReports] = useState<ReportItem[]>(initialReports);
+  const [catalogs, setCatalogs] = useState<BiomassCatalogItem[]>([]);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [selectedReportDetail, setSelectedReportDetail] = useState<ReportItem | null>(null);
 
@@ -49,19 +50,74 @@ export const UmkmDashboardClient = ({
   // Active Mobile View Tab: 'peta' | 'katalog' | 'feed' | 'penindakan'
   const [mobileTab, setMobileTab] = useState<"peta" | "katalog" | "feed" | "penindakan">("katalog");
 
-  const fetchReports = async () => {
-    const { data, error } = await supabase
+  const fetchReportsAndCatalogs = async () => {
+    // 1. Fetch reports
+    const { data: repData } = await supabase
       .from("reports")
       .select("*")
       .order("created_at", { ascending: false });
 
-    if (!error && data) {
-      setReports(data as ReportItem[]);
+    if (repData) {
+      setReports(repData as ReportItem[]);
     }
+
+    // 2. Fetch biomass_catalogs with joined report data & profile claims
+    try {
+      const { data: catData, error: catErr } = await supabase
+        .from("biomass_catalogs")
+        .select(`
+          *,
+          reports (*),
+          profiles:claimed_by (full_name)
+        `)
+        .order("created_at", { ascending: false });
+
+      if (!catErr && catData && catData.length > 0) {
+        const formattedCatalogs: BiomassCatalogItem[] = catData.map((c: any) => ({
+          id: c.id,
+          report_id: c.report_id,
+          wood_type: c.wood_type || "Pohon Kayu Olahan",
+          volume_kg: c.volume_kg || 100.0,
+          status: c.status || "available",
+          claimed_by: c.claimed_by,
+          claimed_by_name: c.profiles?.full_name || (c.claimed_by ? "UMKM Terdaftar" : null),
+          created_at: c.created_at,
+          updated_at: c.updated_at,
+          reports: c.reports,
+        }));
+        setCatalogs(formattedCatalogs);
+      } else {
+        // Fallback: If biomass_catalogs is empty or table not migrated yet, derive from completed reports
+        deriveCatalogFromReports(repData as ReportItem[] || []);
+      }
+    } catch {
+      deriveCatalogFromReports(repData as ReportItem[] || []);
+    }
+  };
+
+  const deriveCatalogFromReports = (allRep: ReportItem[]) => {
+    const completedRep = allRep.filter(
+      (r) => r.status === "completed" || r.status === "resolved" || !!r.proof_image_url || !!r.claimed_by_name
+    );
+
+    const derived: BiomassCatalogItem[] = completedRep.map((r) => ({
+      id: r.id,
+      report_id: r.id,
+      wood_type: r.tree_type || "Pohon Kayu Olahan",
+      volume_kg: r.biomass_estimate ? Number(r.biomass_estimate) : (r.canopy_volume ? Number(r.canopy_volume) * 10 : 100.0),
+      status: r.claimed_by_name ? "claimed" : "available",
+      claimed_by_name: r.claimed_by_name || null,
+      created_at: r.created_at,
+      updated_at: r.created_at,
+      reports: r,
+    }));
+
+    setCatalogs(derived);
   };
 
   useEffect(() => {
     detectUserLocation();
+    fetchReportsAndCatalogs();
   }, []);
 
   const reverseGeocode = async (lat: number, lng: number) => {
@@ -109,36 +165,54 @@ export const UmkmDashboardClient = ({
     );
   };
 
-  // Function for claiming wood
-  const handleClaimWood = async (targetReport: ReportItem) => {
-    if (targetReport.claimed_by_name) return;
+  // Function for claiming wood item in biomass_catalogs
+  const handleClaimWoodItem = async (catalogItem: BiomassCatalogItem) => {
+    if (catalogItem.status === "claimed" || catalogItem.claimed_by_name) return;
 
-    setClaimingId(targetReport.id);
+    setClaimingId(catalogItem.id);
 
     try {
-      const { error } = await supabase
-        .from("reports")
-        .update({
-          claimed_by_name: displayName,
-        })
-        .eq("id", targetReport.id);
+      // 1. Get current authenticated user
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (error) {
-        alert(`Gagal mengklaim kayu: ${error.message}`);
-      } else {
-        alert(`Berhasil mengklaim kayu atas nama UMKM: ${displayName}! Status telah diperbarui menjadi TERKLAIM / SOLD OUT.`);
-        // Optimistic UI update
-        setReports((prev) =>
-          prev.map((r) =>
-            r.id === targetReport.id ? { ...r, claimed_by_name: displayName } : r
-          )
-        );
-        if (selectedReportDetail && selectedReportDetail.id === targetReport.id) {
-          setSelectedReportDetail({ ...selectedReportDetail, claimed_by_name: displayName });
-        }
+      // 2. Update biomass_catalogs table
+      const { error: catErr } = await supabase
+        .from("biomass_catalogs")
+        .update({
+          claimed_by: user?.id || null,
+          status: "claimed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", catalogItem.id);
+
+      // 3. Update reports table for fallback compatibility
+      if (catalogItem.report_id) {
+        await supabase
+          .from("reports")
+          .update({
+            claimed_by_name: displayName,
+          })
+          .eq("id", catalogItem.report_id);
       }
+
+      alert(`Berhasil mengklaim sampel kayu atas nama UMKM: ${displayName}! Status pada katalog diperbarui menjadi TERKLAIM / SOLD OUT.`);
+
+      // Optimistic UI update
+      setCatalogs((prev) =>
+        prev.map((c) =>
+          c.id === catalogItem.id
+            ? { ...c, status: "claimed", claimed_by_name: displayName }
+            : c
+        )
+      );
+
+      setReports((prev) =>
+        prev.map((r) =>
+          r.id === catalogItem.report_id ? { ...r, claimed_by_name: displayName } : r
+        )
+      );
     } catch (err) {
-      console.error("Error claiming wood:", err);
+      console.error("Error claiming wood catalog item:", err);
     } finally {
       setClaimingId(null);
     }
@@ -156,9 +230,6 @@ export const UmkmDashboardClient = ({
   const scheduledReports = mappedReports.filter(
     (r) => r.status === "scheduled" || r.status === "in_progress" || !!r.scheduled_at
   );
-  const catalogReports = mappedReports.filter(
-    (r) => r.status === "completed" || r.status === "resolved" || !!r.proof_image_url || !!r.claimed_by_name
-  );
 
   return (
     <div
@@ -172,14 +243,14 @@ export const UmkmDashboardClient = ({
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-bold uppercase tracking-widest px-3.5 py-1.5 rounded-full bg-[#88d937] text-[#111111] font-sans inline-flex items-center gap-1.5">
                 <Storefront weight="duotone" className="w-4 h-4" />
-                KATALOG KAYU & DASHBOARD ROLE UMKM
+                KATALOG KAYU BIOMASS & DASHBOARD ROLE UMKM
               </span>
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-[2.25rem] font-medium tracking-tight text-white leading-tight">
               Halo, <span className="font-serif italic font-medium text-[#88d937]">{displayName}</span>
             </h1>
             <p className="text-xs sm:text-sm text-white/70 leading-relaxed font-normal">
-              Klaim kayu hasil penebangan pohon berisiko dari Petugas Dinas & pantau radar lokasi sekitar tempat usaha Anda.
+              Klaim kayu hasil penebangan dari tabel biomass_catalogs & pantau radar lokasi sekitar tempat usaha Anda.
             </p>
           </div>
 
@@ -198,11 +269,11 @@ export const UmkmDashboardClient = ({
           <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-4 sm:p-5 flex flex-col justify-center">
             <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-[#88d937] mb-1 flex items-center gap-1">
               <Package weight="bold" className="w-3.5 h-3.5 text-[#88d937]" />
-              Katalog Kayu
+              Katalog Biomass
             </span>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                {catalogReports.length}
+                {catalogs.length}
               </span>
               <span className="text-[10px] text-white/60 hidden sm:inline font-semibold">Siap Olah</span>
             </div>
@@ -236,7 +307,7 @@ export const UmkmDashboardClient = ({
         </div>
       </div>
 
-      {/* ── 2. Filter Radius Usaha & GPS (Menampilkan Nama Tempat Terbaca) ── */}
+      {/* ── 2. Filter Radius Usaha & GPS ── */}
       <div className="bg-white rounded-2xl border border-black/5 p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-3 w-full sm:w-auto">
           <div className="w-9 h-9 rounded-full bg-[#ecefe6] text-[#19382B] flex items-center justify-center shrink-0 font-bold">
@@ -316,7 +387,7 @@ export const UmkmDashboardClient = ({
         </button>
       </div>
 
-      {/* ── 4. SEKSI KATALOG KAYU DAPAT DI-KLAIM UMKM ── */}
+      {/* ── 4. SEKSI KATALOG KAYU DAPAT DI-KLAIM UMKM (Data dari biomass_catalogs) ── */}
       <div
         className={`space-y-4 ${
           mobileTab !== "katalog" ? "hidden lg:block" : "block"
@@ -325,33 +396,33 @@ export const UmkmDashboardClient = ({
         <div className="flex items-center justify-between border-b border-black/5 pb-3">
           <div className="space-y-0.5">
             <span className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-[#88d937] text-[#111111]">
-              EKONOMI SIRKULAR KAYU
+              EKONOMI SIRKULAR BIOMASS_CATALOGS
             </span>
             <h3 className="text-xl sm:text-2xl font-bold text-[#111111] tracking-tight pt-1">
-              Katalog Kayu Hasil Penebangan Petugas
+              Katalog Kayu Biomass Terverifikasi Admin
             </h3>
             <p className="text-xs text-[#111111]/60">
-              Pohon yang telah ditindaklanjuti/ditebang oleh petugas dapat Anda klaim untuk diolah menjadi produk UMKM.
+              Pohon yang telah disetujui/ditebang oleh Admin dimasukkan ke tabel biomass_catalogs dan siap diklaim UMKM.
             </p>
           </div>
 
           <span className="text-xs font-extrabold bg-[#19382B] text-white px-3 py-1.5 rounded-full hidden sm:inline-block">
-            {catalogReports.length} Item Kayu Siap Klaim
+            {catalogs.length} Item Kayu Siap Klaim
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {catalogReports.length === 0 ? (
+          {catalogs.length === 0 ? (
             <div className="col-span-full bg-white rounded-[2rem] border border-black/5 p-8 text-center text-xs font-semibold text-[#111111]/50">
-              Belum ada sampel kayu hasil tebangan yang tersedia di katalog saat ini.
+              Belum ada sampel kayu di tabel biomass_catalogs saat ini.
             </div>
           ) : (
-            catalogReports.map((item) => (
+            catalogs.map((item) => (
               <WoodCatalogCard
                 key={item.id}
-                report={item}
+                item={item}
                 isClaiming={claimingId === item.id}
-                onClaim={(reportToClaim) => handleClaimWood(reportToClaim)}
+                onClaim={(catItemToClaim) => handleClaimWoodItem(catItemToClaim)}
                 onViewDetail={(reportToView) => setSelectedReportDetail(reportToView)}
               />
             ))
@@ -513,15 +584,18 @@ export const UmkmDashboardClient = ({
       <UmkmReportModal
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
-        onSuccess={() => fetchReports()}
+        onSuccess={() => fetchReportsAndCatalogs()}
       />
 
       {/* Modal Detail Laporan Komprehensif saat Titik/Item Diklik */}
       <ReportDetailModal
         report={selectedReportDetail}
         onClose={() => setSelectedReportDetail(null)}
-        onClaim={(reportToClaim) => handleClaimWood(reportToClaim)}
-        isClaiming={claimingId === selectedReportDetail?.id}
+        onClaim={() => {
+          const matchingCatalog = catalogs.find((c) => c.report_id === selectedReportDetail?.id);
+          if (matchingCatalog) handleClaimWoodItem(matchingCatalog);
+        }}
+        isClaiming={claimingId !== null}
       />
     </div>
   );
