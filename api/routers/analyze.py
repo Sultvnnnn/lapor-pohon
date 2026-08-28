@@ -1,7 +1,7 @@
 """
-    This directory acts as a traffic controller.
-    It receives requests, calls service modules,
-    and returns responses to clients.
+This directory acts as a traffic controller.
+It receives requests, calls service modules,
+and returns responses to clients.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -9,7 +9,6 @@ from fastapi import APIRouter, Depends, HTTPException
 from schemas.report_schema import ReportRequest, AnalyzeResponse
 from services.yolo_service import run_inference
 from services.auth_service import verify_token
-
 
 router = APIRouter()
 
@@ -25,7 +24,6 @@ async def analyze_tree(
 
     try:
         print("[INFO] Memulai proses inferensi gambar dengan mesin YOLOv8...")
-
         metrics = run_inference(request.image_url)
 
         response = {

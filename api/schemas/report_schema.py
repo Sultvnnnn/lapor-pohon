@@ -1,10 +1,10 @@
 """
-    This directory specifically stores data type definitions
-    and validations using Pydantic.
+This directory specifically stores data type definitions
+and validations using Pydantic.
 """
 
 from pydantic import BaseModel
-from typing import Optional, List, Dict
+from typing import Optional, List
 
 
 class ReportRequest(BaseModel):
@@ -37,12 +37,12 @@ class PersonBox(BaseModel):
 
 
 class RiskBreakdown(BaseModel):
-    height_score: float
-    dbh_score: float
-    canopy_score: float
-    volume_score: float
-    coverage_score: float
-    coverage_ratio: float
+    height_score: float = 0.0
+    dbh_score: float = 0.0
+    canopy_score: float = 0.0
+    volume_score: float = 0.0
+    coverage_score: float = 0.0
+    coverage_ratio: float = 0.0
 
 
 class AnalyzeResponse(BaseModel):
@@ -61,7 +61,6 @@ class AnalyzeResponse(BaseModel):
 
     bounding_boxes: List[BoundingBox] = []
     person_boxes: List[PersonBox] = []
-
     risk_breakdown: Optional[RiskBreakdown] = None
 
     status: str

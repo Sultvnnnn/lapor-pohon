@@ -10,13 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from routers import analyze
 
-
 app = FastAPI(title="LaporPohon AI Inference Engine")
 
-origins = os.environ.get(
-    "ALLOWED_ORIGINS",
-    "http://localhost:3000",
-).split(",")
+origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:3000").split(",")
 
 app.add_middleware(
     CORSMiddleware,
@@ -29,17 +25,10 @@ app.add_middleware(
 
 @app.get("/")
 def health_check():
-    return {
-        "status": "ok",
-        "service": "LaporPohon AI Inference Engine",
-    }
+    return {"status": "ok", "service": "LaporPohon AI Inference Engine"}
 
 
-app.include_router(
-    analyze.router,
-    prefix="/api",
-    tags=["Analysis"],
-)
+app.include_router(analyze.router, prefix="/api", tags=["Analysis"])
 
 
 if __name__ == "__main__":
@@ -48,5 +37,5 @@ if __name__ == "__main__":
         "main:app",
         host="0.0.0.0",
         port=8000,
-        reload=True,
+        reload=False, # True hanya untuk development
     )

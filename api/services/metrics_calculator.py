@@ -1,15 +1,14 @@
 """
-    This module handles all ecological metric calculations
-    derived from YOLOv8 bounding boxes.
+This module handles all ecological metric calculations
+derived from YOLOv8 bounding boxes.
 
-    Rewrite notes:
-    - Fix logging syntax.
-    - Improve scale calibration using human bottom position.
-    - Improve DBH estimation.
-    - Use more realistic biomass equation.
-    - Improve canopy volume calculation.
-    - Make risk score based on multiple ecological proxies,
-    not just bounding-box frame coverage.
+Final version:
+- Chave 2014 (dengan wood density + tinggi) untuk biomassa,
+  fallback Chave 2005 jika tinggi tidak tersedia.
+- DBH power-law heuristic dari canopy diameter.
+- Volume tajuk ellipsoid dengan fraksi tinggi tajuk.
+- Risk score multi-faktor (bukan cuma coverage bbox).
+- Kalibrasi skala berbasis posisi kaki manusia (bottom-y).
 """
 
 import math
@@ -24,23 +23,14 @@ logger = logging.getLogger(__name__)
 # CALIBRATION CONSTANTS
 # ============================================================
 
-# Fallback jika tidak ada manusia terdeteksi.
-# Asumsi awal: lebar gambar mewakili sekitar 10 meter.
 DEFAULT_FRAME_WIDTH_M = 10.0
-
-# Tinggi manusia referensi dalam meter.
 HUMAN_HEIGHT_M = 1.65
 
-# Jika bounding box manusia sering terlalu besar / longgar,
-# naikkan nilai ini sedikit, misalnya 1.05 atau 1.10.
-# Default 1.0 supaya tidak menambah asumsi baru secara agresif.
+# Naikkan ke 1.05-1.10 jika bbox manusia sering terlalu longgar.
 HUMAN_BBOX_CORRECTION = 1.0
 
-# Batas skala meter-per-pixel agar tidak ekstrem.
 MIN_M_PER_PIXEL = 0.0005
 MAX_M_PER_PIXEL = 0.10
-
-# Orang yang terlalu kecil biasanya jauh / kurang reliable.
 MIN_PERSON_HEIGHT_PX = 15
 
 
@@ -51,11 +41,7 @@ MIN_PERSON_HEIGHT_PX = 15
 MAX_DBH_CM = 80.0
 MAX_CANOPY_DIAMETER_M = 25.0
 MAX_TREE_HEIGHT_M = 30.0
-
-# Tidak semua tinggi bbox adalah tajuk penuh.
-# Sebagian bisa berupa batang, background, atau area kosong.
 CROWN_HEIGHT_FRACTION = 0.65
-
 MAX_BIOMASS_KG = 100000.0
 
 
@@ -63,19 +49,8 @@ MAX_BIOMASS_KG = 100000.0
 # DBH HEURISTIC
 # ============================================================
 
-# DBH diestimasi dari canopy diameter.
-# Ini tetap heuristic, tapi lebih masuk akal daripada rasio linier tunggal.
-#
-# Contoh perilaku:
-# canopy 1 m  -> DBH sekitar 2 cm
-# canopy 5 m  -> DBH sekitar 16 cm
-# canopy 10 m -> DBH sekitar 41 cm
-# canopy 20 m -> DBH sekitar 96 cm, lalu clamp ke 80 cm
 DBH_POWER_K = 2.0
 DBH_POWER_EXP = 1.30
-
-# Wood density default untuk pohon tropis campur.
-# Jika nanti ada data spesies, buat mapping wood density per spesies.
 DEFAULT_WOOD_DENSITY = 0.55
 
 
@@ -88,8 +63,6 @@ RISK_WEIGHT_DBH = 0.25
 RISK_WEIGHT_CANOPY = 0.20
 RISK_WEIGHT_VOLUME = 0.10
 RISK_WEIGHT_COVERAGE = 0.15
-
-# Coverage 50% dari frame dianggap sudah sangat dominan.
 RISK_COVERAGE_FULL = 0.50
 
 
@@ -100,18 +73,9 @@ MAX_CANOPY_VOLUME_M3 = (
 )
 
 
-# ============================================================
-# UTILS
-# ============================================================
-
 def _clamp(value: float, min_value: float = 0.0, max_value: float = 1.0) -> float:
-    """
-    Clamp value ke rentang tertentu.
-    Jika NaN / Inf / None, kembalikan min_value.
-    """
     if value is None or math.isnan(value) or math.isinf(value):
         return min_value
-
     return max(min_value, min(float(value), max_value))
 
 
@@ -126,13 +90,8 @@ def calculate_dynamic_scale(
     image_height_px: Optional[int] = None,
 ) -> Tuple[float, str]:
     """
-    Hitung meter-per-pixel berdasarkan manusia referensi.
-
-    Perbaikan:
-    - Tidak hanya memilih orang dengan jarak x terdekat.
-    - Memilih orang berdasarkan posisi bawah / kaki (bottom-y),
-      karena orang yang berdiri pada bidang tanah mirip dengan pohon
-      lebih relevan untuk kalibrasi perspektif.
+    Meter-per-pixel dari manusia referensi.
+    Memilih orang berdasarkan posisi kaki (bottom-y), bukan cuma jarak x.
     """
     fallback_scale = DEFAULT_FRAME_WIDTH_M / float(max(image_width_px, 1))
     fallback_scale = _clamp(fallback_scale, MIN_M_PER_PIXEL, MAX_M_PER_PIXEL)
@@ -152,19 +111,12 @@ def calculate_dynamic_scale(
         )
 
     candidates = [
-        person
-        for person in person_bboxes
-        if float(person.get("height_px", 0)) >= min_person_height_px
+        p for p in person_bboxes
+        if float(p.get("height_px", 0)) >= min_person_height_px
     ]
-
     if not candidates:
         candidates = list(person_bboxes)
-
     if not candidates:
-        logger.warning(
-            "[WARNING] Kandidat manusia tidak valid. "
-            "Menggunakan estimasi lebar bingkai bawaan."
-        )
         return fallback_scale, "estimated_default"
 
     tree_bottom_y = (
@@ -180,18 +132,12 @@ def calculate_dynamic_scale(
         if person_height_px <= 0:
             continue
 
-        person_bottom_y = (
-            float(person.get("y_center", 0))
-            + person_height_px / 2.0
-        )
-
+        person_bottom_y = float(person.get("y_center", 0)) + person_height_px / 2.0
         vertical_distance = abs(tree_bottom_y - person_bottom_y)
         horizontal_distance = abs(
             float(tree_bbox.get("x_center", 0))
             - float(person.get("x_center", 0))
         )
-
-        # Bottom-y lebih penting daripada x.
         score = vertical_distance + 0.35 * horizontal_distance
 
         if score < best_score:
@@ -199,10 +145,6 @@ def calculate_dynamic_scale(
             best_person = person
 
     if best_person is None or float(best_person.get("height_px", 0)) <= 0:
-        logger.warning(
-            "[WARNING] Tidak menemukan manusia referensi yang valid. "
-            "Menggunakan estimasi lebar bingkai bawaan."
-        )
         return fallback_scale, "estimated_default"
 
     effective_human_height = HUMAN_HEIGHT_M * HUMAN_BBOX_CORRECTION
@@ -211,27 +153,17 @@ def calculate_dynamic_scale(
 
     logger.info(
         f"[INFO] Kalibrasi manusia berhasil. "
-        f"Skor kedekatan: {best_score:.2f}px, "
-        f"tinggi bbox manusia: {float(best_person['height_px']):.2f}px, "
         f"meter_per_pixel: {meter_per_pixel:.6f}"
     )
-
     return meter_per_pixel, "person_reference"
 
 
 # ============================================================
-# TREE DIMENSION & CANOPY VOLUME
+# CANOPY VOLUME
 # ============================================================
 
 def calculate_canopy_volume(canopy_diameter_m: float, tree_height_m: float) -> float:
-    """
-    Estimasi volume tajuk dengan pendekatan ellipsoid.
-
-    V = pi/6 * D^2 * H
-
-    Tinggi yang dipakai bukan tinggi total bbox penuh,
-    tetapi tinggi tajuk hasil kali CROWN_HEIGHT_FRACTION.
-    """
+    """Volume tajuk ellipsoid: V = pi/6 * D^2 * H_tajuk."""
     if canopy_diameter_m <= 0 or tree_height_m <= 0:
         return 0.0
 
@@ -239,12 +171,7 @@ def calculate_canopy_volume(canopy_diameter_m: float, tree_height_m: float) -> f
     tree_height_m = _clamp(tree_height_m, 0.0, MAX_TREE_HEIGHT_M)
 
     crown_height_m = tree_height_m * CROWN_HEIGHT_FRACTION
-
-    volume = (
-        (math.pi / 6.0)
-        * (canopy_diameter_m ** 2)
-        * crown_height_m
-    )
+    volume = (math.pi / 6.0) * (canopy_diameter_m ** 2) * crown_height_m
 
     if volume > MAX_CANOPY_VOLUME_M3:
         logger.warning(
@@ -261,17 +188,11 @@ def calculate_canopy_volume(canopy_diameter_m: float, tree_height_m: float) -> f
 # ============================================================
 
 def estimate_dbh_from_canopy(canopy_diameter_m: float) -> float:
-    """
-    Estimasi DBH dalam cm dari canopy diameter.
-
-    Masih heuristic, tetapi memakai power-law yang lebih
-    masuk akal dibanding rasio linier tetap.
-    """
+    """DBH (cm) dari canopy diameter via power-law heuristic."""
     if canopy_diameter_m <= 0:
         return 0.0
 
     canopy_diameter_m = _clamp(canopy_diameter_m, 0.0, MAX_CANOPY_DIAMETER_M)
-
     raw_dbh_cm = DBH_POWER_K * (canopy_diameter_m ** DBH_POWER_EXP)
 
     if raw_dbh_cm > MAX_DBH_CM:
@@ -280,13 +201,11 @@ def estimate_dbh_from_canopy(canopy_diameter_m: float) -> float:
             f"Dipotong menjadi batas maksimal {MAX_DBH_CM} cm."
         )
 
-    dbh_cm = _clamp(raw_dbh_cm, 0.0, MAX_DBH_CM)
-
-    return round(dbh_cm, 2)
+    return round(_clamp(raw_dbh_cm, 0.0, MAX_DBH_CM), 2)
 
 
 # ============================================================
-# BIOMASS ESTIMATION
+# BIOMASS
 # ============================================================
 
 def calculate_biomass_estimate(
@@ -295,20 +214,13 @@ def calculate_biomass_estimate(
     wood_density: float = DEFAULT_WOOD_DENSITY,
 ) -> float:
     """
-    Estimasi above-ground biomass.
-
-    Jika tinggi tersedia, pakai persamaan pantropical Chave et al. 2014:
-
-        AGB = 0.0673 * (rho * DBH^2 * H)^0.976
-
-    Jika tinggi tidak tersedia, fallback ke Chave et al. 2005
-    tropical moist forest model.
+    Chave et al. 2014: AGB = 0.0673 * (rho * DBH^2 * H)^0.976
+    Fallback Chave et al. 2005 (moist forest) jika tinggi tidak ada.
     """
     if dbh_cm <= 0:
         return 0.0
 
     dbh_cm = _clamp(dbh_cm, 0.0, MAX_DBH_CM)
-
     if dbh_cm <= 0:
         return 0.0
 
@@ -316,21 +228,17 @@ def calculate_biomass_estimate(
 
     if tree_height_m > 0:
         tree_height_m = _clamp(tree_height_m, 0.0, MAX_TREE_HEIGHT_M)
-
         biomass_kg = 0.0673 * (
             (wood_density * (dbh_cm ** 2) * tree_height_m) ** 0.976
         )
     else:
-        # Fallback Chave et al. 2005 tropical moist forest.
         ln_dbh = math.log(max(dbh_cm, 0.1))
-
         ln_agb = (
             -1.4994
             + 2.149 * ln_dbh
             + 0.207 * (ln_dbh ** 2)
             - 0.0281 * (ln_dbh ** 3)
         )
-
         biomass_kg = math.exp(ln_agb)
 
     if biomass_kg > MAX_BIOMASS_KG:
@@ -357,22 +265,9 @@ def calculate_risk_score(
     image_width_px: int,
     image_height_px: int,
 ) -> Tuple[float, Dict[str, float]]:
-    """
-    Risk score heuristic.
-
-    Bukan risk score ekologis absolut, tetapi jauh lebih masuk akal
-    daripada hanya memakai rasio luas bbox terhadap frame.
-
-    Komponen:
-    - Tinggi pohon
-    - DBH
-    - Diameter tajuk
-    - Volume tajuk
-    - Dominasi visual / coverage dalam frame
-    """
+    """Risk score heuristic multi-faktor, 0 sampai 1."""
     frame_area = max(1.0, float(image_width_px) * float(image_height_px))
     box_area = max(0.0, float(box_width_px) * float(box_height_px))
-
     coverage = box_area / frame_area
 
     height_score = _clamp(tree_height_m / MAX_TREE_HEIGHT_M)
@@ -388,7 +283,6 @@ def calculate_risk_score(
         + RISK_WEIGHT_VOLUME * volume_score
         + RISK_WEIGHT_COVERAGE * coverage_score
     )
-
     risk = _clamp(risk, 0.0, 1.0)
 
     breakdown = {
@@ -399,12 +293,11 @@ def calculate_risk_score(
         "coverage_score": round(coverage_score, 3),
         "coverage_ratio": round(coverage, 4),
     }
-
     return round(risk, 2), breakdown
 
 
 # ============================================================
-# MAIN ORCHESTRATOR
+# ORCHESTRATOR
 # ============================================================
 
 def calculate_all_metrics(
@@ -413,9 +306,6 @@ def calculate_all_metrics(
     image_width_px: int,
     image_height_px: int,
 ) -> dict:
-    """
-    Orkestrasi perhitungan semua metrik ekologis.
-    """
     image_width_px = max(1, int(image_width_px))
     image_height_px = max(1, int(image_height_px))
 
@@ -443,25 +333,16 @@ def calculate_all_metrics(
         image_height_px=image_height_px,
     )
 
-    canopy_diameter_m = box_width_px * meter_per_pixel
-    tree_height_m = box_height_px * meter_per_pixel
-
-    canopy_diameter_m = _clamp(canopy_diameter_m, 0.0, MAX_CANOPY_DIAMETER_M)
-    tree_height_m = _clamp(tree_height_m, 0.0, MAX_TREE_HEIGHT_M)
-
-    canopy_volume = calculate_canopy_volume(
-        canopy_diameter_m=canopy_diameter_m,
-        tree_height_m=tree_height_m,
+    canopy_diameter_m = _clamp(
+        box_width_px * meter_per_pixel, 0.0, MAX_CANOPY_DIAMETER_M
+    )
+    tree_height_m = _clamp(
+        box_height_px * meter_per_pixel, 0.0, MAX_TREE_HEIGHT_M
     )
 
+    canopy_volume = calculate_canopy_volume(canopy_diameter_m, tree_height_m)
     dbh_cm = estimate_dbh_from_canopy(canopy_diameter_m)
-
-    biomass_estimate = calculate_biomass_estimate(
-        dbh_cm=dbh_cm,
-        tree_height_m=tree_height_m,
-        wood_density=DEFAULT_WOOD_DENSITY,
-    )
-
+    biomass_estimate = calculate_biomass_estimate(dbh_cm, tree_height_m)
     risk_score, risk_breakdown = calculate_risk_score(
         canopy_diameter_m=canopy_diameter_m,
         tree_height_m=tree_height_m,
