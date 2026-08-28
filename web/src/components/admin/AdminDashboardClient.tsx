@@ -123,6 +123,8 @@ export type AdminReportItem = {
   admin_note?: string;
   proof_image_url?: string;
   scheduled_at?: string;
+  tree_species?: string;
+  tree_type?: string;
   created_at: string;
   reporter_name?: string;
   reporter_email?: string;
