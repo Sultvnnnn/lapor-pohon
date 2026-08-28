@@ -20,6 +20,11 @@ DBH_TO_CANOPY_RATIO = 0.065       # Biological ratio estimate (6.5%)
 ALLOMETRIC_A = 0.11               # Chave et al. (2005) constant for tropical forest
 ALLOMETRIC_B = 2.62               # Chave et al. (2005) constant for tropical forest
 
+#? THRESHOLD CONSTANTS (Batas Aman Logis)
+MAX_DBH_CM = 150.0                # Batas maksimal diameter batang pohon kota (150 cm)
+MAX_CANOPY_DIAMETER_M = 25.0      # Batas maksimal lebar kanopi (25 meter)
+MAX_TREE_HEIGHT_M = 30.0          # Batas maksimal tinggi pohon (30 meter)
+
 def calculate_dynamic_scale(tree_bbox: dict, person_bboxes: list, image_width_px: int) -> tuple[float, str]:
     """
     Calculates the meter-per-pixel scale based on the closest human reference.
@@ -50,23 +55,42 @@ def calculate_dynamic_scale(tree_bbox: dict, person_bboxes: list, image_width_px
 
 
 def calculate_canopy_volume(box_width_px: float, box_height_px: float, meter_per_pixel: float) -> float:
-    """Estimates canopy volume (m3) using dynamic tree height."""
-    # 1. Convert pixel dimensions to real-world meters
+    """Estimates canopy volume (m3) using dynamic tree height with logical clamping."""
     canopy_diameter_m = box_width_px * meter_per_pixel
-    tree_height_m = box_height_px * meter_per_pixel  # Dynamic tree height
+    tree_height_m = box_height_px * meter_per_pixel
+    
+    # Penahan batas maksimal (Clamping)
+    if canopy_diameter_m > MAX_CANOPY_DIAMETER_M:
+        logger.warning(f"[WARNING] Diameter kanopi melebihi batas logis ({canopy_diameter_m:.2f} m). Dipotong menjadi {MAX_CANOPY_DIAMETER_M} m.")
+        canopy_diameter_m = MAX_CANOPY_DIAMETER_M
+        
+    if tree_height_m > MAX_TREE_HEIGHT_M:
+        logger.warning(f"[WARNING] Tinggi pohon melebihi batas logis ({tree_height_m:.2f} m). Dipotong menjadi {MAX_TREE_HEIGHT_M} m.")
+        tree_height_m = MAX_TREE_HEIGHT_M
     
     canopy_radius_m = canopy_diameter_m / 2
 
-    # 2. Hemisphere volume calculation
+    # Hemisphere volume calculation
     volume = (2 / 3) * math.pi * (canopy_radius_m ** 2) * tree_height_m
     return round(volume, 2)
 
 
 def estimate_dbh_from_canopy(box_width_px: float, meter_per_pixel: float) -> float:
-    """Estimates Diameter at Breast Height (DBH) in cm."""
+    """Estimates Diameter at Breast Height (DBH) in cm with logical clamping."""
     canopy_diameter_m = box_width_px * meter_per_pixel
+    
+    if canopy_diameter_m > MAX_CANOPY_DIAMETER_M:
+        canopy_diameter_m = MAX_CANOPY_DIAMETER_M
+        
     dbh_m = canopy_diameter_m * DBH_TO_CANOPY_RATIO
-    return round(dbh_m * 100, 2)
+    dbh_cm = dbh_m * 100
+    
+    # Penahan batas maksimal DBH
+    if dbh_cm > MAX_DBH_CM:
+        logger.warning(f"[WARNING] DBH tidak wajar terdeteksi ({dbh_cm:.2f} cm). Dipotong menjadi batas maksimal {MAX_DBH_CM} cm.")
+        dbh_cm = MAX_DBH_CM
+        
+    return round(dbh_cm, 2)
 
 
 def calculate_biomass_estimate(dbh_cm: float) -> float:
