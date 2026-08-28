@@ -26,6 +26,8 @@ import {
   ArrowsOut,
   ArrowsIn,
   ArrowRight,
+  Calendar,
+  NotePencil,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -66,6 +68,9 @@ type ReportHistoryItem = {
   biomass_estimate: number;
   bounding_box: BoundingBox[] | null;
   status: "pending" | "in_progress" | "resolved" | string;
+  admin_note?: string;
+  proof_image_url?: string;
+  scheduled_at?: string;
 };
 
 const formatLocationDisplay = (location: any): string => {
@@ -112,48 +117,25 @@ export const getReportStatusConfig = (statusRaw?: string) => {
   // 1. Pending variations
   if (s === "pending" || s === "menunggu" || s === "draft" || s === "unverified") {
     return {
-      label: "Menunggu Verifikasi",
-      bg: "bg-amber-500/10",
-      text: "text-amber-700",
-      border: "border-amber-500/20",
+      label: "🔴 Menunggu Verifikasi",
+      bg: "bg-[#111111]/5",
+      text: "text-[#111111]/70",
+      border: "border-black/10",
       isPending: true,
     };
   }
 
-  // 2. Verified variations
+  // 2. Terverifikasi DLH
   if (
+    s === "terverifikasi dlh" ||
     s === "verified" ||
     s === "terverifikasi" ||
     s === "verifikasi" ||
     s === "diverifikasi" ||
-    s === "approved" ||
-    s === "valid" ||
-    s === "verified_dlh" ||
-    s.includes("verif") ||
-    s.includes("ok") ||
-    s.includes("acc")
+    s.includes("verif")
   ) {
     return {
-      label: "✅ Terverifikasi DLH",
-      bg: "bg-emerald-500/10",
-      text: "text-emerald-700",
-      border: "border-emerald-500/20",
-      isPending: false,
-    };
-  }
-
-  // 3. In Progress variations
-  if (
-    s === "in_progress" ||
-    s === "progress" ||
-    s === "proses" ||
-    s === "diproses" ||
-    s === "tindak_lanjut" ||
-    s === "penanganan" ||
-    s.includes("proses")
-  ) {
-    return {
-      label: "Dalam Penanganan DLH",
+      label: "🔵 Terverifikasi DLH",
       bg: "bg-blue-500/10",
       text: "text-blue-700",
       border: "border-blue-500/20",
@@ -161,26 +143,91 @@ export const getReportStatusConfig = (statusRaw?: string) => {
     };
   }
 
-  // 4. Resolved / Completed variations
+  // 3. Proses Survei Lapangan
   if (
-    s === "resolved" ||
-    s === "completed" ||
-    s === "selesai" ||
-    s === "sirkular" ||
-    s.includes("selesai")
+    s === "proses survei lapangan" ||
+    s.includes("survei") ||
+    s.includes("survey")
   ) {
     return {
-      label: "♻️ Pemanfaatan Sirkular Selesai",
-      bg: "bg-[#88d937]/20",
-      text: "text-[#19382B]",
-      border: "border-[#88d937]/40",
+      label: "🟣 Proses Survei Lapangan",
+      bg: "bg-purple-500/10",
+      text: "text-purple-700",
+      border: "border-purple-500/20",
+      isPending: false,
+    };
+  }
+
+  // 4. Penjadwalan Pemangkasan
+  if (
+    s === "penjadwalan pemangkasan" ||
+    s.includes("jadwal") ||
+    s.includes("penjadwalan") ||
+    s.includes("scheduled")
+  ) {
+    return {
+      label: "🟡 Penjadwalan Pemangkasan",
+      bg: "bg-amber-500/10",
+      text: "text-amber-800",
+      border: "border-amber-500/20",
+      isPending: false,
+    };
+  }
+
+  // 5. Sedang Ditangani Lapangan
+  if (
+    s === "sedang ditangani lapangan" ||
+    s === "in_progress" ||
+    s === "progress" ||
+    s.includes("ditangani") ||
+    s.includes("penanganan")
+  ) {
+    return {
+      label: "🟠 Sedang Ditangani Lapangan",
+      bg: "bg-orange-500/10",
+      text: "text-orange-700",
+      border: "border-orange-500/20",
+      isPending: false,
+    };
+  }
+
+  // 6. Selesai Penanganan
+  if (
+    s === "selesai penanganan" ||
+    s === "selesai" ||
+    s === "resolved" ||
+    s === "completed" ||
+    s.includes("selesai") ||
+    s.includes("sirkular")
+  ) {
+    return {
+      label: "🟢 Selesai Penanganan",
+      bg: "bg-emerald-500/15",
+      text: "text-emerald-800",
+      border: "border-emerald-500/30",
+      isPending: false,
+    };
+  }
+
+  // 7. Ditolak / Laporan Tidak Valid
+  if (
+    s.includes("ditolak") ||
+    s.includes("rejected") ||
+    s.includes("invalid") ||
+    s.includes("batal")
+  ) {
+    return {
+      label: "🔴 Ditolak / Tidak Valid",
+      bg: "bg-red-500/10",
+      text: "text-red-700",
+      border: "border-red-500/20",
       isPending: false,
     };
   }
 
   // Fallback for custom status: Display actual status text dynamically
   return {
-    label: `✅ ${statusRaw}`,
+    label: `📌 ${statusRaw}`,
     bg: "bg-emerald-500/10",
     text: "text-emerald-700",
     border: "border-emerald-500/20",
@@ -270,20 +317,39 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   // Loading Animation Message Index & Success Alert States
   const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState(0);
 
-  // Cycle loading messages sequentially every 2.5 seconds during photo analysis
+  // Cycle loading messages & calculate progress sequentially during photo analysis
   useEffect(() => {
     if (!isSubmitting) {
       setLoadingMessageIndex(0);
+      setSubmitProgress(0);
       return;
+    }
+
+    if (submitStep === "uploading") {
+      setSubmitProgress((prev) => Math.max(prev, 15));
+    } else if (submitStep === "saving") {
+      setSubmitProgress((prev) => Math.max(prev, 90));
     }
 
     const interval = setInterval(() => {
       setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
-    }, 2200);
+
+      setSubmitProgress((prev) => {
+        if (submitStep === "uploading") {
+          return Math.min(prev + 5, 30);
+        } else if (submitStep === "analyzing") {
+          return prev < 88 ? prev + 2 : prev;
+        } else if (submitStep === "saving") {
+          return prev < 98 ? prev + 1 : 98;
+        }
+        return prev;
+      });
+    }, 350);
 
     return () => clearInterval(interval);
-  }, [isSubmitting]);
+  }, [isSubmitting, submitStep]);
 
   useEffect(() => {
     if (isFullscreen || showSuccessAlert) {
@@ -675,7 +741,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       } = await supabaseClient.auth.getSession();
 
       const token = session?.access_token || "";
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://lapor-pohon.onrender.com";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://lapor-pohon-api-37a8088cbfaf.herokuapp.com";
 
       let aiData: any = null;
       try {
@@ -789,6 +855,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       // Automatically refresh history for Tab 2 and parent Dashboard count
       fetchReportHistory();
       onReportSubmitted?.();
+      setSubmitProgress(100);
       // Show Success Alert Pop-up Modal!
       setShowSuccessAlert(true);
     } catch (error) {
@@ -1381,32 +1448,59 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                 )}
               </div>
 
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isSubmitting || isDesktop}
-                className={`w-full py-3.5 px-6 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 group active:scale-[0.99] ${isDesktop
-                  ? "bg-gray-300 text-gray-600 cursor-not-allowed shadow-none"
-                  : "bg-[#19382B] hover:bg-[#234A39] text-white hover:shadow-lg disabled:opacity-60"
-                  }`}
-              >
+              {/* Submit Button / Progress Bar (Matching Design Reference) */}
+              <AnimatePresence mode="wait">
                 {isDesktop ? (
-                  <>
+                  <motion.div
+                    key="desktop-disabled"
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    className="w-full py-3.5 px-6 rounded-full text-xs sm:text-sm font-bold bg-gray-300 text-gray-600 cursor-not-allowed flex items-center justify-center gap-2"
+                  >
                     <DeviceMobile size={18} weight="bold" />
                     <span>Pelaporan Hanya Melalui Perangkat Mobile (HP)</span>
-                  </>
+                  </motion.div>
                 ) : isSubmitting ? (
-                  <>
-                    <CircleNotch size={18} className="animate-spin text-[#88d937]" />
-                    <span>{submitStepLabels[submitStep]}</span>
-                  </>
+                  <motion.div
+                    key="submitting-progress"
+                    initial={{ opacity: 0, scale: 0.97 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.97 }}
+                    transition={{ duration: 0.2 }}
+                    className="w-full bg-white border border-black/10 rounded-full py-3.5 px-6 shadow-md flex items-center justify-center font-sans h-[52px]"
+                  >
+                    {/* Outer Progress Pill Track */}
+                    <div className="w-full h-2.5 sm:h-3 bg-[#d1dabe]/35 rounded-full relative flex items-center overflow-visible border border-black/5">
+                      {/* Progress Trail: Hijau Muda (#d1dabe) at start -> Deep Green (#19382b) at end */}
+                      <div
+                        className="h-full bg-gradient-to-r from-[#d1dabe] via-[#5c7c56] to-[#19382b] rounded-full transition-all duration-300 ease-out shadow-xs"
+                        style={{ width: `${Math.max(submitProgress, 4)}%` }}
+                      />
+
+                      {/* Standalone Tree Icon Moving Along Track */}
+                      <div
+                        className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 transition-all duration-300 ease-out z-20 pointer-events-none flex items-center justify-center"
+                        style={{ left: `${Math.min(Math.max(submitProgress, 4), 96)}%` }}
+                      >
+                        <Tree size={24} weight="fill" className="text-[#19382b] drop-shadow-md" />
+                      </div>
+                    </div>
+                  </motion.div>
                 ) : (
-                  <>
+                  <motion.button
+                    key="submit-idle"
+                    type="submit"
+                    initial={{ opacity: 0, scale: 0.98 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.98 }}
+                    className="w-full py-3.5 px-6 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md flex items-center justify-center gap-2 group active:scale-[0.99] bg-[#19382B] hover:bg-[#234A39] text-white hover:shadow-lg"
+                  >
                     <Sparkle size={18} weight="fill" className="text-[#88d937]" />
                     <span>Kirim & Analisis Risiko Pohon</span>
-                  </>
+                  </motion.button>
                 )}
-              </button>
+              </AnimatePresence>
             </form>
           )
         )}
@@ -1733,11 +1827,60 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               {selectedHistoryItem.description && (
                 <div className="bg-[#f8f9f5] border border-black/5 p-3.5 rounded-2xl space-y-1">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">
-                    Catatan Pelapor
+                    Catatan Pelapor (Warga)
                   </p>
                   <p className="text-xs text-[#111111] font-medium leading-relaxed">
                     {selectedHistoryItem.description}
                   </p>
+                </div>
+              )}
+
+              {/* Jadwal Penanganan Pemangkasan (Jika Ada) */}
+              {selectedHistoryItem.scheduled_at && (
+                <div className="bg-amber-50/90 border border-amber-300 p-3.5 rounded-2xl space-y-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                    <Calendar size={14} weight="bold" className="text-amber-700" />
+                    Jadwal Penanganan Pemangkasan DLH:
+                  </p>
+                  <p className="text-xs font-extrabold text-amber-950">
+                    {new Date(selectedHistoryItem.scheduled_at).toLocaleString("id-ID", {
+                      day: "numeric",
+                      month: "long",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })} WIB
+                  </p>
+                </div>
+              )}
+
+              {/* Catatan / Instruksi Petugas DLH */}
+              {selectedHistoryItem.admin_note && (
+                <div className="bg-[#19382B]/5 border border-[#19382B]/15 p-3.5 rounded-2xl space-y-1">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-[#19382B] flex items-center gap-1.5">
+                    <NotePencil size={14} weight="bold" />
+                    Catatan Resmi Dinas LH:
+                  </p>
+                  <p className="text-xs font-semibold text-[#111111] leading-relaxed">
+                    {selectedHistoryItem.admin_note}
+                  </p>
+                </div>
+              )}
+
+              {/* Foto Bukti Penanganan Selesai (Jika Ada) */}
+              {selectedHistoryItem.proof_image_url && (
+                <div className="space-y-1.5 pt-1">
+                  <p className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+                    <CheckCircle size={15} weight="fill" className="text-emerald-600" />
+                    Foto Bukti Selesai Penanganan
+                  </p>
+                  <div className="rounded-2xl overflow-hidden border-2 border-emerald-500/30 shadow-xs">
+                    <img
+                      src={selectedHistoryItem.proof_image_url}
+                      alt="Foto Bukti Selesai Penanganan DLH"
+                      className="w-full h-44 object-cover"
+                    />
+                  </div>
                 </div>
               )}
 
