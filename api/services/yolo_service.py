@@ -99,6 +99,7 @@ def run_inference(image_url: str) -> dict:
 
             #! INFERENSI 2: CARI MANUSIA (KALIBRASI)
             person_bboxes = []
+            normalized_person_boxes = []
             if person_model is not None:
                 person_results = person_model.predict(
                     image,
@@ -113,7 +114,22 @@ def run_inference(image_url: str) -> dict:
                 p_boxes = person_results[0].boxes
                 for box in p_boxes:
                     px, py, pw, ph = box.xywh[0].tolist()
+                    p_conf = float(box.conf[0].item()) if hasattr(box.conf[0], 'item') else float(box.conf[0])
+                    
                     person_bboxes.append({
+                        "x_center": float(px),
+                        "y_center": float(py),
+                        "width_px": float(pw),
+                        "height_px": float(ph)
+                    })
+
+                    normalized_person_boxes.append({
+                        "x": round((px - pw / 2) / image_width_px, 4),
+                        "y": round((py - ph / 2) / image_height_px, 4),
+                        "width": round(pw / image_width_px, 4),
+                        "height": round(ph / image_height_px, 4),
+                        "confidence": round(p_conf, 3),
+                        "label": "person",
                         "x_center": float(px),
                         "y_center": float(py),
                         "width_px": float(pw),
@@ -139,7 +155,8 @@ def run_inference(image_url: str) -> dict:
                     "y": round((cy - h / 2) / image_height_px, 4),
                     "width": round(w / image_width_px, 4),
                     "height": round(h / image_height_px, 4),
-                    "confidence": round(conf, 3)
+                    "confidence": round(conf, 3),
+                    "label": "tree"
                 })
 
             avg_confidence = sum(confidences) / len(confidences)
@@ -149,7 +166,7 @@ def run_inference(image_url: str) -> dict:
                 "detections": len(tree_boxes),
                 "avg_confidence": round(avg_confidence, 3),
                 "bounding_boxes": bounding_boxes,
-                "person_boxes": person_bboxes,
+                "person_boxes": normalized_person_boxes if len(normalized_person_boxes) > 0 else person_bboxes,
                 "status": "success"
             }
 
