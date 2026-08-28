@@ -20,9 +20,16 @@ class BoundingBox(BaseModel):
     width: float
     height: float
     confidence: float
+    label: str = "tree"
 
 
 class PersonBox(BaseModel):
+    x: float
+    y: float
+    width: float
+    height: float
+    confidence: float
+    label: str = "person"
     x_center: float
     y_center: float
     width_px: float

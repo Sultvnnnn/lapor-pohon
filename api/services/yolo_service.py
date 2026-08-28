@@ -5,13 +5,6 @@
     Hybrid Memory Approach:
     - Tree model is cached globally.
     - Human model is loaded dynamically per request to save RAM.
-
-    Rewrite notes:
-    - Fix os.path.dirname(file) menjadi __file__.
-    - Fix potensi error saat tidak ada bounding box.
-    - Tambah helper agar kode lebih rapi.
-    - Gunakan convert("RGB") untuk menghindari error image RGBA/palette.
-    - Tambah fallback aman jika model manusia gagal dimuat.
 """
 
 import os
@@ -66,10 +59,6 @@ except Exception as e:
 # ============================================================
 
 def _empty_response(status: str, calibration_method: str = "none") -> dict:
-    """
-    Response kosong jika tidak ada pohon terdeteksi
-    atau terjadi kondisi invalid.
-    """
     return {
         "risk_score": 0.0,
         "canopy_volume": 0.0,
@@ -89,32 +78,20 @@ def _empty_response(status: str, calibration_method: str = "none") -> dict:
 
 
 def _load_image_from_url(image_url: str) -> Image.Image:
-    """
-    Download gambar dari URL dan kembalikan PIL Image RGB.
-    """
     req = urllib.request.Request(
         image_url,
         headers={"User-Agent": "Mozilla/5.0"},
     )
-
     with urllib.request.urlopen(req, timeout=10) as response:
         image_bytes = response.read()
-
     return Image.open(BytesIO(image_bytes)).convert("RGB")
 
 
 def _detect_person_bboxes(image: Image.Image) -> List[Dict[str, float]]:
-    """
-    Deteksi manusia secara dinamis untuk kalibrasi skala.
-    Model manusia dimuat per request, lalu dihapus setelah selesai.
-    """
     person_bboxes: List[Dict[str, float]] = []
 
     if not os.path.exists(PERSON_MODEL_PATH):
-        print(
-            f"[WARNING] Model manusia tidak ditemukan di {PERSON_MODEL_PATH}. "
-            "Kalibrasi akan memakai fallback."
-        )
+        print(f"[WARNING] Model manusia tidak ditemukan di {PERSON_MODEL_PATH}. Kalibrasi akan memakai fallback.")
         return person_bboxes
 
     person_model = None
@@ -122,7 +99,6 @@ def _detect_person_bboxes(image: Image.Image) -> List[Dict[str, float]]:
 
     try:
         person_model = YOLO(PERSON_MODEL_PATH)
-
         person_results = person_model.predict(
             image,
             conf=0.25,
@@ -136,12 +112,12 @@ def _detect_person_bboxes(image: Image.Image) -> List[Dict[str, float]]:
             return person_bboxes
 
         boxes = person_results[0].boxes
-
         if boxes is None:
             return person_bboxes
 
         for box in boxes:
             px, py, pw, ph = box.xywh[0].tolist()
+            p_conf = float(box.conf[0].item()) if hasattr(box.conf[0], 'item') else float(box.conf[0])
 
             if float(pw) <= 0 or float(ph) <= 0:
                 continue
@@ -151,21 +127,17 @@ def _detect_person_bboxes(image: Image.Image) -> List[Dict[str, float]]:
                 "y_center": float(py),
                 "width_px": float(pw),
                 "height_px": float(ph),
+                "confidence": p_conf,
             })
 
     except Exception as e:
-        print(
-            f"[WARNING] Deteksi manusia gagal. "
-            f"Melanjutkan tanpa kalibrasi manusia. Detail: {e}"
-        )
+        print(f"[WARNING] Deteksi manusia gagal. Melanjutkan tanpa kalibrasi manusia. Detail: {e}")
 
     finally:
         if person_model is not None:
             del person_model
-
         if person_results is not None:
             del person_results
-
         gc.collect()
         print("[SUCCESS] Model kalibrasi manusia berhasil dihapus dari memori.")
 
@@ -177,14 +149,6 @@ def _detect_person_bboxes(image: Image.Image) -> List[Dict[str, float]]:
 # ============================================================
 
 def run_inference(image_url: str) -> dict:
-    """
-    Inferensi utama:
-    1. Download gambar.
-    2. Deteksi pohon.
-    3. Pilih pohon terbesar sebagai objek utama.
-    4. Deteksi manusia untuk kalibrasi.
-    5. Hitung metrik ekologis.
-    """
     if tree_model is None:
         raise RuntimeError("[ERROR] Model utama deteksi pohon tidak tersedia.")
 
@@ -199,18 +163,9 @@ def run_inference(image_url: str) -> dict:
             image_width_px, image_height_px = image.width, image.height
 
             t1 = time.time()
-            print(
-                f"[TIMING] Download + dekode gambar "
-                f"({image_width_px}x{image_height_px}) "
-                f"selesai dalam {t1 - t0:.2f} detik."
-            )
-
-            # ----------------------------
-            # TAHAP 1: DETEKSI POHON
-            # ----------------------------
+            print(f"[TIMING] Download + dekode gambar ({image_width_px}x{image_height_px}) selesai dalam {t1 - t0:.2f} detik.")
 
             print("[INFO] Memulai inferensi pohon menggunakan model global.")
-
             tree_results = tree_model.predict(
                 image,
                 conf=0.4,
@@ -236,7 +191,6 @@ def run_inference(image_url: str) -> dict:
             xywh_all = boxes.xywh.tolist()
             confidences = boxes.conf.tolist()
 
-            # Hapus object boxes dan hasil prediksi pohon setelah data diambil.
             del boxes
             del tree_results
             tree_results = None
@@ -244,10 +198,8 @@ def run_inference(image_url: str) -> dict:
 
             print(f"[INFO] Total objek pohon yang terdeteksi: {detections}")
 
-            # Pilih pohon terbesar berdasarkan luas bbox.
             areas = [float(w) * float(h) for (_, _, w, h) in xywh_all]
             main_idx = max(range(len(areas)), key=lambda i: areas[i])
-
             cx, cy, w, h = xywh_all[main_idx]
 
             tree_bbox_data = {
@@ -260,17 +212,32 @@ def run_inference(image_url: str) -> dict:
             # ----------------------------
             # TAHAP 2: DETEKSI MANUSIA
             # ----------------------------
-
             print("[INFO] Memulai deteksi manusia untuk kalibrasi skala.")
             person_bboxes = _detect_person_bboxes(image)
 
             t3 = time.time()
             print(f"[TIMING] Deteksi manusia selesai dalam {t3 - t2:.2f} detik.")
 
+            # Format person boxes untuk frontend (dengan label dan koordinat relatif)
+            normalized_person_boxes = []
+            for pbox in person_bboxes:
+                px, py, pw, ph = pbox["x_center"], pbox["y_center"], pbox["width_px"], pbox["height_px"]
+                normalized_person_boxes.append({
+                    "x": round((px - pw / 2) / image_width_px, 4),
+                    "y": round((py - ph / 2) / image_height_px, 4),
+                    "width": round(pw / image_width_px, 4),
+                    "height": round(ph / image_height_px, 4),
+                    "confidence": round(pbox.get("confidence", 1.0), 3),
+                    "label": "person",
+                    "x_center": px,
+                    "y_center": py,
+                    "width_px": pw,
+                    "height_px": ph,
+                })
+
             # ----------------------------
             # TAHAP 3: KALKULASI METRIK
             # ----------------------------
-
             metrics = calculate_all_metrics(
                 tree_bbox=tree_bbox_data,
                 person_bboxes=person_bboxes,
@@ -280,7 +247,6 @@ def run_inference(image_url: str) -> dict:
 
             # Format bounding box relatif untuk frontend.
             bounding_boxes = []
-
             for (bcx, bcy, bw, bh), conf in zip(xywh_all, confidences):
                 bounding_boxes.append({
                     "x": round((bcx - bw / 2) / image_width_px, 4),
@@ -288,6 +254,7 @@ def run_inference(image_url: str) -> dict:
                     "width": round(bw / image_width_px, 4),
                     "height": round(bh / image_height_px, 4),
                     "confidence": round(float(conf), 3),
+                    "label": "tree"
                 })
 
             avg_confidence = sum(confidences) / len(confidences)
@@ -297,7 +264,7 @@ def run_inference(image_url: str) -> dict:
                 "detections": detections,
                 "avg_confidence": round(avg_confidence, 3),
                 "bounding_boxes": bounding_boxes,
-                "person_boxes": person_bboxes,
+                "person_boxes": normalized_person_boxes,
                 "status": "success",
             }
 
@@ -314,8 +281,6 @@ def run_inference(image_url: str) -> dict:
     finally:
         if tree_results is not None:
             del tree_results
-
         if image is not None:
             del image
-
         gc.collect()

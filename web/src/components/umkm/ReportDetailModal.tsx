@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ReportItem } from "./SemarangRiskMap";
+import { TreeImageWithBoundingBox } from "@/components/TreeImageWithBoundingBox";
 import {
   X,
   MapPin,
@@ -92,6 +93,10 @@ export const ReportDetailModal = ({
   const isScheduled = report.status === "scheduled" || report.status === "in_progress" || !!report.scheduled_at;
   const isSoldOut = !!report.claimed_by_name;
 
+  const displayImage = report.proof_image_url || report.image_url;
+  const rawBoxes = report.bounding_box || report.bounding_boxes;
+  const hasBoxes = Array.isArray(rawBoxes) && rawBoxes.length > 0;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-md animate-in fade-in duration-200 font-sans">
       <div className="relative w-full max-w-lg bg-white border border-black/10 rounded-[2.25rem] p-6 sm:p-8 shadow-xl space-y-6 max-h-[90vh] overflow-y-auto">
@@ -119,15 +124,23 @@ export const ReportDetailModal = ({
           </button>
         </div>
 
-        {/* Gambar Laporan / Bukti Penebangan */}
-        {(report.proof_image_url || report.image_url) ? (
-          <div className="relative w-full h-52 sm:h-60 rounded-2xl overflow-hidden border border-black/10 shadow-xs bg-[#f8f9f5]">
-            <img
-              src={report.proof_image_url || report.image_url}
-              alt="Foto Laporan Pohon / Bukti Penebangan"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute top-3 left-3">
+        {/* Gambar Laporan / Bukti Penebangan dengan Bounding Box AI */}
+        {displayImage ? (
+          <div className="relative w-full rounded-2xl overflow-hidden border border-black/10 shadow-xs bg-[#f8f9f5]">
+            {hasBoxes && !report.proof_image_url ? (
+              <TreeImageWithBoundingBox
+                imageUrl={displayImage}
+                boundingBoxes={rawBoxes}
+                alt="Deteksi AI Bounding Box Pohon"
+              />
+            ) : (
+              <img
+                src={displayImage}
+                alt="Foto Laporan Pohon / Bukti Penebangan"
+                className="w-full h-52 sm:h-60 object-cover"
+              />
+            )}
+            <div className="absolute top-3 left-3 z-10">
               <span className={`text-[11px] font-bold uppercase tracking-wider px-3 py-1 rounded-full shadow-xs ${riskBg}`}>
                 {riskLabel} ({risk}%)
               </span>
