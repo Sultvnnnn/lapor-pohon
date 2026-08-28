@@ -1,7 +1,7 @@
 "use client";
 
 import { ReportForm } from "@/components/reportForm";
-import { X, ShieldCheck } from "lucide-react";
+import { X, ShieldCheck } from "@phosphor-icons/react";
 
 interface UmkmReportModalProps {
   isOpen: boolean;
@@ -23,7 +23,7 @@ export const UmkmReportModal = ({
         <div className="flex items-center justify-between border-b border-black/5 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-[#19382B] text-white flex items-center justify-center font-bold shadow-sm shrink-0">
-              <ShieldCheck className="w-5 h-5" />
+              <ShieldCheck weight="bold" className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-base font-bold text-[#111111] tracking-tight">
@@ -39,7 +39,7 @@ export const UmkmReportModal = ({
             onClick={onClose}
             className="w-8 h-8 rounded-full bg-[#ecefe6] text-[#111111]/70 hover:text-[#111111] hover:bg-gray-200 flex items-center justify-center transition-colors shrink-0"
           >
-            <X className="w-4 h-4" />
+            <X weight="bold" className="w-4 h-4" />
           </button>
         </div>
 
