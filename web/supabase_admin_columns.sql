@@ -21,6 +21,12 @@ ADD COLUMN IF NOT EXISTS proof_image_url TEXT;
 ALTER TABLE public.reports 
 ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ;
 
+ALTER TABLE public.reports 
+ADD COLUMN IF NOT EXISTS claimed_by_name TEXT;
+
+ALTER TABLE public.reports 
+ADD COLUMN IF NOT EXISTS tree_type TEXT;
+
 -- ── 3. ATUR ROW LEVEL SECURITY (RLS) POLICY ──
 ALTER TABLE public.reports ENABLE ROW LEVEL SECURITY;
 
