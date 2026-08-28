@@ -55,6 +55,7 @@ def run_inference(image_url: str) -> dict:
             tree_results = tree_model.predict(
                 image,
                 conf=0.4,
+                iou=0.3,
                 imgsz=640, 
                 max_det=5,
                 device="cpu",
