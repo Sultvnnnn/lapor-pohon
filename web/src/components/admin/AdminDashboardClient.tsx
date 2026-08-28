@@ -117,7 +117,8 @@ export type AdminReportItem = {
   risk_score: number;
   canopy_volume: number;
   biomass_estimate: number;
-  bounding_boxes: any;
+  bounding_boxes?: any;
+  bounding_box?: any;
   status: string;
   description?: string;
   admin_note?: string;
@@ -919,19 +920,23 @@ export const AdminDashboardClient = ({
                     </label>
 
                     <div className="rounded-2xl overflow-hidden border border-black/10 bg-black/5 shadow-xs">
-                      {Array.isArray(selectedReport.bounding_boxes) && selectedReport.bounding_boxes.length > 0 ? (
-                        <TreeImageWithBoundingBox
-                          imageUrl={selectedReport.image_url}
-                          boundingBoxes={selectedReport.bounding_boxes}
-                          alt="Deteksi AI Pohon Rawan"
-                        />
-                      ) : (
-                        <img
-                          src={selectedReport.image_url}
-                          alt="Foto Pohon Rawan"
-                          className="w-full h-56 sm:h-64 object-cover"
-                        />
-                      )}
+                      {(() => {
+                        const rawBoxes = selectedReport.bounding_box || selectedReport.bounding_boxes;
+                        const hasBoxes = Array.isArray(rawBoxes) && rawBoxes.length > 0;
+                        return hasBoxes ? (
+                          <TreeImageWithBoundingBox
+                            imageUrl={selectedReport.image_url}
+                            boundingBoxes={rawBoxes}
+                            alt="Deteksi AI Pohon Rawan"
+                          />
+                        ) : (
+                          <img
+                            src={selectedReport.image_url}
+                            alt="Foto Pohon Rawan"
+                            className="w-full h-56 sm:h-64 object-cover"
+                          />
+                        );
+                      })()}
                     </div>
                   </div>
 

@@ -20,6 +20,8 @@ export type ReportItem = {
   description?: string;
   claimed_by_name?: string;
   tree_type?: string;
+  bounding_box?: any;
+  bounding_boxes?: any;
 };
 
 interface SemarangRiskMapProps {
