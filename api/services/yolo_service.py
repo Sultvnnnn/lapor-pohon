@@ -3,7 +3,7 @@ This directory is specifically for storing core logic,
 including AI engine loading and inference processes.
 
 Hybrid Memory Approach:
-- Tree model is cached globally.
+- Tree model (ONNX prioritas, fallback .pt) is cached globally.
 - Human model is cached lazily (loaded on first use, yolov8n kecil).
 """
 
@@ -25,19 +25,37 @@ torch.set_num_threads(1)
 print("[INFO] Menginisiasi modul layanan YOLO. Menerapkan pendekatan memori hybrid.")
 
 
-TREE_MODEL_PATH = os.path.abspath(
+# ============================================================
+# MODEL PATH & DEVICE
+# ============================================================
+
+TREE_MODEL_ONNX_PATH = os.path.abspath(
+    os.path.join(os.path.dirname(__file__), "..", "models", "model_v4_1.onnx")
+)
+TREE_MODEL_PT_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "models", "model_v4_1.pt")
 )
+
 PERSON_MODEL_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "models", "yolov8n.pt")
 )
+
 DEVICE = "cpu"
 
 
+# ============================================================
+# LOAD TREE MODEL (ONNX prioritas, fallback .pt)
+# ============================================================
+
 tree_model = None
 try:
-    print(f"[INFO] Memuat model utama (pohon) ke memori global dari {TREE_MODEL_PATH}.")
-    tree_model = YOLO(TREE_MODEL_PATH)
+    TREE_MODEL_PATH = (
+        TREE_MODEL_ONNX_PATH
+        if os.path.exists(TREE_MODEL_ONNX_PATH)
+        else TREE_MODEL_PT_PATH
+    )
+    print(f"[INFO] Memuat model utama (pohon) dari {TREE_MODEL_PATH}.")
+    tree_model = YOLO(TREE_MODEL_PATH, task="detect")
     print("[SUCCESS] Model deteksi pohon berhasil dimuat dan disiagakan di RAM.")
 except Exception as e:
     print(f"[ERROR] Gagal memuat model deteksi pohon. Detail: {e}")
@@ -54,6 +72,10 @@ def _get_person_model():
         person_model = YOLO(PERSON_MODEL_PATH)
     return person_model
 
+
+# ============================================================
+# HELPERS
+# ============================================================
 
 def _empty_response(status: str, calibration_method: str = "none") -> dict:
     return {
@@ -140,6 +162,10 @@ def _detect_person_bboxes(image: Image.Image) -> List[Dict[str, float]]:
     return person_bboxes
 
 
+# ============================================================
+# MAIN INFERENCE
+# ============================================================
+
 def run_inference(image_url: str) -> dict:
     if tree_model is None:
         raise RuntimeError("[ERROR] Model utama deteksi pohon tidak tersedia.")
@@ -165,7 +191,7 @@ def run_inference(image_url: str) -> dict:
             tree_results = tree_model.predict(
                 image,
                 conf=0.4,
-                iou=0.3,
+                iou=0.6,
                 imgsz=640,
                 max_det=5,
                 device=DEVICE,
@@ -211,6 +237,7 @@ def run_inference(image_url: str) -> dict:
             t3 = time.time()
             print(f"[TIMING] Deteksi manusia selesai dalam {t3 - t2:.2f} detik.")
 
+            # Format person boxes untuk frontend (dengan label dan koordinat relatif)
             normalized_person_boxes = []
             for pbox in person_bboxes:
                 px = pbox["x_center"]
@@ -237,6 +264,7 @@ def run_inference(image_url: str) -> dict:
                 image_height_px=image_height_px,
             )
 
+            # Format bounding box relatif untuk frontend.
             bounding_boxes = []
             for (bcx, bcy, bw, bh), conf in zip(xywh_all, confidences):
                 bounding_boxes.append({
