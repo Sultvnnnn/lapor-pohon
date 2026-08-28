@@ -146,11 +146,11 @@ export const AdminMapView = ({ reports, onSelectReport }: AdminMapViewProps) => 
   }, []);
 
   return (
-    <div className="relative w-full h-[450px] sm:h-[500px] rounded-3xl overflow-hidden border border-black/10 shadow-xs bg-gray-100 font-sans">
+    <div className="relative w-full h-[450px] sm:h-[500px] rounded-[2rem] overflow-hidden border border-black/5 shadow-xs bg-[#f8f9f5] font-sans">
       <div ref={mapContainerRef} className="w-full h-full z-10" />
 
       {/* Map Legend Overlay */}
-      <div className="absolute top-4 left-4 z-[20] bg-white/90 backdrop-blur-md border border-black/10 rounded-2xl p-3 shadow-md space-y-1.5 text-xs font-semibold text-[#111111]">
+      <div className="absolute top-4 left-4 z-[20] bg-white/90 backdrop-blur-md border border-black/5 rounded-2xl p-3.5 shadow-xs space-y-1.5 text-xs font-semibold text-[#111111]">
         <div className="flex items-center gap-2">
           <span className="w-3 h-3 rounded-full bg-red-500 shrink-0" />
           <span>Risiko Tinggi (&gt; 60)</span>
