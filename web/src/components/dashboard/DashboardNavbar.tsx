@@ -13,6 +13,8 @@ import {
   BookOpen,
   List,
   X,
+  ShieldCheck,
+  Storefront,
 } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
@@ -38,9 +40,13 @@ export const DashboardSidebar = ({
     router.refresh();
   };
 
+  const normalizedRole = userRole ? String(userRole).toLowerCase().trim() : "";
+  const isAdmin = normalizedRole === "admin";
+  const isUmkm = normalizedRole === "umkm" || normalizedRole.includes("umkm");
+
   return (
     <aside className="hidden md:flex flex-col justify-between h-[calc(100vh-2rem)] sticky top-4 left-4 w-16 bg-white border border-black/5 shadow-xs rounded-[2rem] py-5 px-2.5 shrink-0 z-50 font-sans items-center overflow-visible">
-      {/* ── Top: Brand Logo & Title ── */}
+      {/* ── Top: Brand Logo & Navigation Links ── */}
       <div className="flex flex-col gap-6 w-full items-center">
         {/* Brand Logo Link */}
         <div
@@ -64,7 +70,7 @@ export const DashboardSidebar = ({
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: -8, scale: 0.92 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
-                className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10 flex flex-col gap-0.5"
+                className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-[9999] pointer-events-none border border-white/10 flex flex-col gap-0.5"
               >
                 <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
                 <span className="text-xs font-extrabold text-white tracking-tight">LaporPohon</span>
@@ -99,7 +105,7 @@ export const DashboardSidebar = ({
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   exit={{ opacity: 0, x: -8, scale: 0.92 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10"
+                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-[9999] pointer-events-none border border-white/10"
                 >
                   <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
                   <span>Beranda Utama</span>
@@ -108,10 +114,10 @@ export const DashboardSidebar = ({
             </AnimatePresence>
           </div>
 
-          {/* Laporan AI */}
+          {/* Dashboard AI & Radar */}
           <div
             className="relative flex items-center justify-center"
-            onMouseEnter={() => setHoveredItem("laporan")}
+            onMouseEnter={() => setHoveredItem("dashboard")}
             onMouseLeave={() => setHoveredItem(null)}
           >
             <Link
@@ -122,24 +128,63 @@ export const DashboardSidebar = ({
                   : "text-[#111111]/70 hover:bg-[#ecefe6] hover:text-[#19382B] hover:scale-105"
               }`}
             >
-              <Layout size={19} weight={pathname === "/dashboard" ? "fill" : "regular"} />
+              {isUmkm ? (
+                <Storefront size={19} weight={pathname === "/dashboard" ? "fill" : "regular"} />
+              ) : (
+                <Layout size={19} weight={pathname === "/dashboard" ? "fill" : "regular"} />
+              )}
             </Link>
 
             <AnimatePresence>
-              {hoveredItem === "laporan" && (
+              {hoveredItem === "dashboard" && (
                 <motion.div
                   initial={{ opacity: 0, x: -8, scale: 0.92 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   exit={{ opacity: 0, x: -8, scale: 0.92 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10"
+                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-[9999] pointer-events-none border border-white/10"
                 >
                   <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
-                  <span>Laporan AI</span>
+                  <span>{isUmkm ? "Dashboard UMKM & Katalog Kayu" : "Dashboard Laporan AI"}</span>
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
+
+          {/* Admin Panel (If user is Admin) */}
+          {isAdmin && (
+            <div
+              className="relative flex items-center justify-center"
+              onMouseEnter={() => setHoveredItem("admin")}
+              onMouseLeave={() => setHoveredItem(null)}
+            >
+              <Link
+                href="/admin"
+                className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                  pathname === "/admin"
+                    ? "bg-[#19382B] text-white shadow-xs"
+                    : "text-[#111111]/70 hover:bg-[#ecefe6] hover:text-[#19382B] hover:scale-105"
+                }`}
+              >
+                <ShieldCheck size={19} weight={pathname === "/admin" ? "fill" : "regular"} />
+              </Link>
+
+              <AnimatePresence>
+                {hoveredItem === "admin" && (
+                  <motion.div
+                    initial={{ opacity: 0, x: -8, scale: 0.92 }}
+                    animate={{ opacity: 1, x: 0, scale: 1 }}
+                    exit={{ opacity: 0, x: -8, scale: 0.92 }}
+                    transition={{ duration: 0.15, ease: "easeOut" }}
+                    className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-[9999] pointer-events-none border border-white/10 flex items-center gap-1.5"
+                  >
+                    <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
+                    <span>Panel Admin Pemkot</span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
 
           {/* Panduan */}
           <div
@@ -165,64 +210,10 @@ export const DashboardSidebar = ({
                   animate={{ opacity: 1, x: 0, scale: 1 }}
                   exit={{ opacity: 0, x: -8, scale: 0.92 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10"
+                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-[9999] pointer-events-none border border-white/10"
                 >
                   <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
-                  <span>Panduan</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Peta Sebaran */}
-          <div
-            className="relative flex items-center justify-center"
-            onMouseEnter={() => setHoveredItem("peta")}
-            onMouseLeave={() => setHoveredItem(null)}
-          >
-            <div className="w-10 h-10 rounded-full text-gray-400 opacity-60 flex items-center justify-center cursor-not-allowed">
-              <MapTrifold size={19} weight="regular" />
-            </div>
-
-            <AnimatePresence>
-              {hoveredItem === "peta" && (
-                <motion.div
-                  initial={{ opacity: 0, x: -8, scale: 0.92 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: -8, scale: 0.92 }}
-                  transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10 flex items-center gap-2"
-                >
-                  <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
-                  <span>Peta Sebaran</span>
-                  <span className="text-[9px] font-extrabold bg-white/20 px-1.5 py-0.5 rounded-full">SEGERA</span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Katalog Kayu */}
-          <div
-            className="relative flex items-center justify-center"
-            onMouseEnter={() => setHoveredItem("katalog")}
-            onMouseLeave={() => setHoveredItem(null)}
-          >
-            <div className="w-10 h-10 rounded-full text-gray-400 opacity-60 flex items-center justify-center cursor-not-allowed">
-              <Leaf size={19} weight="regular" />
-            </div>
-
-            <AnimatePresence>
-              {hoveredItem === "katalog" && (
-                <motion.div
-                  initial={{ opacity: 0, x: -8, scale: 0.92 }}
-                  animate={{ opacity: 1, x: 0, scale: 1 }}
-                  exit={{ opacity: 0, x: -8, scale: 0.92 }}
-                  transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10 flex items-center gap-2"
-                >
-                  <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
-                  <span>Katalog Kayu</span>
-                  <span className="text-[9px] font-extrabold bg-white/20 px-1.5 py-0.5 rounded-full">SEGERA</span>
+                  <span>Panduan Penggunaan</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -238,7 +229,7 @@ export const DashboardSidebar = ({
           onMouseEnter={() => setHoveredItem("user")}
           onMouseLeave={() => setHoveredItem(null)}
         >
-          <div className="w-10 h-10 rounded-full bg-[#ecefe6] text-[#19382B] flex items-center justify-center text-xs font-bold uppercase shadow-xs cursor-pointer hover:scale-105 transition-all">
+          <div className="w-10 h-10 rounded-full bg-[#ecefe6] text-[#19382B] flex items-center justify-center text-xs font-bold uppercase shadow-xs cursor-pointer hover:scale-105 transition-all border border-black/5">
             {userEmail ? userEmail[0] : "U"}
           </div>
 
@@ -249,14 +240,14 @@ export const DashboardSidebar = ({
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: -8, scale: 0.92 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
-                className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10 flex flex-col gap-0.5"
+                className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-4 py-2.5 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-[9999] pointer-events-none border border-white/10 flex flex-col gap-0.5"
               >
                 <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
-                <span className="text-xs font-extrabold text-white truncate max-w-[150px]">
+                <span className="text-xs font-extrabold text-white truncate max-w-[170px]">
                   {userEmail || "Pengguna"}
                 </span>
-                <span className="text-[9px] font-medium text-white/70 capitalize">
-                  Peran: {userRole || "Warga"}
+                <span className="text-[9px] font-bold text-[#88d937] uppercase tracking-wider">
+                  Peran: {normalizedRole || "Warga"}
                 </span>
               </motion.div>
             )}
@@ -284,7 +275,7 @@ export const DashboardSidebar = ({
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: -8, scale: 0.92 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
-                className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-red-600 text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-50 pointer-events-none border border-white/10"
+                className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-red-600 text-white px-3.5 py-2 rounded-2xl shadow-xl text-xs font-bold whitespace-nowrap z-[9999] pointer-events-none border border-white/10"
               >
                 <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-red-600" />
                 <span>Keluar dari Akun</span>
@@ -312,6 +303,10 @@ export const DashboardNavbar = ({
     router.push("/login");
     router.refresh();
   };
+
+  const normalizedRole = userRole ? String(userRole).toLowerCase().trim() : "";
+  const isAdmin = normalizedRole === "admin";
+  const isUmkm = normalizedRole === "umkm" || normalizedRole.includes("umkm");
 
   return (
     <header className="sticky top-7 sm:top-4 z-30 w-full px-4 sm:px-6 flex flex-col items-center pointer-events-none font-sans md:hidden relative">
@@ -354,15 +349,15 @@ export const DashboardNavbar = ({
             className="pointer-events-auto absolute top-full left-4 right-4 mt-2 max-w-[960px] mx-auto bg-white/95 backdrop-blur-xl border border-black/10 text-[#111111] rounded-3xl p-4 flex flex-col gap-2.5 shadow-2xl z-50"
           >
             <div className="flex items-center gap-3 p-3 rounded-2xl bg-white/70 border border-black/5">
-              <div className="w-9 h-9 rounded-full bg-[#19382B] text-[#e3f4d7] flex items-center justify-center text-xs font-bold uppercase shrink-0">
+              <div className="w-9 h-9 rounded-full bg-[#19382B] text-[#88d937] flex items-center justify-center text-xs font-bold uppercase shrink-0">
                 {userEmail ? userEmail[0] : "U"}
               </div>
               <div className="overflow-hidden min-w-0 flex-1">
                 <p className="font-semibold text-xs text-[#111111] truncate">
                   {userEmail || "Pengguna"}
                 </p>
-                <p className="text-[10px] text-[#111111]/60 capitalize">
-                  Peran: {userRole || "Warga"}
+                <p className="text-[10px] text-[#19382B] font-bold uppercase tracking-wider">
+                  Peran: {normalizedRole || "Warga"}
                 </p>
               </div>
             </div>
@@ -390,10 +385,26 @@ export const DashboardNavbar = ({
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <Layout size={16} weight="bold" />
-                  <span>Laporan AI</span>
+                  {isUmkm ? <Storefront size={16} weight="bold" /> : <Layout size={16} weight="bold" />}
+                  <span>{isUmkm ? "Dashboard UMKM & Katalog Kayu" : "Dashboard Laporan AI"}</span>
                 </div>
               </Link>
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`px-4 py-2.5 rounded-2xl text-xs font-semibold flex items-center justify-between transition-colors ${
+                    pathname === "/admin"
+                      ? "bg-[#19382B] text-white shadow-xs"
+                      : "text-[#111111]/80 hover:bg-black/5 hover:text-[#111111]"
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={16} weight="bold" />
+                    <span>Panel Admin Pemkot</span>
+                  </div>
+                </Link>
+              )}
               <Link
                 href="/panduan"
                 onClick={() => setIsMobileMenuOpen(false)}
