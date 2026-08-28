@@ -68,8 +68,8 @@ supabase==2.31.0
 supabase-auth==2.31.0
 supabase-functions==2.31.0
 sympy==1.14.0
-torch==2.5.1+cpu
-torchvision==0.20.1+cpu
+torch
+torchvision
 typing-inspection==0.4.2
 typing_extensions==4.16.0
 ultralytics==8.4.115
