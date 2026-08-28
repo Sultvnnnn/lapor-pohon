@@ -40,8 +40,9 @@ export const DashboardSidebar = ({
     router.refresh();
   };
 
-  const isAdmin = userRole === "admin";
-  const isUmkm = userRole === "umkm";
+  const normalizedRole = userRole ? String(userRole).toLowerCase().trim() : "";
+  const isAdmin = normalizedRole === "admin";
+  const isUmkm = normalizedRole === "umkm" || normalizedRole.includes("umkm");
 
   return (
     <aside className="hidden md:flex flex-col justify-between h-[calc(100vh-2rem)] sticky top-4 left-4 w-16 bg-white border border-black/5 shadow-xs rounded-[2rem] py-5 px-2.5 shrink-0 z-50 font-sans items-center overflow-visible">
@@ -246,7 +247,7 @@ export const DashboardSidebar = ({
                   {userEmail || "Pengguna"}
                 </span>
                 <span className="text-[9px] font-bold text-[#88d937] uppercase tracking-wider">
-                  Peran: {userRole || "Warga"}
+                  Peran: {normalizedRole || "Warga"}
                 </span>
               </motion.div>
             )}
@@ -303,8 +304,9 @@ export const DashboardNavbar = ({
     router.refresh();
   };
 
-  const isAdmin = userRole === "admin";
-  const isUmkm = userRole === "umkm";
+  const normalizedRole = userRole ? String(userRole).toLowerCase().trim() : "";
+  const isAdmin = normalizedRole === "admin";
+  const isUmkm = normalizedRole === "umkm" || normalizedRole.includes("umkm");
 
   return (
     <header className="sticky top-7 sm:top-4 z-30 w-full px-4 sm:px-6 flex flex-col items-center pointer-events-none font-sans md:hidden relative">
@@ -355,7 +357,7 @@ export const DashboardNavbar = ({
                   {userEmail || "Pengguna"}
                 </p>
                 <p className="text-[10px] text-[#19382B] font-bold uppercase tracking-wider">
-                  Peran: {userRole || "Warga"}
+                  Peran: {normalizedRole || "Warga"}
                 </p>
               </div>
             </div>

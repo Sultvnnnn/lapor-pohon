@@ -5,6 +5,9 @@ import {
   DashboardSidebar,
 } from "@/components/dashboard/DashboardNavbar";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export default async function ProtectedLayout({
   children,
 }: {
@@ -30,14 +33,16 @@ export default async function ProtectedLayout({
     redirect("/onboarding");
   }
 
+  const normalizedRole = String(profile.role).toLowerCase().trim();
+
   return (
     <div className="min-h-screen bg-[#ecefe6] text-[#111111] font-sans flex flex-col md:flex-row relative">
       {/* Desktop Sidebar (visible on md: 768px+) */}
-      <DashboardSidebar userEmail={user.email} userRole={profile.role} />
+      <DashboardSidebar userEmail={user.email} userRole={normalizedRole} />
 
       {/* Mobile Top Header (sticky on top-4, identical to landing page) */}
       <div className="md:hidden w-full sticky top-4 z-30 pt-2 pb-1 mobile-header-wrapper">
-        <DashboardNavbar userEmail={user.email} userRole={profile.role} />
+        <DashboardNavbar userEmail={user.email} userRole={normalizedRole} />
       </div>
 
       {/* Main Content Area */}
