@@ -116,7 +116,7 @@ const loadingMessages = [
 export const getReportStatusConfig = (statusRaw?: string) => {
   const s = (statusRaw || "").toLowerCase().trim();
 
-  // 1. Selesai Penanganan (Must be checked before "penanganan")
+  // 1. Selesai Penanganan
   if (
     s.includes("selesai") ||
     s.includes("resolved") ||
@@ -124,10 +124,10 @@ export const getReportStatusConfig = (statusRaw?: string) => {
     s === "done"
   ) {
     return {
-      label: "🟢 Selesai Penanganan",
-      bg: "bg-emerald-500/15",
-      text: "text-emerald-800",
-      border: "border-emerald-500/30",
+      label: "Selesai penanganan",
+      bg: "bg-[#ecefe6]",
+      text: "text-[#19382B] font-bold",
+      border: "border-black/5",
       isPending: false,
     };
   }
@@ -140,10 +140,10 @@ export const getReportStatusConfig = (statusRaw?: string) => {
     s.includes("batal")
   ) {
     return {
-      label: "🔴 Ditolak / Tidak Valid",
-      bg: "bg-red-500/10",
-      text: "text-red-700",
-      border: "border-red-500/20",
+      label: "Ditolak / tidak valid",
+      bg: "bg-gray-100",
+      text: "text-gray-600 font-bold",
+      border: "border-gray-200",
       isPending: false,
     };
   }
@@ -157,10 +157,10 @@ export const getReportStatusConfig = (statusRaw?: string) => {
     (s.includes("penanganan") && !s.includes("selesai"))
   ) {
     return {
-      label: "🟠 Sedang Ditangani Lapangan",
-      bg: "bg-orange-500/10",
-      text: "text-orange-700",
-      border: "border-orange-500/20",
+      label: "Sedang ditangani lapangan",
+      bg: "bg-white",
+      text: "text-[#111111] font-bold",
+      border: "border-black/10",
       isPending: false,
     };
   }
@@ -172,21 +172,21 @@ export const getReportStatusConfig = (statusRaw?: string) => {
     s.includes("scheduled")
   ) {
     return {
-      label: "🟡 Penjadwalan Pemangkasan",
-      bg: "bg-amber-500/10",
-      text: "text-amber-800",
-      border: "border-amber-500/20",
+      label: "Penjadwalan pemangkasan",
+      bg: "bg-[#ecefe6]",
+      text: "text-[#19382B] font-bold",
+      border: "border-black/5",
       isPending: false,
     };
   }
 
-  // 5. Terverifikasi DLH
+  // 5. Terverifikasi Dinas
   if (s === "terverifikasi dlh" || s === "terverifikasi" || s === "verified") {
     return {
-      label: "🔵 Terverifikasi DLH",
-      bg: "bg-blue-500/10",
-      text: "text-blue-700",
-      border: "border-blue-500/20",
+      label: "Terverifikasi dinas",
+      bg: "bg-white",
+      text: "text-[#19382B] font-bold",
+      border: "border-black/10",
       isPending: false,
     };
   }
@@ -194,19 +194,19 @@ export const getReportStatusConfig = (statusRaw?: string) => {
   // 6. Menunggu Verifikasi
   if (s === "pending" || s.includes("menunggu") || s === "") {
     return {
-      label: "🔴 Menunggu Verifikasi",
-      bg: "bg-red-500/10",
-      text: "text-red-700",
-      border: "border-red-500/20",
+      label: "Menunggu verifikasi",
+      bg: "bg-white",
+      text: "text-gray-700 font-bold",
+      border: "border-black/10",
       isPending: true,
     };
   }
 
   return {
-    label: `📌 ${statusRaw}`,
-    bg: "bg-emerald-500/10",
-    text: "text-emerald-700",
-    border: "border-emerald-500/20",
+    label: statusRaw || "Status aduan",
+    bg: "bg-gray-100",
+    text: "text-gray-700 font-bold",
+    border: "border-black/10",
     isPending: false,
   };
 };
