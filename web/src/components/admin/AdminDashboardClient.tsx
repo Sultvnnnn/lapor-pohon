@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ShieldCheck,
@@ -30,9 +31,10 @@ import {
 } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadReportImage } from "@/lib/storageUtils";
-import { TreeImageWithBoundingBox } from "@/components/TreeImageWithBoundingBox";
+import { TreeImageWithBoundingBox, BoundingBox } from "@/components/TreeImageWithBoundingBox";
 import { AdminMapView } from "./AdminMapView";
 import { getRiskLevel, riskLevelConfig } from "@/lib/riskLevel";
+import { StatusTimeline } from "@/components/StatusTimeline";
 
 /* ── Custom Floating Label Dropdown Component (Sesuai Contoh di Gambar) ── */
 export interface CustomSelectOption {
@@ -141,6 +143,131 @@ export const CustomSelect = ({
       </AnimatePresence>
     </div>
   );
+};
+
+export const formatLocationDisplay = (loc: any): string => {
+  if (!loc) return "Lokasi tidak tersedia";
+  if (typeof loc === "string") {
+    if (loc.toUpperCase().startsWith("POINT")) return "Koordinat GPS Terdeteksi";
+    return loc;
+  }
+  if (typeof loc === "object") {
+    if (loc.address) return loc.address;
+    if (loc.name) return loc.name;
+    if (Array.isArray(loc.coordinates)) return `GPS (${loc.coordinates.join(", ")})`;
+  }
+  return String(loc);
+};
+
+export const getReportStatusConfig = (statusRaw?: string) => {
+  const s = (statusRaw || "").toLowerCase().trim();
+
+  // 1. Selesai Penanganan (Must be checked before "penanganan")
+  if (
+    s.includes("selesai") ||
+    s.includes("resolved") ||
+    s.includes("completed") ||
+    s === "done"
+  ) {
+    return {
+      label: "🟢 Selesai Penanganan",
+      bg: "bg-emerald-500/15",
+      text: "text-emerald-800",
+      border: "border-emerald-500/30",
+      isPending: false,
+    };
+  }
+
+  // 2. Ditolak / Tidak Valid
+  if (
+    s.includes("ditolak") ||
+    s.includes("rejected") ||
+    s.includes("invalid") ||
+    s.includes("batal")
+  ) {
+    return {
+      label: "🔴 Ditolak / Tidak Valid",
+      bg: "bg-red-500/10",
+      text: "text-red-700",
+      border: "border-red-500/20",
+      isPending: false,
+    };
+  }
+
+  // 3. Sedang Ditangani Lapangan
+  if (
+    s === "sedang ditangani lapangan" ||
+    s === "in_progress" ||
+    s === "progress" ||
+    s.includes("ditangani") ||
+    (s.includes("penanganan") && !s.includes("selesai"))
+  ) {
+    return {
+      label: "🟠 Sedang Ditangani Lapangan",
+      bg: "bg-orange-500/10",
+      text: "text-orange-700",
+      border: "border-orange-500/20",
+      isPending: false,
+    };
+  }
+
+  // 4. Penjadwalan Pemangkasan
+  if (
+    s.includes("jadwal") ||
+    s.includes("penjadwalan") ||
+    s.includes("scheduled")
+  ) {
+    return {
+      label: "🟡 Penjadwalan Pemangkasan",
+      bg: "bg-amber-500/10",
+      text: "text-amber-800",
+      border: "border-amber-500/20",
+      isPending: false,
+    };
+  }
+
+  // 5. Terverifikasi DLH
+  if (s === "terverifikasi dlh" || s === "terverifikasi" || s === "verified") {
+    return {
+      label: "🔵 Terverifikasi DLH",
+      bg: "bg-blue-500/10",
+      text: "text-blue-700",
+      border: "border-blue-500/20",
+      isPending: false,
+    };
+  }
+
+  // 6. Menunggu Verifikasi
+  if (s === "pending" || s.includes("menunggu") || s === "") {
+    return {
+      label: "🔴 Menunggu Verifikasi",
+      bg: "bg-red-500/10",
+      text: "text-red-700",
+      border: "border-red-500/20",
+      isPending: true,
+    };
+  }
+
+  return {
+    label: `📌 ${statusRaw}`,
+    bg: "bg-emerald-500/10",
+    text: "text-emerald-700",
+    border: "border-emerald-500/20",
+    isPending: false,
+  };
+};
+
+export const parseBoundingBoxes = (item: any): BoundingBox[] => {
+  if (!item) return [];
+  const raw = item.bounding_box || item.bounding_boxes || item.boundingBoxes;
+  if (Array.isArray(raw)) return raw;
+  if (typeof raw === "string") {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {}
+  }
+  return [];
 };
 
 export const parseCoordinates = (report: any): { lat: number; lng: number } | null => {
@@ -297,7 +424,7 @@ const DetailMiniMap = ({ lat, lng }: { lat: number; lng: number }) => {
   }, [lat, lng]);
 
   return (
-    <div className="relative w-full h-44 rounded-2xl overflow-hidden border border-black/10 shadow-xs bg-gray-100">
+    <div className="relative w-full h-48 sm:h-52 rounded-2xl overflow-hidden border border-black/10 shadow-xs bg-gray-100">
       <div ref={mapRef} className="w-full h-full z-10" />
       <div className="absolute bottom-2 left-2 z-[20] bg-white/90 backdrop-blur-md border border-black/10 rounded-full px-3 py-1 text-[10px] font-bold text-[#19382B] flex items-center gap-1 shadow-xs">
         <MapPin size={12} weight="fill" />
@@ -305,6 +432,17 @@ const DetailMiniMap = ({ lat, lng }: { lat: number; lng: number }) => {
       </div>
     </div>
   );
+};
+
+/* Helper to render modals directly to document.body, completely covering sidebar & top navbar */
+const ClientPortal = ({ children }: { children: React.ReactNode }) => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+  return createPortal(children, document.body);
 };
 
 export const AdminDashboardClient = ({
@@ -335,9 +473,20 @@ export const AdminDashboardClient = ({
 
   // Lightbox Image Zoom Modal State
   const [previewZoomImage, setPreviewZoomImage] = useState<string | null>(null);
-
-  // Delete Confirmation Modal State
+  const [previewZoomBoxes, setPreviewZoomBoxes] = useState<BoundingBox[]>([]);
   const [deleteConfirmReport, setDeleteConfirmReport] = useState<AdminReportItem | null>(null);
+
+  // Lock body scroll when modal or drawer is open
+  useEffect(() => {
+    if (selectedReport || previewZoomImage || deleteConfirmReport) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [selectedReport, previewZoomImage, deleteConfirmReport]);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // ── Tarik Semua Data Report dari Semua Pengguna + Profile Mapping ──
@@ -965,427 +1114,460 @@ export const AdminDashboardClient = ({
         )}
       </div>
 
-      {/* ── 5. Floating Right Drawer Slide-Over Detail & Action Panel DLH (Persis Gambar Contoh) ── */}
-      <AnimatePresence>
-        {selectedReport && (
-          <div className="fixed inset-0 z-[9999] flex justify-end font-sans overflow-hidden p-2 sm:p-4 pointer-events-none">
-            {/* Backdrop Overlay (Click to Close) */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedReport(null)}
-              className="absolute inset-0 bg-black/45 backdrop-blur-xs pointer-events-auto"
-            />
+      {/* ── 5. Floating Right Drawer Slide-Over Panel (Role Admin) ── */}
+      <ClientPortal>
+        <AnimatePresence>
+          {selectedReport && (
+            <div className="fixed inset-0 z-[99999] flex justify-end font-sans overflow-hidden p-0 sm:p-4 pointer-events-none">
+              {/* Backdrop Overlay (Click to Close) */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedReport(null)}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm pointer-events-auto"
+              />
 
-            {/* Floating Right Drawer Panel Box */}
-            <motion.div
-              initial={{ x: "100%", opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: "100%", opacity: 0 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="relative z-10 pointer-events-auto w-full max-w-xl sm:max-w-2xl h-full max-h-[calc(100vh-2rem)] rounded-[2.2rem] bg-white shadow-2xl overflow-hidden flex flex-col font-sans border border-black/10 my-auto"
-            >
-              {/* ── Drawer Top Header Bar ── */}
-              <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-xs font-bold font-mono bg-[#f8f9f5] border border-black/10 px-3 py-1 rounded-full text-[#111111]/70">
-                    ID Aduan #{selectedReport.id ? selectedReport.id.slice(0, 8) : "N/A"}
-                  </span>
-                  <span className="text-[10px] font-extrabold uppercase px-2.5 py-0.5 rounded-full bg-[#ecefe6] text-[#19382B] border border-black/5">
-                    {selectedReport.status || "Pending"}
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => setSelectedReport(null)}
-                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-[#111111] flex items-center justify-center transition-all cursor-pointer"
-                  title="Tutup Panel"
-                >
-                  <X size={18} weight="bold" />
-                </button>
-              </div>
-
-              {/* ── Drawer Scrollable Content Body ── */}
-              <div className="flex-1 overflow-y-auto divide-y divide-gray-100">
-                {/* 1. Profile Reporter Card (Top Header) */}
-                <div className="p-5 bg-[#f8f9f5]/70 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-12 h-12 rounded-full bg-[#19382B] text-[#88d937] flex items-center justify-center font-extrabold text-base uppercase shrink-0 border border-[#88d937]/30 shadow-xs">
-                      {selectedReport.reporter_name ? selectedReport.reporter_name[0] : "W"}
-                    </div>
-                    <div>
-                      <h3 className="font-extrabold text-base text-[#111111] leading-tight">
-                        {selectedReport.reporter_name || "Warga"}
-                      </h3>
-                      <p className="text-xs text-gray-500 font-medium mt-0.5">
-                        {selectedReport.reporter_email || (selectedReport.user_id ? `${selectedReport.user_id.slice(0, 8)}...` : "Pelapor Warga")}
-                      </p>
-                    </div>
+              {/* Floating Right Drawer Panel Box */}
+              <motion.div
+                initial={{ y: "100%", opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: "100%", opacity: 0 }}
+                transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                className="relative z-10 pointer-events-auto w-full max-w-full sm:max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[calc(100vh-2rem)] rounded-t-[2rem] sm:rounded-[2.2rem] bg-white shadow-2xl overflow-hidden flex flex-col font-sans border-t sm:border border-black/10 mt-auto sm:my-auto"
+              >
+                {/* Drawer Top Header Bar */}
+                <div className="p-3.5 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <span className="text-[11px] sm:text-xs font-bold font-mono bg-[#f8f9f5] border border-black/10 px-2.5 sm:px-3 py-1 rounded-full text-[#111111]/70 shrink-0">
+                      ID #{selectedReport.id.slice(0, 8)}
+                    </span>
+                    <span className="text-[11px] sm:text-xs font-semibold text-gray-600 flex items-center gap-1 bg-[#f8f9f5] border border-black/10 px-2.5 sm:px-3 py-1 rounded-full shrink-0">
+                      <Clock size={13} weight="bold" className="text-gray-400" />
+                      <span>
+                        {selectedReport.created_at
+                          ? new Date(selectedReport.created_at).toLocaleString("id-ID", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : "-"}
+                      </span>
+                    </span>
                   </div>
 
-                  <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-[#ecefe6] text-[#19382B] border border-black/5 shadow-2xs">
-                    Status: {selectedReport.status || "Pending"}
-                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedReport(null)}
+                    className="w-8.5 h-8.5 sm:w-9 sm:h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-[#111111] flex items-center justify-center transition-all cursor-pointer shrink-0"
+                    title="Tutup Panel"
+                  >
+                    <X size={18} weight="bold" />
+                  </button>
                 </div>
 
-                {/* 2. Key Metrics Grid (AI Radar + Volume + Biomass) */}
-                <div className="grid grid-cols-3 gap-3 p-5">
-                  {(() => {
-                    const rawRisk = typeof selectedReport.risk_score === "number" ? selectedReport.risk_score : 0;
-                    const riskLevel = getRiskLevel(rawRisk);
-                    const riskConfig = riskLevelConfig[riskLevel];
-                    const displayRisk = rawRisk <= 1 ? Math.round(rawRisk * 100) : Math.round(rawRisk);
+                {/* Drawer Scrollable Content Body */}
+                <div className="flex-1 overflow-y-auto divide-y divide-gray-100 pb-4">
+                  {/* 1. Header Profile Pelapor Warga */}
+                  <div className="p-4 sm:p-5 bg-[#f8f9f5]/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-[#19382B] text-[#88d937] flex items-center justify-center font-extrabold text-base uppercase shrink-0 border border-[#88d937]/30 shadow-xs">
+                        {selectedReport.reporter_name ? selectedReport.reporter_name[0] : "W"}
+                      </div>
+                      <div>
+                        <h3 className="font-extrabold text-sm sm:text-base text-[#111111] leading-tight">
+                          {selectedReport.reporter_name || "Warga Pelapor"}
+                        </h3>
+                        <p className="text-[11px] sm:text-xs text-gray-500 font-medium mt-0.5">
+                          {selectedReport.reporter_email || "Pelapor Terdaftar"} • {new Date(selectedReport.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                        </p>
+                      </div>
+                    </div>
 
-                    return (
-                      <div className="bg-[#f8f9f5] border border-black/5 p-3.5 rounded-2xl">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Risiko AI</span>
-                        <div className="mt-1">
-                          <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${riskConfig.bgColor} ${riskConfig.textColor}`}>
-                            {riskConfig.label} ({displayRisk}/100)
+                    {(() => {
+                      const st = getReportStatusConfig(selectedReport.status);
+                      return (
+                        <span className={`text-[11px] sm:text-xs font-bold px-3 py-1 rounded-full border shadow-2xs self-start sm:self-auto ${st.bg} ${st.text} ${st.border}`}>
+                          {st.label}
+                        </span>
+                      );
+                    })()}
+                  </div>
+
+                  {/* 2. Key Metrics Grid (AI Risk, Canopy Volume, Biomass) */}
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3 p-4 sm:p-5">
+                    {(() => {
+                      const rawRisk = typeof selectedReport.risk_score === "number" ? selectedReport.risk_score : 0;
+                      const riskLevel = getRiskLevel(rawRisk);
+                      const riskConfig = riskLevelConfig[riskLevel];
+                      const displayRisk = rawRisk <= 1 ? Math.round(rawRisk * 100) : Math.round(rawRisk);
+
+                      return (
+                        <div className="bg-[#f8f9f5] border border-black/5 p-2.5 sm:p-3.5 rounded-2xl flex flex-col justify-between space-y-1">
+                          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">Risiko AI</span>
+                          <p className="text-sm sm:text-base font-extrabold text-[#19382B]">
+                            {displayRisk} <span className="text-[10px] font-normal text-gray-500">/100</span>
+                          </p>
+                          <span className={`inline-block px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[10px] font-extrabold uppercase truncate ${riskConfig.bgColor} ${riskConfig.textColor}`}>
+                            {riskConfig.label}
                           </span>
                         </div>
-                      </div>
-                    );
-                  })()}
+                      );
+                    })()}
 
-                  <div className="bg-[#f8f9f5] border border-black/5 p-3.5 rounded-2xl">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Volume Tajuk</span>
-                    <p className="text-sm font-extrabold text-[#19382B] mt-0.5">{selectedReport.canopy_volume || 0} m³</p>
-                  </div>
-
-                  <div className="bg-[#f8f9f5] border border-black/5 p-3.5 rounded-2xl">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">Biomassa Kayu</span>
-                    <p className="text-sm font-extrabold text-[#19382B] mt-0.5">{selectedReport.biomass_estimate || 0} kg</p>
-                  </div>
-                </div>
-
-                {/* 3. General Information Section */}
-                <div className="p-5 space-y-3.5">
-                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-gray-400">Informasi Umum Aduan</h4>
-                  
-                  {(() => {
-                    const coords = parseCoordinates(selectedReport);
-                    return (
-                      <div className="grid grid-cols-2 gap-y-3 gap-x-4 text-xs">
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">WAKTU ADUAN</p>
-                          <p className="font-bold text-[#111111] mt-0.5">
-                            {selectedReport.created_at
-                              ? new Date(selectedReport.created_at).toLocaleString("id-ID", {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
-                              : "-"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">KOORDINAT GPS</p>
-                          <p className="font-bold text-[#111111] mt-0.5 font-mono">
-                            {coords ? `${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)}` : "N/A"}
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  })()}
-
-                  <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-3.5 space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">DESKRIPSI ADUAN WARGA</p>
-                    <p className="text-xs font-semibold text-[#111111] leading-relaxed">
-                      {selectedReport.description || "Tidak ada catatan deskripsi tambahan dari pelapor."}
-                    </p>
-                  </div>
-                </div>
-
-                {/* 4. Media Attachments Section (Foto Pohon & AI Bounding Box bisa diklik untuk diperbesar!) */}
-                <div className="p-5 space-y-4">
-                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-gray-400">Lampiran Visual & Peta (Klik Foto untuk Memperbesar)</h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Foto Lokasi Unggahan Warga (Clickable Lightbox) */}
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 flex items-center justify-between">
-                        <span>Foto & Deteksi AI</span>
-                        <span className="text-[#19382B] text-[9px] font-extrabold">🔍 Klik Perbesar</span>
-                      </span>
-
-                      <div
-                        onClick={() => setPreviewZoomImage(selectedReport.image_url)}
-                        className="rounded-2xl overflow-hidden border border-black/10 bg-black/5 shadow-xs h-48 cursor-pointer relative group"
-                        title="Klik untuk memperbesar foto"
-                      >
-                        {(() => {
-                          const rawBoxes = selectedReport.bounding_box || selectedReport.bounding_boxes;
-                          const hasBoxes = Array.isArray(rawBoxes) && rawBoxes.length > 0;
-                          return hasBoxes ? (
-                            <TreeImageWithBoundingBox
-                              imageUrl={selectedReport.image_url}
-                              boundingBoxes={rawBoxes}
-                              alt="Deteksi AI Pohon Rawan"
-                            />
-                          ) : (
-                            <img
-                              src={selectedReport.image_url}
-                              alt="Foto Pohon Rawan"
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                            />
-                          );
-                        })()}
-
-                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1 pointer-events-none">
-                          <Eye size={16} weight="bold" />
-                          <span>Klik Perbesar</span>
-                        </div>
-                      </div>
+                    <div className="bg-[#f8f9f5] border border-black/5 p-2.5 sm:p-3.5 rounded-2xl flex flex-col justify-between space-y-1">
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">Volume Tajuk</span>
+                      <p className="text-sm sm:text-base font-extrabold text-[#19382B]">
+                        {selectedReport.canopy_volume || 0} <span className="text-[10px] font-normal text-gray-500">m³</span>
+                      </p>
+                      <span className="text-[9px] text-gray-400 font-semibold truncate">Estimasi Kanopi</span>
                     </div>
 
-                    {/* Mini Map */}
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Peta Lokasi GPS</span>
+                    <div className="bg-[#f8f9f5] border border-black/5 p-2.5 sm:p-3.5 rounded-2xl flex flex-col justify-between space-y-1">
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">Biomassa Kayu</span>
+                      <p className="text-sm sm:text-base font-extrabold text-[#19382B]">
+                        {selectedReport.biomass_estimate || 0} <span className="text-[10px] font-normal text-gray-500">kg</span>
+                      </p>
+                      <span className="text-[9px] text-gray-400 font-semibold truncate">Potensi Kayu</span>
+                    </div>
+                  </div>
+
+                  {/* 3. Informasi Umum Aduan — KOORDINAT GPS & TITIK ALAMAT 2 GRID 1 BARIS */}
+                  <div className="p-4 sm:p-5 space-y-3">
+                    <h4 className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-gray-400">Informasi Umum Aduan</h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-stretch">
                       {(() => {
                         const coords = parseCoordinates(selectedReport);
-                        return coords ? (
-                          <DetailMiniMap lat={coords.lat} lng={coords.lng} />
-                        ) : (
-                          <div className="h-48 bg-gray-100 rounded-2xl flex items-center justify-center text-xs text-gray-400 font-medium">
-                            Lokasi GPS tidak ditemukan
+                        return (
+                          <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-3.5 space-y-1 flex flex-col justify-center">
+                            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">KOORDINAT GPS</p>
+                            <p className="font-bold text-[#111111] text-xs font-mono">
+                              {coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : "N/A"}
+                            </p>
                           </div>
                         );
                       })()}
+
+                      <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-3.5 space-y-1 flex flex-col justify-center">
+                        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">TITIK ALAMAT LOKASI</p>
+                        <p className="text-xs font-semibold text-[#111111] leading-relaxed break-words">
+                          {formatLocationDisplay(selectedReport.location)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {selectedReport.description && (
+                      <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-3.5 space-y-1">
+                        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">CATATAN / DESKRIPSI WARGA</p>
+                        <p className="text-xs font-semibold text-[#111111] leading-relaxed break-words">
+                          {selectedReport.description}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 4. Lampiran Visual & Peta — UKURAN FOTO DAN PETA SAMA PERSIS */}
+                  <div className="p-4 sm:p-5 space-y-3.5">
+                    <h4 className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-gray-400">Lampiran Visual &amp; Peta (Klik Foto untuk Memperbesar)</h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-stretch">
+                      {/* Visual Deteksi AI */}
+                      <div className="flex flex-col space-y-1.5">
+                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                          <span>Foto &amp; Deteksi AI</span>
+                          <span className="text-[#19382B] text-[9px] font-extrabold cursor-pointer">🔍 Klik Perbesar</span>
+                        </div>
+
+                        <div
+                          onClick={() => {
+                            const boxes = parseBoundingBoxes(selectedReport);
+                            setPreviewZoomImage(selectedReport.image_url);
+                            setPreviewZoomBoxes(boxes);
+                          }}
+                          className="rounded-2xl overflow-hidden border border-black/10 bg-black/5 shadow-xs h-48 sm:h-52 cursor-pointer relative group flex-1"
+                          title="Klik untuk memperbesar foto"
+                        >
+                          {(() => {
+                            const boxes = parseBoundingBoxes(selectedReport);
+                            return (
+                              <TreeImageWithBoundingBox
+                                imageUrl={selectedReport.image_url}
+                                boundingBoxes={boxes}
+                                alt="Deteksi AI Pohon Rawan"
+                                className="relative w-full h-48 sm:h-52 overflow-hidden rounded-2xl"
+                                imgClassName="block w-full h-48 sm:h-52 rounded-2xl object-cover"
+                              />
+                            );
+                          })()}
+
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1 pointer-events-none z-30">
+                            <Eye size={16} weight="bold" />
+                            <span>Klik Perbesar</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Mini Map Lokasi GPS (Ukuran h-48 sm:h-52 Sama Persis dengan Foto) */}
+                      <div className="flex flex-col space-y-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Peta Lokasi GPS</span>
+                        {(() => {
+                          const coords = parseCoordinates(selectedReport);
+                          return coords ? (
+                            <DetailMiniMap lat={coords.lat} lng={coords.lng} />
+                          ) : (
+                            <div className="h-48 sm:h-52 bg-gray-100 rounded-2xl flex items-center justify-center text-xs text-gray-400 font-medium">
+                              Lokasi GPS tidak ditemukan
+                            </div>
+                          );
+                        })()}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Foto Bukti Penanganan Selesai (Jika Sudah Ada) */}
-                  {selectedReport.proof_image_url && (
-                    <div className="space-y-1.5 pt-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 flex items-center justify-between">
-                        <span className="flex items-center gap-1.5">
-                          <CheckCircle size={14} weight="fill" className="text-emerald-600" />
-                          Foto Bukti Penanganan Selesai (DLH)
-                        </span>
-                        <span className="text-emerald-800 text-[9px] font-extrabold">🔍 Klik Perbesar</span>
-                      </span>
-                      <div
-                        onClick={() => setPreviewZoomImage(selectedReport.proof_image_url!)}
-                        className="rounded-2xl overflow-hidden border-2 border-emerald-500/30 shadow-xs cursor-pointer group relative"
-                        title="Klik untuk memperbesar foto bukti"
-                      >
-                        <img
-                          src={selectedReport.proof_image_url}
-                          alt="Bukti Selesai Penanganan DLH"
-                          className="w-full h-48 object-cover group-hover:scale-105 transition-transform"
-                        />
-                        <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1 pointer-events-none">
-                          <Eye size={16} weight="bold" />
-                          <span>Klik Perbesar</span>
+                  {/* 5. Flow Pemantauan Status (Dengan Jadwal & Bukti Terintegrasi) & Catatan Petugas DLH di Paling Bawah */}
+                  <div className="p-4 sm:p-5 pt-2 border-t border-gray-100 space-y-3">
+                    <StatusTimeline
+                      report={selectedReport}
+                      onPreviewProof={(url) => {
+                        setPreviewZoomImage(url);
+                        setPreviewZoomBoxes([]);
+                      }}
+                    />
+
+                    {selectedReport.admin_note && (
+                      <div className="bg-white border border-black/10 p-3.5 sm:p-4 rounded-2xl space-y-1 shadow-2xs mt-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-[#19382B] flex items-center gap-1.5">
+                          <NotePencil size={14} weight="bold" />
+                          Catatan Resmi Petugas DLH:
+                        </p>
+                        <p className="text-xs font-semibold text-[#111111] leading-relaxed break-words">
+                          {selectedReport.admin_note}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 5. Ubah Status DLH */}
+                  <div className="p-4 sm:p-5 bg-[#f8f9f5]/80 space-y-4 border-t-2 border-[#19382B]/10">
+                    <h4 className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-[#19382B] flex items-center gap-1.5">
+                      <Sparkle size={15} weight="fill" className="text-[#19382B]" />
+                      Instruksi &amp; Perubahan Status DLH
+                    </h4>
+
+                    <CustomSelect
+                      label="Ubah Status DLH"
+                      value={newStatus}
+                      onChange={(val) => {
+                        setNewStatus(val);
+                        setValidationError(null);
+                      }}
+                      options={[
+                        { value: "Terverifikasi DLH", label: "🔵 Verifikasi — Terverifikasi DLH" },
+                        { value: "Penjadwalan Pemangkasan", label: "🟡 Penjadwalan — Penjadwalan Pemangkasan (Kalender & Jam)" },
+                        { value: "Sedang Ditangani Lapangan", label: "🟠 Ditangani — Sedang Ditangani Lapangan" },
+                        { value: "Selesai Penanganan", label: "🟢 Selesai — Selesai Penanganan (Wajib Foto Bukti)" },
+                        { value: "Ditolak / Laporan Tidak Valid", label: "🔴 Ditolak — Laporan Tidak Valid / Dibatalkan" },
+                      ]}
+                      className="w-full bg-white"
+                    />
+
+                    {(newStatus.toLowerCase().includes("jadwal") ||
+                      newStatus.toLowerCase().includes("penjadwalan") ||
+                      newStatus.toLowerCase().includes("scheduled")) && (
+                      <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                            <Calendar size={16} weight="bold" className="text-amber-700" />
+                            Tanggal &amp; Jam Penjadwalan Penanganan <span className="text-red-500">*</span>
+                          </label>
+                          <span className="text-[10px] font-extrabold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full">
+                            Wajib Diisi
+                          </span>
                         </div>
+
+                        <input
+                          type="datetime-local"
+                          value={scheduledDateTime}
+                          onChange={(e) => {
+                            setScheduledDateTime(e.target.value);
+                            setValidationError(null);
+                          }}
+                          className="w-full bg-white border border-amber-300 rounded-xl px-4 py-2.5 text-xs font-bold text-[#111111] focus:outline-none focus:border-amber-600 shadow-xs cursor-pointer"
+                        />
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
 
-                {/* 5. [PINDAH KE PALING BAWAH] Ubah Status DLH, Kalender, Bukti & Catatan Resmi Dinas */}
-                <div className="p-5 bg-[#f8f9f5]/80 space-y-4 border-t-2 border-[#19382B]/10">
-                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-[#19382B] flex items-center gap-1.5">
-                    <Sparkle size={15} weight="fill" className="text-[#19382B]" />
-                    Instruksi &amp; Perubahan Status DLH (Paling Bawah)
-                  </h4>
+                    {(newStatus.toLowerCase().includes("selesai") ||
+                      newStatus.toLowerCase().includes("completed") ||
+                      newStatus.toLowerCase().includes("sirkular")) && (
+                      <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+                            <Camera size={16} weight="bold" className="text-emerald-700" />
+                            Foto Bukti Penanganan Selesai <span className="text-red-500">*</span>
+                          </label>
+                          <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-200/60 px-2.5 py-0.5 rounded-full">
+                            Wajib dari Galeri
+                          </span>
+                        </div>
 
-                  {/* CustomSelect Dropdown Status DLH */}
-                  <CustomSelect
-                    label="Ubah Status DLH"
-                    value={newStatus}
-                    onChange={(val) => {
-                      setNewStatus(val);
-                      setValidationError(null);
-                    }}
-                    options={[
-                      { value: "Terverifikasi DLH", label: "🔵 Verifikasi — Terverifikasi DLH" },
-                      { value: "Penjadwalan Pemangkasan", label: "🟡 Penjadwalan — Penjadwalan Pemangkasan (Kalender & Jam)" },
-                      { value: "Sedang Ditangani Lapangan", label: "🟠 Ditangani — Sedang Ditangani Lapangan" },
-                      { value: "Selesai Penanganan", label: "🟢 Selesai — Selesai Penanganan (Wajib Foto Bukti)" },
-                      { value: "Ditolak / Laporan Tidak Valid", label: "🔴 Ditolak — Laporan Tidak Valid / Dibatalkan" },
-                    ]}
-                    className="w-full bg-white"
-                  />
-
-                  {/* Kalender & Jam Penjadwalan (jika status Penjadwalan) */}
-                  {(newStatus.toLowerCase().includes("jadwal") ||
-                    newStatus.toLowerCase().includes("penjadwalan") ||
-                    newStatus.toLowerCase().includes("scheduled")) && (
-                    <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-                          <Calendar size={16} weight="bold" className="text-amber-700" />
-                          Tanggal &amp; Jam Penjadwalan Penanganan <span className="text-red-500">*</span>
-                        </label>
-                        <span className="text-[10px] font-extrabold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full">
-                          Wajib Diisi
-                        </span>
+                        {proofPreview ? (
+                          <div className="relative rounded-2xl overflow-hidden border border-emerald-400 shadow-xs">
+                            <img
+                              src={proofPreview}
+                              alt="Preview Bukti Selesai"
+                              className="w-full h-40 object-cover cursor-pointer"
+                              onClick={() => setPreviewZoomImage(proofPreview)}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setProofFile(null);
+                                setProofPreview(null);
+                              }}
+                              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all shadow-md"
+                              title="Ganti Foto Bukti"
+                            >
+                              <X size={15} weight="bold" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-emerald-500/60 hover:border-emerald-600 bg-white rounded-2xl cursor-pointer transition-all hover:bg-emerald-50/50">
+                            <UploadSimple size={26} weight="bold" className="text-emerald-700 mb-1" />
+                            <span className="text-xs font-bold text-[#111111]">Pilih Foto Bukti Selesai (Galeri)</span>
+                            <span className="text-[10px] text-gray-500 mt-0.5">Pilih foto penanganan yang sudah rampung</span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  setProofFile(file);
+                                  setProofPreview(URL.createObjectURL(file));
+                                  setValidationError(null);
+                                }
+                              }}
+                              className="hidden"
+                            />
+                          </label>
+                        )}
                       </div>
+                    )}
 
-                      <input
-                        type="datetime-local"
-                        value={scheduledDateTime}
-                        onChange={(e) => {
-                          setScheduledDateTime(e.target.value);
-                          setValidationError(null);
-                        }}
-                        className="w-full bg-white border border-amber-300 rounded-xl px-4 py-2.5 text-xs font-bold text-[#111111] focus:outline-none focus:border-amber-600 shadow-xs cursor-pointer"
+                    {validationError && (
+                      <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2">
+                        <WarningCircle size={16} weight="fill" className="shrink-0 text-red-600" />
+                        <span>{validationError}</span>
+                      </div>
+                    )}
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
+                        <NotePencil size={15} weight="bold" className="text-[#19382B]" />
+                        Catatan Resmi Dinas LH / Instruksi Regu
+                      </label>
+
+                      <textarea
+                        rows={3}
+                        placeholder="Contoh: Tim regu 2 DLH telah memangkas dahan rawan dan biomassa kayu dikirim ke bank sampah..."
+                        value={adminNoteInput}
+                        onChange={(e) => setAdminNoteInput(e.target.value)}
+                        className="w-full bg-white border border-black/15 rounded-2xl p-3 text-xs font-medium text-[#111111] focus:outline-none focus:border-[#19382B] resize-none"
                       />
                     </div>
-                  )}
-
-                  {/* Form Unggah Foto Bukti (Selesai) */}
-                  {(newStatus.toLowerCase().includes("selesai") ||
-                    newStatus.toLowerCase().includes("completed") ||
-                    newStatus.toLowerCase().includes("sirkular")) && (
-                    <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
-                          <Camera size={16} weight="bold" className="text-emerald-700" />
-                          Foto Bukti Penanganan Selesai <span className="text-red-500">*</span>
-                        </label>
-                        <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-200/60 px-2.5 py-0.5 rounded-full">
-                          Wajib dari Galeri
-                        </span>
-                      </div>
-
-                      {proofPreview ? (
-                        <div className="relative rounded-2xl overflow-hidden border border-emerald-400 shadow-xs">
-                          <img
-                            src={proofPreview}
-                            alt="Preview Bukti Selesai"
-                            className="w-full h-40 object-cover cursor-pointer"
-                            onClick={() => setPreviewZoomImage(proofPreview)}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setProofFile(null);
-                              setProofPreview(null);
-                            }}
-                            className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all shadow-md"
-                            title="Ganti Foto Bukti"
-                          >
-                            <X size={15} weight="bold" />
-                          </button>
-                        </div>
-                      ) : (
-                        <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-emerald-500/60 hover:border-emerald-600 bg-white rounded-2xl cursor-pointer transition-all hover:bg-emerald-50/50">
-                          <UploadSimple size={26} weight="bold" className="text-emerald-700 mb-1" />
-                          <span className="text-xs font-bold text-[#111111]">Pilih Foto Bukti Selesai (Galeri)</span>
-                          <span className="text-[10px] text-gray-500 mt-0.5">Pilih foto penanganan yang sudah rampung</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                setProofFile(file);
-                                setProofPreview(URL.createObjectURL(file));
-                                setValidationError(null);
-                              }
-                            }}
-                            className="hidden"
-                          />
-                        </label>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Validation Error Banner */}
-                  {validationError && (
-                    <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2">
-                      <WarningCircle size={16} weight="fill" className="shrink-0 text-red-600" />
-                      <span>{validationError}</span>
-                    </div>
-                  )}
-
-                  {/* Input Catatan Resmi Dinas LH */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
-                      <NotePencil size={15} weight="bold" className="text-[#19382B]" />
-                      Catatan Resmi Dinas LH / Instruksi Regu
-                    </label>
-
-                    <textarea
-                      rows={3}
-                      placeholder="Contoh: Tim regu 2 DLH telah memangkas dahan rawan dan biomassa kayu dikirim ke bank sampah..."
-                      value={adminNoteInput}
-                      onChange={(e) => setAdminNoteInput(e.target.value)}
-                      className="w-full bg-white border border-black/15 rounded-2xl p-3 text-xs font-medium text-[#111111] focus:outline-none focus:border-[#19382B] resize-none"
-                    />
                   </div>
                 </div>
-              </div>
 
-              {/* ── Drawer Sticky Action Footer ── */}
-              <div className="p-4 sm:p-5 bg-white border-t border-gray-100 flex items-center justify-between gap-3 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setSelectedReport(null)}
-                  className="px-5 py-3 rounded-2xl text-xs font-bold border border-black/15 bg-white hover:bg-gray-100 text-[#111111] transition-all cursor-pointer"
-                >
-                  Tutup
-                </button>
+                {/* Drawer Sticky Action Footer */}
+                <div className="p-4 sm:p-5 bg-white border-t border-gray-100 flex items-center justify-between gap-3 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedReport(null)}
+                    className="px-5 py-3 rounded-2xl text-xs font-bold border border-black/15 bg-white hover:bg-gray-100 text-[#111111] transition-all cursor-pointer"
+                  >
+                    Tutup
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={handleSaveReportStatus}
-                  disabled={isUpdating}
-                  className="flex-1 max-w-xs py-3 rounded-2xl text-xs font-extrabold bg-[#19382B] text-white hover:bg-[#234A39] flex items-center justify-center gap-2 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
-                >
-                  {isUpdating ? (
-                    <>
-                      <CircleNotch size={16} className="animate-spin text-[#88d937]" />
-                      <span>Menyimpan Perubahan...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check size={16} weight="bold" className="text-[#88d937]" />
-                      <span>Simpan Perubahan Status</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                  <button
+                    type="button"
+                    onClick={handleSaveReportStatus}
+                    disabled={isUpdating}
+                    className="flex-1 max-w-xs py-3 rounded-2xl text-xs font-extrabold bg-[#19382B] text-white hover:bg-[#234A39] flex items-center justify-center gap-2 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+                  >
+                    {isUpdating ? (
+                      <>
+                        <CircleNotch size={16} className="animate-spin text-[#88d937]" />
+                        <span>Menyimpan Perubahan...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Check size={16} weight="bold" className="text-[#88d937]" />
+                        <span>Simpan Perubahan Status</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </ClientPortal>
 
-      {/* ── 6. Modal Fullscreen Preview Lightbox Foto (Bisa Perbesar Foto) ── */}
-      <AnimatePresence>
-        {previewZoomImage && (
-          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 sm:p-8 bg-black/90 backdrop-blur-md font-sans">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="relative max-w-5xl max-h-[90vh] flex flex-col items-center justify-center overflow-hidden rounded-3xl"
-            >
-              <button
-                type="button"
-                onClick={() => setPreviewZoomImage(null)}
-                className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all cursor-pointer shadow-lg border border-white/20"
-                title="Tutup Preview"
-              >
-                <X size={20} weight="bold" />
-              </button>
-
-              <img
-                src={previewZoomImage}
-                alt="Foto Laporan Diperbesar"
-                className="max-w-full max-h-[85vh] object-contain rounded-2xl shadow-2xl border border-white/10"
+      {/* ── 6. Modal Fullscreen Preview Lightbox Foto (Ukuran Ringkas Desktop & Selalu Menutupi Navbar) ── */}
+      <ClientPortal>
+        <AnimatePresence>
+          {previewZoomImage && (
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md font-sans">
+              {/* Backdrop Overlay Click to Close */}
+              <div
+                className="absolute inset-0 cursor-pointer"
+                onClick={() => {
+                  setPreviewZoomImage(null);
+                  setPreviewZoomBoxes([]);
+                }}
               />
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.92 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.92 }}
+                transition={{ duration: 0.2 }}
+                className="relative z-10 flex items-center justify-center max-h-[85vh] max-w-[92vw]"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPreviewZoomImage(null);
+                    setPreviewZoomBoxes([]);
+                  }}
+                  className="absolute -top-3 -right-3 sm:-top-4 sm:-right-4 z-40 w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-black/80 hover:bg-black text-white flex items-center justify-center transition-all cursor-pointer shadow-xl border border-white/20 hover:scale-105 active:scale-95"
+                  title="Tutup Preview"
+                >
+                  <X size={18} weight="bold" />
+                </button>
+
+                {previewZoomBoxes.length > 0 ? (
+                  <TreeImageWithBoundingBox
+                    imageUrl={previewZoomImage}
+                    boundingBoxes={previewZoomBoxes}
+                    alt="Foto Laporan Diperbesar dengan Deteksi AI"
+                    isLightbox={true}
+                  />
+                ) : (
+                  <img
+                    src={previewZoomImage}
+                    alt="Foto Laporan Diperbesar"
+                    className="max-h-[82vh] max-w-[90vw] w-auto h-auto block object-contain rounded-2xl shadow-2xl border border-white/15"
+                  />
+                )}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </ClientPortal>
 
       {/* ── 6. Modal Konfirmasi Hapus Laporan ── */}
       <AnimatePresence>
