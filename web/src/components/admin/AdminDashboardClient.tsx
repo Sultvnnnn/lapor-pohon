@@ -28,6 +28,7 @@ import {
   ArrowCounterClockwise,
   User,
   CaretDown,
+  LockKey,
 } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadReportImage } from "@/lib/storageUtils";
@@ -162,7 +163,23 @@ export const formatLocationDisplay = (loc: any): string => {
 export const getReportStatusConfig = (statusRaw?: string) => {
   const s = (statusRaw || "").toLowerCase().trim();
 
-  // 1. Selesai Penanganan (Must be checked before "penanganan")
+  // 1. Laporan Ditutup (Permanen)
+  if (
+    s.includes("ditutup") ||
+    s.includes("dikunci") ||
+    s === "closed" ||
+    s.includes("closed")
+  ) {
+    return {
+      label: "🔒 Laporan Ditutup",
+      bg: "bg-gray-900 text-white",
+      text: "text-white font-extrabold",
+      border: "border-gray-900",
+      isPending: false,
+    };
+  }
+
+  // 2. Selesai Penanganan (Must be checked before "penanganan")
   if (
     s.includes("selesai") ||
     s.includes("resolved") ||
@@ -364,6 +381,7 @@ export type AdminReportItem = {
   tree_species?: string;
   tree_type?: string;
   created_at: string;
+  updated_at?: string;
   reporter_name?: string;
   reporter_email?: string;
 };
@@ -476,6 +494,60 @@ export const AdminDashboardClient = ({
   const [previewZoomBoxes, setPreviewZoomBoxes] = useState<BoundingBox[]>([]);
   const [previewZoomRiskScore, setPreviewZoomRiskScore] = useState<number | undefined>(undefined);
   const [deleteConfirmReport, setDeleteConfirmReport] = useState<AdminReportItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Custom Close Report Confirmation Modal State
+  const [closeConfirmReport, setCloseConfirmReport] = useState<AdminReportItem | null>(null);
+
+  // Floating Toast Notification State
+  const [toast, setToast] = useState<{
+    id: string;
+    title: string;
+    message: string;
+    type?: "success" | "info" | "warning";
+  } | null>(null);
+
+  const showToast = (
+    message: string,
+    title = "Data Berhasil Diperbarui",
+    type: "success" | "info" | "warning" = "success"
+  ) => {
+    setToast({
+      id: Date.now().toString(),
+      title,
+      message,
+      type,
+    });
+  };
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => {
+      setToast(null);
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  const isReportClosed = (report?: AdminReportItem | null) => {
+    if (!report) return false;
+    const s = (report.status || "").toLowerCase().trim();
+    return (
+      s.includes("dikunci") ||
+      s.includes("ditutup") ||
+      s.includes("closed")
+    );
+  };
+
+  const isCompletedReport = (report?: AdminReportItem | null) => {
+    if (!report) return false;
+    const s = (report.status || "").toLowerCase().trim();
+    return (
+      s.includes("selesai") ||
+      s.includes("completed") ||
+      s.includes("resolved") ||
+      s === "done"
+    );
+  };
 
   // Lock body scroll when modal or drawer is open
   useEffect(() => {
@@ -488,7 +560,6 @@ export const AdminDashboardClient = ({
       document.body.style.overflow = "";
     };
   }, [selectedReport, previewZoomImage, deleteConfirmReport]);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // ── Tarik Semua Data Report dari Semua Pengguna + Profile Mapping ──
   const fetchAllReportsAndProfiles = async () => {
@@ -584,7 +655,9 @@ export const AdminDashboardClient = ({
           : statusFilter === "in_progress"
           ? st.includes("proses") || st.includes("progress") || st.includes("survei") || st.includes("ditangani") || st.includes("jadwal")
           : statusFilter === "completed"
-          ? st.includes("selesai") || st.includes("completed")
+          ? (st.includes("selesai") || st.includes("completed")) && !st.includes("ditutup") && !st.includes("dikunci") && st !== "closed"
+          : statusFilter === "closed"
+          ? st.includes("ditutup") || st.includes("dikunci") || st === "closed"
           : statusFilter === "rejected"
           ? st.includes("ditolak") || st.includes("rejected")
           : true;
@@ -780,13 +853,78 @@ export const AdminDashboardClient = ({
       // Update local state and refetch from Supabase database
       await fetchAllReportsAndProfiles();
 
-      setSelectedReport(null);
+      const updatedSelectedReport: AdminReportItem = {
+        ...selectedReport,
+        status: newStatus,
+        admin_note: adminNoteInput,
+        proof_image_url: uploadedProofUrl || selectedReport.proof_image_url,
+        scheduled_at: scheduledDateTime || selectedReport.scheduled_at,
+        updated_at: new Date().toISOString(),
+      };
+
+      setSelectedReport(updatedSelectedReport);
+      showToast("Status aduan dan tanggapan DLH berhasil diperbarui ke database.", "Data Berhasil Diperbarui");
+
       setProofFile(null);
-      setProofPreview(null);
-      setScheduledDateTime("");
       setValidationError(null);
     } catch (err: any) {
       alert(`Terjadi kesalahan saat menyimpan: ${err.message || err}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  // Handler Tutup Laporan (Buka Modal Konfirmasi Custom)
+  const handleCloseAndLockReport = () => {
+    if (!selectedReport) return;
+    setCloseConfirmReport(selectedReport);
+  };
+
+  // Eksekusi Tutup & Kunci Laporan
+  const executeCloseAndLockReport = async () => {
+    if (!closeConfirmReport) return;
+
+    setIsUpdating(true);
+    try {
+      const lockStatus = "Laporan Ditutup";
+      const lockPayload = {
+        status: lockStatus,
+        admin_note: adminNoteInput
+          ? `${adminNoteInput}\n[LAPORAN RESMI DITUTUP]`
+          : "[LAPORAN RESMI DITUTUP]",
+      };
+
+      let { data: updatedRows, error } = await supabaseClient
+        .from("reports")
+        .update(lockPayload)
+        .eq("id", closeConfirmReport.id)
+        .select();
+
+      if (error) {
+        const { data: fallbackRows, error: fallbackErr } = await supabaseClient
+          .from("reports")
+          .update({ status: "closed" })
+          .eq("id", closeConfirmReport.id)
+          .select();
+
+        if (fallbackErr) {
+          alert(`Gagal menutup laporan: ${fallbackErr.message}`);
+          return;
+        }
+        updatedRows = fallbackRows;
+      }
+
+      await fetchAllReportsAndProfiles();
+
+      const updatedItem: AdminReportItem = (updatedRows && updatedRows[0])
+        ? (updatedRows[0] as AdminReportItem)
+        : { ...closeConfirmReport, status: lockStatus };
+
+      setSelectedReport(updatedItem);
+      setCloseConfirmReport(null);
+      showToast("Laporan aduan telah resmi ditutup.", "Laporan Berhasil Ditutup");
+    } catch (err: any) {
+      alert(`Terjadi kesalahan saat menutup laporan: ${err.message || err}`);
     } finally {
       setIsUpdating(false);
     }
@@ -955,6 +1093,7 @@ export const AdminDashboardClient = ({
                 { value: "pending", label: "Menunggu Verifikasi (Pending)" },
                 { value: "in_progress", label: "Proses Pemangkasan / Ditangani" },
                 { value: "completed", label: "Sirkular Selesai" },
+                { value: "closed", label: "🔒 Laporan Ditutup" },
                 { value: "rejected", label: "Ditolak / Pembatalan" },
               ]}
               className="min-w-[190px]"
@@ -1360,165 +1499,203 @@ export const AdminDashboardClient = ({
                     )}
                   </div>
 
-                  {/* 5. Ubah Status DLH */}
+                  {/* 5. Ubah Status DLH (Form / Lock Indicator) */}
                   <div className="p-4 sm:p-5 bg-[#f8f9f5]/80 space-y-4 border-t-2 border-[#19382B]/10">
                     <h4 className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-[#19382B] flex items-center gap-1.5">
                       <Sparkle size={15} weight="fill" className="text-[#19382B]" />
                       Instruksi &amp; Perubahan Status DLH
                     </h4>
 
-                    <CustomSelect
-                      label="Ubah Status DLH"
-                      value={newStatus}
-                      onChange={(val) => {
-                        setNewStatus(val);
-                        setValidationError(null);
-                      }}
-                      options={[
-                        { value: "Terverifikasi DLH", label: "🔵 Verifikasi — Terverifikasi DLH" },
-                        { value: "Penjadwalan Pemangkasan", label: "🟡 Penjadwalan — Penjadwalan Pemangkasan (Kalender & Jam)" },
-                        { value: "Sedang Ditangani Lapangan", label: "🟠 Ditangani — Sedang Ditangani Lapangan" },
-                        { value: "Selesai Penanganan", label: "🟢 Selesai — Selesai Penanganan (Wajib Foto Bukti)" },
-                        { value: "Ditolak / Laporan Tidak Valid", label: "🔴 Ditolak — Laporan Tidak Valid / Dibatalkan" },
-                      ]}
-                      className="w-full bg-white"
-                    />
-
-                    {(newStatus.toLowerCase().includes("jadwal") ||
-                      newStatus.toLowerCase().includes("penjadwalan") ||
-                      newStatus.toLowerCase().includes("scheduled")) && (
-                      <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
-                            <Calendar size={16} weight="bold" className="text-amber-700" />
-                            Tanggal &amp; Jam Penjadwalan Penanganan <span className="text-red-500">*</span>
-                          </label>
-                          <span className="text-[10px] font-extrabold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full">
-                            Wajib Diisi
-                          </span>
+                    {isReportClosed(selectedReport) ? (
+                      <div className="bg-[#19382B]/10 border border-[#19382B]/20 rounded-2xl p-4 sm:p-5 text-center space-y-2">
+                        <div className="w-10 h-10 rounded-full bg-[#19382B] text-white flex items-center justify-center mx-auto shadow-xs">
+                          <LockKey size={20} weight="bold" />
                         </div>
-
-                        <input
-                          type="datetime-local"
-                          value={scheduledDateTime}
-                          onChange={(e) => {
-                            setScheduledDateTime(e.target.value);
+                        <h5 className="text-xs font-extrabold text-[#19382B]">
+                          Laporan Ini Telah Resmi Ditutup &amp; Dikunci Permanen
+                        </h5>
+                        <p className="text-[11px] font-semibold text-gray-600 leading-relaxed max-w-sm mx-auto">
+                          Status aduan ini telah ditutup secara resmi. Seluruh data, tanggal penanganan, dan catatan resmi petugas telah bersifat final dan tidak dapat diubah lagi oleh Admin.
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <CustomSelect
+                          label="Ubah Status DLH"
+                          value={newStatus}
+                          onChange={(val) => {
+                            setNewStatus(val);
                             setValidationError(null);
                           }}
-                          className="w-full bg-white border border-amber-300 rounded-xl px-4 py-2.5 text-xs font-bold text-[#111111] focus:outline-none focus:border-amber-600 shadow-xs cursor-pointer"
+                          options={[
+                            { value: "Terverifikasi DLH", label: "🔵 Verifikasi — Terverifikasi DLH" },
+                            { value: "Penjadwalan Pemangkasan", label: "🟡 Penjadwalan — Penjadwalan Pemangkasan (Kalender & Jam)" },
+                            { value: "Sedang Ditangani Lapangan", label: "🟠 Ditangani — Sedang Ditangani Lapangan" },
+                            { value: "Selesai Penanganan", label: "🟢 Selesai — Selesai Penanganan (Wajib Foto Bukti)" },
+                            { value: "Ditolak / Laporan Tidak Valid", label: "🔴 Ditolak — Laporan Tidak Valid / Dibatalkan" },
+                          ]}
+                          className="w-full bg-white"
                         />
-                      </div>
-                    )}
 
-                    {(newStatus.toLowerCase().includes("selesai") ||
-                      newStatus.toLowerCase().includes("completed") ||
-                      newStatus.toLowerCase().includes("sirkular")) && (
-                      <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
-                            <Camera size={16} weight="bold" className="text-emerald-700" />
-                            Foto Bukti Penanganan Selesai <span className="text-red-500">*</span>
-                          </label>
-                          <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-200/60 px-2.5 py-0.5 rounded-full">
-                            Wajib dari Galeri
-                          </span>
-                        </div>
+                        {(newStatus.toLowerCase().includes("jadwal") ||
+                          newStatus.toLowerCase().includes("penjadwalan") ||
+                          newStatus.toLowerCase().includes("scheduled")) && (
+                          <div className="bg-amber-50 border border-amber-300 rounded-2xl p-4 space-y-2.5">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                                <Calendar size={16} weight="bold" className="text-amber-700" />
+                                Tanggal &amp; Jam Penjadwalan Penanganan <span className="text-red-500">*</span>
+                              </label>
+                              <span className="text-[10px] font-extrabold text-amber-800 bg-amber-200/60 px-2 py-0.5 rounded-full">
+                                Wajib Diisi
+                              </span>
+                            </div>
 
-                        {proofPreview ? (
-                          <div className="relative rounded-2xl overflow-hidden border border-emerald-400 shadow-xs">
-                            <img
-                              src={proofPreview}
-                              alt="Preview Bukti Selesai"
-                              className="w-full h-40 object-cover cursor-pointer"
-                              onClick={() => setPreviewZoomImage(proofPreview)}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setProofFile(null);
-                                setProofPreview(null);
-                              }}
-                              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all shadow-md"
-                              title="Ganti Foto Bukti"
-                            >
-                              <X size={15} weight="bold" />
-                            </button>
-                          </div>
-                        ) : (
-                          <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-emerald-500/60 hover:border-emerald-600 bg-white rounded-2xl cursor-pointer transition-all hover:bg-emerald-50/50">
-                            <UploadSimple size={26} weight="bold" className="text-emerald-700 mb-1" />
-                            <span className="text-xs font-bold text-[#111111]">Pilih Foto Bukti Selesai (Galeri)</span>
-                            <span className="text-[10px] text-gray-500 mt-0.5">Pilih foto penanganan yang sudah rampung</span>
                             <input
-                              type="file"
-                              accept="image/*"
+                              type="datetime-local"
+                              value={scheduledDateTime}
                               onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  setProofFile(file);
-                                  setProofPreview(URL.createObjectURL(file));
-                                  setValidationError(null);
-                                }
+                                setScheduledDateTime(e.target.value);
+                                setValidationError(null);
                               }}
-                              className="hidden"
+                              className="w-full bg-white border border-amber-300 rounded-xl px-4 py-2.5 text-xs font-bold text-[#111111] focus:outline-none focus:border-amber-600 shadow-xs cursor-pointer"
                             />
-                          </label>
+                          </div>
                         )}
-                      </div>
+
+                        {(newStatus.toLowerCase().includes("selesai") ||
+                          newStatus.toLowerCase().includes("completed") ||
+                          newStatus.toLowerCase().includes("sirkular")) && (
+                          <div className="bg-emerald-50 border border-emerald-300 rounded-2xl p-4 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+                                <Camera size={16} weight="bold" className="text-emerald-700" />
+                                Foto Bukti Penanganan Selesai <span className="text-red-500">*</span>
+                              </label>
+                              <span className="text-[10px] font-extrabold text-emerald-800 bg-emerald-200/60 px-2.5 py-0.5 rounded-full">
+                                Wajib dari Galeri
+                              </span>
+                            </div>
+
+                            {proofPreview ? (
+                              <div className="relative rounded-2xl overflow-hidden border border-emerald-400 shadow-xs">
+                                <img
+                                  src={proofPreview}
+                                  alt="Preview Bukti Selesai"
+                                  className="w-full h-40 object-cover cursor-pointer"
+                                  onClick={() => setPreviewZoomImage(proofPreview)}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setProofFile(null);
+                                    setProofPreview(null);
+                                  }}
+                                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/60 hover:bg-black/80 text-white flex items-center justify-center transition-all shadow-md"
+                                  title="Ganti Foto Bukti"
+                                >
+                                  <X size={15} weight="bold" />
+                                </button>
+                              </div>
+                            ) : (
+                              <label className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-emerald-500/60 hover:border-emerald-600 bg-white rounded-2xl cursor-pointer transition-all hover:bg-emerald-50/50">
+                                <UploadSimple size={26} weight="bold" className="text-emerald-700 mb-1" />
+                                <span className="text-xs font-bold text-[#111111]">Pilih Foto Bukti Selesai (Galeri)</span>
+                                <span className="text-[10px] text-gray-500 mt-0.5">Pilih foto penanganan yang sudah rampung</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setProofFile(file);
+                                      setProofPreview(URL.createObjectURL(file));
+                                      setValidationError(null);
+                                    }
+                                  }}
+                                  className="hidden"
+                                />
+                              </label>
+                            )}
+                          </div>
+                        )}
+
+                        {validationError && (
+                          <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2">
+                            <WarningCircle size={16} weight="fill" className="shrink-0 text-red-600" />
+                            <span>{validationError}</span>
+                          </div>
+                        )}
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
+                            <NotePencil size={15} weight="bold" className="text-[#19382B]" />
+                            Catatan Resmi Dinas LH / Instruksi Regu
+                          </label>
+
+                          <textarea
+                            rows={3}
+                            placeholder="Contoh: Tim regu 2 DLH telah memangkas dahan rawan dan biomassa kayu dikirim ke bank sampah..."
+                            value={adminNoteInput}
+                            onChange={(e) => setAdminNoteInput(e.target.value)}
+                            className="w-full bg-white border border-black/15 rounded-2xl p-3 text-xs font-medium text-[#111111] focus:outline-none focus:border-[#19382B] resize-none"
+                          />
+                        </div>
+                      </>
                     )}
-
-                    {validationError && (
-                      <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2">
-                        <WarningCircle size={16} weight="fill" className="shrink-0 text-red-600" />
-                        <span>{validationError}</span>
-                      </div>
-                    )}
-
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
-                        <NotePencil size={15} weight="bold" className="text-[#19382B]" />
-                        Catatan Resmi Dinas LH / Instruksi Regu
-                      </label>
-
-                      <textarea
-                        rows={3}
-                        placeholder="Contoh: Tim regu 2 DLH telah memangkas dahan rawan dan biomassa kayu dikirim ke bank sampah..."
-                        value={adminNoteInput}
-                        onChange={(e) => setAdminNoteInput(e.target.value)}
-                        className="w-full bg-white border border-black/15 rounded-2xl p-3 text-xs font-medium text-[#111111] focus:outline-none focus:border-[#19382B] resize-none"
-                      />
-                    </div>
                   </div>
                 </div>
 
                 {/* Drawer Sticky Action Footer */}
-                <div className="p-4 sm:p-5 bg-white border-t border-gray-100 flex items-center justify-between gap-3 shrink-0">
+                <div className="p-4 sm:p-5 bg-white border-t border-gray-100 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
                   <button
                     type="button"
                     onClick={() => setSelectedReport(null)}
-                    className="px-5 py-3 rounded-2xl text-xs font-bold border border-black/15 bg-white hover:bg-gray-100 text-[#111111] transition-all cursor-pointer"
+                    className="px-4 py-3 rounded-2xl text-xs font-bold border border-black/15 bg-white hover:bg-gray-100 text-[#111111] transition-all cursor-pointer"
                   >
-                    Tutup
+                    Tutup Detail
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={handleSaveReportStatus}
-                    disabled={isUpdating}
-                    className="flex-1 max-w-xs py-3 rounded-2xl text-xs font-extrabold bg-[#19382B] text-white hover:bg-[#234A39] flex items-center justify-center gap-2 shadow-xs transition-all disabled:opacity-50 cursor-pointer"
-                  >
-                    {isUpdating ? (
-                      <>
-                        <CircleNotch size={16} className="animate-spin text-[#88d937]" />
-                        <span>Menyimpan Perubahan...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Check size={16} weight="bold" className="text-[#88d937]" />
-                        <span>Simpan Perubahan Status</span>
-                      </>
-                    )}
-                  </button>
+                  {isReportClosed(selectedReport) ? (
+                    <div className="flex-1 max-w-xs py-3 rounded-2xl text-xs font-extrabold bg-gray-200 text-gray-600 flex items-center justify-center gap-1.5 border border-gray-300">
+                      <LockKey size={16} weight="bold" />
+                      <span>Laporan Ditutup &amp; Dikunci</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 flex-1 max-w-sm justify-end">
+                      {isCompletedReport(selectedReport) && (
+                        <button
+                          type="button"
+                          onClick={handleCloseAndLockReport}
+                          disabled={isUpdating}
+                          className="px-4 py-3 rounded-2xl text-xs font-extrabold bg-gray-900 hover:bg-black text-white flex items-center justify-center gap-1.5 shadow-xs transition-all disabled:opacity-50 cursor-pointer active:scale-95 shrink-0"
+                          title="Kunci dan tutup laporan ini secara permanen agar tidak bisa diupdate lagi"
+                        >
+                          <LockKey size={15} weight="bold" className="text-amber-400" />
+                          <span>Tutup Laporan</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleSaveReportStatus}
+                        disabled={isUpdating}
+                        className="flex-1 py-3 rounded-2xl text-xs font-extrabold bg-[#19382B] text-white hover:bg-[#234A39] flex items-center justify-center gap-1.5 shadow-xs transition-all disabled:opacity-50 cursor-pointer active:scale-95"
+                      >
+                        {isUpdating ? (
+                          <>
+                            <CircleNotch size={16} className="animate-spin text-[#88d937]" />
+                            <span>Menyimpan...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check size={16} weight="bold" className="text-[#88d937]" />
+                            <span>Simpan Update</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </div>
@@ -1626,6 +1803,106 @@ export const AdminDashboardClient = ({
           </div>
         )}
       </AnimatePresence>
+
+      {/* ── 8. Floating Top Notification Toast (Sesuai Palet Modern Minimalis #19382B & #88d937) ── */}
+      <ClientPortal>
+        <AnimatePresence>
+          {toast && (
+            <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100000] w-[92%] max-w-sm pointer-events-auto font-sans">
+              <motion.div
+                initial={{ y: -40, opacity: 0, scale: 0.95 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: -25, opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", stiffness: 400, damping: 28 }}
+                className="bg-[#19382B] text-white border border-[#88d937]/30 shadow-2xl rounded-full pl-4 pr-3 py-2.5 flex items-center justify-between gap-3 relative overflow-hidden"
+              >
+                {/* Subtle Glow */}
+                <div className="absolute -right-8 -top-8 w-24 h-24 bg-[#88d937]/15 rounded-full blur-xl pointer-events-none" />
+
+                {/* Icon + Text */}
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <div className="w-6 h-6 rounded-full bg-[#88d937] text-[#19382B] flex items-center justify-center shrink-0 shadow-2xs font-extrabold">
+                    <Check size={14} weight="bold" />
+                  </div>
+                  <div className="flex flex-col overflow-hidden">
+                    <span className="text-xs font-extrabold text-white truncate leading-tight tracking-wide">
+                      {toast.title}
+                    </span>
+                    <span className="text-[10px] font-medium text-emerald-200/90 truncate leading-none pt-0.5">
+                      {toast.message}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={() => setToast(null)}
+                  className="w-6 h-6 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all shrink-0 cursor-pointer"
+                  title="Tutup Notifikasi"
+                >
+                  <X size={12} weight="bold" />
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </ClientPortal>
+      {/* ── 9. Custom Confirmation Modal: Tutup & Kunci Laporan ── */}
+      <ClientPortal>
+        <AnimatePresence>
+          {closeConfirmReport && (
+            <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm font-sans pointer-events-auto">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                className="bg-white border border-black/10 shadow-2xl rounded-3xl p-5 sm:p-6 w-full max-w-sm text-center space-y-4 relative overflow-hidden"
+              >
+                {/* Lock Icon */}
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center mx-auto shadow-xs">
+                  <LockKey size={24} weight="bold" />
+                </div>
+
+                <div className="space-y-1.5">
+                  <h4 className="text-sm font-extrabold text-[#111111]">
+                    Konfirmasi Tutup Laporan
+                  </h4>
+                  <p className="text-xs font-semibold text-gray-600 leading-relaxed">
+                    Apakah Anda yakin ingin menutup dan mengunci laporan aduan ini? Setelah ditutup, status aduan akan menjadi <span className="font-bold text-[#19382B]">Laporan Ditutup</span> dan data tidak dapat diubah lagi oleh Admin.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setCloseConfirmReport(null)}
+                    className="flex-1 py-2.5 rounded-2xl text-xs font-bold border border-black/15 bg-white hover:bg-gray-100 text-[#111111] transition-all cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={executeCloseAndLockReport}
+                    disabled={isUpdating}
+                    className="flex-1 py-2.5 rounded-2xl text-xs font-extrabold bg-[#19382B] hover:bg-[#234A39] text-white flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    {isUpdating ? (
+                      <CircleNotch size={16} className="animate-spin text-[#88d937]" />
+                    ) : (
+                      <>
+                        <LockKey size={15} weight="bold" className="text-[#88d937]" />
+                        <span>Ya, Tutup &amp; Kunci</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </ClientPortal>
     </div>
   );
 };
