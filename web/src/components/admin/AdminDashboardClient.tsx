@@ -29,6 +29,8 @@ import {
   User,
   CaretDown,
   LockKey,
+  CaretLeft,
+  CaretRight,
 } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { uploadReportImage } from "@/lib/storageUtils";
@@ -685,6 +687,24 @@ export const AdminDashboardClient = ({
       return riskB - riskA; // High risk first!
     });
 
+  // Pagination State (15 items per page)
+  const ITEMS_PER_PAGE = 15;
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // Reset pagination page to 1 whenever filters or search query change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, riskFilter]);
+
+  const totalItems = filteredReports.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+  const validCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
+
+  const startIndex = (validCurrentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalItems);
+
+  const paginatedReports = filteredReports.slice(startIndex, endIndex);
+
   // Open Detail Modal Handler
   const handleOpenDetailModal = (report: AdminReportItem) => {
     setSelectedReport(report);
@@ -1020,9 +1040,9 @@ export const AdminDashboardClient = ({
       {/* ── 3. Single Unified Card: Controls, Filters, & Table / Map Display ── */}
       <div className="bg-white rounded-[2rem] border border-black/5 shadow-xs overflow-hidden">
         {/* Card Header & Controls Section */}
-        <div className="p-4 sm:p-6 space-y-4 border-b border-black/5 bg-white">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-            {/* Tab View Switcher (Table vs Map) */}
+        <div className="p-4 sm:p-5 space-y-3.5 border-b border-black/5 bg-white">
+          {/* Row 1: Tab View Switcher (Table vs Map) */}
+          <div className="flex items-center justify-between gap-3">
             <div className="bg-[#ecefe6] p-1 rounded-full flex gap-1 border border-black/5 w-full sm:w-auto">
               <button
                 type="button"
@@ -1050,70 +1070,79 @@ export const AdminDashboardClient = ({
                 <span>Peta Sebaran Pohon Rawan</span>
               </button>
             </div>
-
-            {/* Action: Pull All Reports Button + Search Bar */}
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={fetchAllReportsAndProfiles}
-                disabled={isLoadingReports}
-                className="bg-[#19382B] hover:bg-[#234A39] text-white px-4 py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-50 shrink-0"
-                title="Tarik Semua Laporan Terbaru dari Semua Pengguna"
-              >
-                <ArrowCounterClockwise size={15} className={isLoadingReports ? "animate-spin text-[#88d937]" : "text-[#88d937]"} />
-                <span>{isLoadingReports ? "Memuat Data..." : "Tarik Semua Laporan"}</span>
-              </button>
-
-              <div className="relative w-full sm:w-64">
-                <MagnifyingGlass size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Cari ID / pelapor / catatan..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-[#f8f9f5] border border-black/8 rounded-full pl-9 pr-4 py-2 text-xs font-medium focus:outline-none focus:border-[#19382B] text-[#111111]"
-                />
-              </div>
-            </div>
           </div>
 
-          {/* Filter Dropdowns Bar (Custom Floating Label Dropdown Sesuai Contoh Gambar) */}
-          <div className="flex items-center gap-3 flex-wrap pt-3 border-t border-gray-100 text-xs">
-            <span className="font-bold text-[#111111]/60 flex items-center gap-1.5">
+          {/* Row 2: Unified Controls & Filter Bar — 1 Single Horizontal Row (Icon Reload + Search + Filter Data) */}
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-1 pt-1.5 border-t border-gray-100 text-xs scrollbar-none overflow-y-visible">
+            {/* 1. Reload Icon-Only Button */}
+            <button
+              type="button"
+              onClick={fetchAllReportsAndProfiles}
+              disabled={isLoadingReports}
+              className="w-9 h-9 rounded-full bg-[#19382B] hover:bg-[#234A39] text-white flex items-center justify-center shrink-0 border border-[#88d937]/30 shadow-2xs disabled:opacity-50 transition-all active:scale-95 cursor-pointer"
+              title="Tarik Semua Laporan Terbaru"
+            >
+              <ArrowCounterClockwise size={16} className={isLoadingReports ? "animate-spin text-[#88d937]" : "text-[#88d937]"} />
+            </button>
+
+            {/* 2. Compact Search Input */}
+            <div className="relative shrink-0 w-44 sm:w-56">
+              <MagnifyingGlass size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Cari ID / pelapor..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[#f8f9f5] border border-black/10 rounded-full pl-8.5 pr-3 py-1.5 text-xs font-medium focus:outline-none focus:border-[#19382B] text-[#111111]"
+              />
+            </div>
+
+            {/* Separator Line */}
+            <div className="h-5 w-[1px] bg-black/10 shrink-0 mx-0.5" />
+
+            {/* 3. Filter Data Label */}
+            <span className="font-bold text-[#111111]/60 flex items-center gap-1.5 shrink-0 whitespace-nowrap">
               <Funnel size={14} weight="bold" className="text-[#19382B]" />
               Filter Data:
             </span>
 
-            <CustomSelect
-              label="Status Laporan"
-              value={statusFilter}
-              onChange={(val) => setStatusFilter(val)}
-              options={[
-                { value: "all", label: "Semua Status" },
-                { value: "pending", label: "Menunggu Verifikasi (Pending)" },
-                { value: "in_progress", label: "Proses Pemangkasan / Ditangani" },
-                { value: "completed", label: "Sirkular Selesai" },
-                { value: "closed", label: "🔒 Laporan Ditutup" },
-                { value: "rejected", label: "Ditolak / Pembatalan" },
-              ]}
-              className="min-w-[190px]"
-            />
+            {/* 4. Status Filter Dropdown */}
+            <div className="shrink-0 min-w-[160px] sm:min-w-[185px]">
+              <CustomSelect
+                label="Status Laporan"
+                value={statusFilter}
+                onChange={(val) => setStatusFilter(val)}
+                options={[
+                  { value: "all", label: "Semua Status" },
+                  { value: "pending", label: "Menunggu Verifikasi (Pending)" },
+                  { value: "in_progress", label: "Proses Pemangkasan / Ditangani" },
+                  { value: "completed", label: "Sirkular Selesai" },
+                  { value: "closed", label: "🔒 Laporan Ditutup" },
+                  { value: "rejected", label: "Ditolak / Pembatalan" },
+                ]}
+                className="w-full"
+              />
+            </div>
 
-            <CustomSelect
-              label="Tingkat Risiko"
-              value={riskFilter}
-              onChange={(val) => setRiskFilter(val)}
-              options={[
-                { value: "all", label: "Semua Tingkat Risiko" },
-                { value: "high", label: "🔴 Risiko Tinggi (> 60)" },
-                { value: "medium", label: "🟡 Risiko Sedang (30-60)" },
-                { value: "low", label: "🟢 Risiko Rendah (< 30)" },
-              ]}
-              className="min-w-[190px]"
-            />
+            {/* 5. Risk Level Filter Dropdown */}
+            <div className="shrink-0 min-w-[160px] sm:min-w-[185px]">
+              <CustomSelect
+                label="Tingkat Risiko"
+                value={riskFilter}
+                onChange={(val) => setRiskFilter(val)}
+                options={[
+                  { value: "all", label: "Semua Tingkat Risiko" },
+                  { value: "high", label: "🔴 Risiko Tinggi (> 60)" },
+                  { value: "medium", label: "🟡 Risiko Sedang (30-60)" },
+                  { value: "low", label: "🟢 Risiko Rendah (< 30)" },
+                ]}
+                className="w-full"
+              />
+            </div>
 
-            <div className="ml-auto text-[11px] font-semibold text-[#111111]/50">
-              Menampilkan <span className="font-bold text-[#19382B]">{filteredReports.length}</span> aduan (Urut Risiko Tinggi)
+            {/* 6. Total Count Text */}
+            <div className="text-[11px] font-semibold text-[#111111]/50 shrink-0 ml-auto pl-2 whitespace-nowrap">
+              Menampilkan <span className="font-extrabold text-[#19382B]">{filteredReports.length}</span> aduan
             </div>
           </div>
         </div>
@@ -1127,130 +1156,295 @@ export const AdminDashboardClient = ({
             />
           </div>
         ) : (
-          /* Minimalist Modern Table View (Tanpa Kolom Volume Biomassa & GPS) */
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse font-sans text-xs">
-              <thead>
-                <tr className="bg-[#f8f9f5] border-b border-black/5 text-[#111111]/50 font-bold uppercase tracking-wider text-[10px]">
-                  <th className="py-4 px-5">Foto &amp; ID Laporan</th>
-                  <th className="py-4 px-5">Nama Pelapor (Warga)</th>
-                  <th className="py-4 px-5">Risiko AI YOLOv8</th>
-                  <th className="py-4 px-5">Status &amp; Waktu</th>
-                  <th className="py-4 px-5 text-right">Aksi Admin</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/5">
-                {filteredReports.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-16 text-center text-gray-400 font-medium">
-                      Tidak ada laporan aduan warga yang sesuai dengan kriteria filter.
-                    </td>
+          <>
+            {/* ── MOBILE CARD LIST (Tampil Khusus Layar HP / Mobile < md agar Pas 1 Layar Sesuai Dashboard Warga) ── */}
+            <div className="block md:hidden space-y-3 p-3.5 sm:p-4 font-sans">
+              {paginatedReports.length === 0 ? (
+                <div className="py-12 text-center text-gray-400 text-xs font-medium">
+                  Tidak ada laporan aduan warga yang sesuai dengan kriteria filter.
+                </div>
+              ) : (
+                paginatedReports.map((report) => {
+                  const rawRisk = typeof report.risk_score === "number" ? report.risk_score : 0;
+                  const riskLevel = getRiskLevel(rawRisk);
+                  const riskConfig = riskLevelConfig[riskLevel];
+                  const displayRisk = rawRisk <= 1 ? Math.round(rawRisk * 100) : Math.round(rawRisk);
+                  const statusConfig = getReportStatusConfig(report.status);
+
+                  return (
+                    <div
+                      key={report.id}
+                      className="bg-white border border-black/10 rounded-2xl p-3.5 space-y-3 shadow-2xs hover:border-[#19382B]/30 transition-all"
+                    >
+                      {/* Top Row: Photo + ID + Status Badge */}
+                      <div className="flex items-start gap-3">
+                        <img
+                          src={report.image_url}
+                          alt="Kondisi Pohon"
+                          onClick={() => setPreviewZoomImage(report.image_url)}
+                          className="w-16 h-16 rounded-xl object-cover border border-black/8 shadow-2xs shrink-0 cursor-pointer"
+                          title="Klik untuk memperbesar foto"
+                        />
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-mono font-extrabold text-[#111111] text-xs">
+                              #{report.id ? report.id.slice(0, 8) : "N/A"}
+                            </span>
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${statusConfig.bg} ${statusConfig.text} ${statusConfig.border} border`}>
+                              {statusConfig.label}
+                            </span>
+                          </div>
+
+                          {/* Risk Badge */}
+                          <div className="pt-0.5">
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[9px] uppercase tracking-wider ${riskConfig.bgColor} ${riskConfig.textColor} border border-black/5`}>
+                              <ShieldWarning size={11} weight="fill" className="shrink-0" />
+                              <span>{riskConfig.label} ({displayRisk}/100)</span>
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-[10px] text-gray-500 font-medium pt-0.5">
+                            <span className="flex items-center gap-1 truncate">
+                              <User size={11} className="text-[#19382B]" />
+                              {report.reporter_name || "Warga"}
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1 shrink-0">
+                              <Clock size={11} />
+                              {report.created_at
+                                ? new Date(report.created_at).toLocaleDateString("id-ID", {
+                                    day: "numeric",
+                                    month: "short",
+                                  })
+                                : "-"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Action Button Row */}
+                      <div className="pt-1 flex items-center gap-2 border-t border-gray-100">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenDetailModal(report)}
+                          className="flex-1 bg-[#19382B] hover:bg-[#234A39] text-white py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-98"
+                        >
+                          <Eye size={14} weight="bold" className="text-[#88d937]" />
+                          <span>Detail &amp; Verifikasi Aduan</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setDeleteConfirmReport(report)}
+                          className="w-9 h-9 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 flex items-center justify-center transition-colors border border-red-100 shrink-0 cursor-pointer"
+                          title="Hapus Laporan Ini"
+                        >
+                          <Trash size={14} weight="bold" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* ── DESKTOP TABLE VIEW (Tampil di Tablet/Desktop md:block) ── */}
+            <div className="hidden md:block w-full overflow-x-auto">
+              <table className="w-full text-left border-collapse font-sans text-xs">
+                <thead>
+                  <tr className="bg-[#f8f9f5] border-b border-black/5 text-[#111111]/50 font-bold uppercase tracking-wider text-[10px]">
+                    <th className="py-4 px-5">Foto &amp; ID Laporan</th>
+                    <th className="py-4 px-5">Nama Pelapor (Warga)</th>
+                    <th className="py-4 px-5">Risiko AI YOLOv8</th>
+                    <th className="py-4 px-5">Status &amp; Waktu</th>
+                    <th className="py-4 px-5 text-right">Aksi Admin</th>
                   </tr>
-                ) : (
-                  filteredReports.map((report) => {
-                    const rawRisk = typeof report.risk_score === "number" ? report.risk_score : 0;
-                    const riskLevel = getRiskLevel(rawRisk);
-                    const riskConfig = riskLevelConfig[riskLevel];
-                    const displayRisk =
-                      rawRisk <= 1 ? Math.round(rawRisk * 100) : Math.round(rawRisk);
+                </thead>
+                <tbody className="divide-y divide-black/5">
+                  {paginatedReports.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="py-16 text-center text-gray-400 font-medium">
+                        Tidak ada laporan aduan warga yang sesuai dengan kriteria filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedReports.map((report) => {
+                      const rawRisk = typeof report.risk_score === "number" ? report.risk_score : 0;
+                      const riskLevel = getRiskLevel(rawRisk);
+                      const riskConfig = riskLevelConfig[riskLevel];
+                      const displayRisk =
+                        rawRisk <= 1 ? Math.round(rawRisk * 100) : Math.round(rawRisk);
 
-                    return (
-                      <tr key={report.id} className="hover:bg-[#ecefe6]/30 transition-colors">
-                        {/* Foto & ID */}
-                        <td className="py-4 px-5">
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={report.image_url}
-                              alt="Kondisi Pohon"
-                              onClick={() => setPreviewZoomImage(report.image_url)}
-                              className="w-12 h-12 rounded-2xl object-cover border border-black/8 shadow-2xs shrink-0 cursor-pointer hover:scale-105 transition-transform"
-                              title="Klik untuk memperbesar foto"
-                            />
-                            <div>
-                              <p className="font-mono font-bold text-[#111111] text-[11px] tracking-tight">
-                                #{report.id ? report.id.slice(0, 8) : "N/A"}
-                              </p>
-                              {report.description && (
-                                <p className="text-[10px] text-[#111111]/60 line-clamp-1 max-w-[150px] mt-0.5">
-                                  {report.description}
+                      return (
+                        <tr key={report.id} className="hover:bg-[#ecefe6]/30 transition-colors">
+                          {/* 1. Foto & ID Laporan */}
+                          <td className="py-4 px-5">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={report.image_url}
+                                alt="Kondisi Pohon"
+                                onClick={() => setPreviewZoomImage(report.image_url)}
+                                className="w-12 h-12 rounded-2xl object-cover border border-black/8 shadow-2xs shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                                title="Klik untuk memperbesar foto"
+                              />
+                              <div className="min-w-0">
+                                <p className="font-mono font-bold text-[#111111] text-[11px] tracking-tight">
+                                  #{report.id ? report.id.slice(0, 8) : "N/A"}
                                 </p>
-                              )}
+                                {report.description && (
+                                  <p className="text-[10px] text-[#111111]/60 line-clamp-1 max-w-[160px] mt-0.5">
+                                    {report.description}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* Nama Pelapor Warga */}
-                        <td className="py-4 px-5">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8.5 h-8.5 rounded-full bg-[#19382B] text-[#88d937] flex items-center justify-center text-xs font-extrabold uppercase shrink-0 border border-[#88d937]/30 shadow-2xs">
-                              {report.reporter_name ? report.reporter_name[0] : "W"}
+                          {/* 2. Nama Pelapor Warga */}
+                          <td className="py-4 px-5">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8.5 h-8.5 rounded-full bg-[#19382B] text-[#88d937] flex items-center justify-center text-xs font-extrabold uppercase shrink-0 border border-[#88d937]/30 shadow-2xs">
+                                {report.reporter_name ? report.reporter_name[0] : "W"}
+                              </div>
+                              <div className="overflow-hidden max-w-[170px]">
+                                <p className="font-extrabold text-[#111111] truncate text-xs leading-tight">
+                                  {report.reporter_name || "Warga"}
+                                </p>
+                                <p className="text-[10px] text-[#111111]/50 truncate mt-0.5">
+                                  {report.reporter_email || (report.user_id ? `${report.user_id.slice(0, 8)}...` : "Pelapor Warga")}
+                                </p>
+                              </div>
                             </div>
-                            <div className="overflow-hidden max-w-[170px]">
-                              <p className="font-extrabold text-[#111111] truncate text-xs leading-tight">
-                                {report.reporter_name || "Warga"}
-                              </p>
-                              <p className="text-[10px] text-[#111111]/50 truncate mt-0.5">
-                                {report.reporter_email || (report.user_id ? `${report.user_id.slice(0, 8)}...` : "Pelapor Warga")}
-                              </p>
-                            </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        {/* Risiko AI */}
-                        <td className="py-4 px-5">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-[10px] uppercase tracking-wider ${riskConfig.bgColor} ${riskConfig.textColor} border border-black/5`}
+                          {/* 3. Risiko AI */}
+                          <td className="py-4 px-5">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-bold text-[10px] uppercase tracking-wider ${riskConfig.bgColor} ${riskConfig.textColor} border border-black/5 whitespace-nowrap`}
+                            >
+                              <ShieldWarning size={13} weight="fill" className="shrink-0" />
+                              <span>{riskConfig.label} ({displayRisk}/100)</span>
+                            </span>
+                          </td>
+
+                          {/* 4. Status & Waktu */}
+                          <td className="py-4 px-5">
+                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#ecefe6] text-[#19382B] mb-0.5 border border-black/5">
+                              {report.status || "Pending"}
+                            </span>
+                            <p className="text-[10px] text-[#111111]/40">
+                              {report.created_at
+                                ? new Date(report.created_at).toLocaleDateString("id-ID", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  })
+                                : "-"}
+                            </p>
+                          </td>
+
+                          {/* 5. Action Buttons */}
+                          <td className="py-4 px-5 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDetailModal(report)}
+                                className="bg-[#19382B] text-white hover:bg-[#234A39] px-4 py-2 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all shrink-0 cursor-pointer active:scale-95"
+                              >
+                                <Eye size={14} weight="bold" className="text-[#88d937]" />
+                                <span>Detail &amp; Verifikasi</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => setDeleteConfirmReport(report)}
+                                className="w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition-colors border border-red-100 shrink-0 cursor-pointer"
+                                title="Hapus Laporan Ini"
+                              >
+                                <Trash size={14} weight="bold" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* ── 4. Modern Pagination Controls (15 Data Per Halaman) ── */}
+            {totalItems > 0 && (
+              <div className="p-4 sm:p-5 bg-[#f8f9f5]/60 border-t border-black/5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-sans">
+                {/* Page Items Range Display */}
+                <p className="text-[#111111]/60 font-semibold text-center sm:text-left">
+                  Menampilkan <span className="font-extrabold text-[#19382B]">{totalItems > 0 ? startIndex + 1 : 0}</span> -{" "}
+                  <span className="font-extrabold text-[#19382B]">{endIndex}</span> dari{" "}
+                  <span className="font-extrabold text-[#19382B]">{totalItems}</span> aduan
+                </p>
+
+                {/* Pagination Controls */}
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={validCurrentPage === 1}
+                    className="px-3 py-1.5 rounded-full border border-black/10 bg-white hover:bg-[#ecefe6] text-[#111111] text-xs font-bold transition-all disabled:opacity-40 disabled:hover:bg-white flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
+                  >
+                    <CaretLeft size={14} weight="bold" />
+                    <span className="hidden sm:inline">Sebelumnya</span>
+                  </button>
+
+                  {/* Page Numbers */}
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                      if (
+                        totalPages <= 5 ||
+                        pageNum === 1 ||
+                        pageNum === totalPages ||
+                        Math.abs(pageNum - validCurrentPage) <= 1
+                      ) {
+                        return (
+                          <button
+                            key={pageNum}
+                            type="button"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`w-8 h-8 rounded-full text-xs font-extrabold flex items-center justify-center transition-all cursor-pointer ${
+                              pageNum === validCurrentPage
+                                ? "bg-[#19382B] text-[#88d937] shadow-2xs border border-[#19382B]"
+                                : "bg-white hover:bg-gray-100 text-[#111111]/70 border border-black/8"
+                            }`}
                           >
-                            <ShieldWarning size={13} weight="fill" />
-                            <span>{riskConfig.label} ({displayRisk}/100)</span>
+                            {pageNum}
+                          </button>
+                        );
+                      } else if (
+                        (pageNum === 2 && validCurrentPage > 3) ||
+                        (pageNum === totalPages - 1 && validCurrentPage < totalPages - 2)
+                      ) {
+                        return (
+                          <span key={pageNum} className="text-gray-400 font-bold px-1 select-none">
+                            ...
                           </span>
-                        </td>
+                        );
+                      }
+                      return null;
+                    })}
+                  </div>
 
-                        {/* Status & Waktu */}
-                        <td className="py-4 px-5">
-                          <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[#ecefe6] text-[#19382B] mb-0.5 border border-black/5">
-                            {report.status || "Pending"}
-                          </span>
-                          <p className="text-[10px] text-[#111111]/40">
-                            {report.created_at
-                              ? new Date(report.created_at).toLocaleDateString("id-ID", {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                })
-                              : "-"}
-                          </p>
-                        </td>
-
-                        {/* Action Buttons */}
-                        <td className="py-4 px-5 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenDetailModal(report)}
-                              className="bg-[#19382B] text-white hover:bg-[#234A39] px-4 py-2 rounded-full font-bold text-xs flex items-center gap-1.5 shadow-xs transition-all shrink-0"
-                            >
-                              <Eye size={14} weight="bold" className="text-[#88d937]" />
-                              <span>Detail &amp; Verifikasi</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => setDeleteConfirmReport(report)}
-                              className="w-8 h-8 rounded-full bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition-colors border border-red-100 shrink-0"
-                              title="Hapus Laporan Ini"
-                            >
-                              <Trash size={14} weight="bold" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={validCurrentPage === totalPages}
+                    className="px-3 py-1.5 rounded-full border border-black/10 bg-white hover:bg-[#ecefe6] text-[#111111] text-xs font-bold transition-all disabled:opacity-40 disabled:hover:bg-white flex items-center gap-1 cursor-pointer active:scale-95 shadow-2xs"
+                  >
+                    <span className="hidden sm:inline">Selanjutnya</span>
+                    <CaretRight size={14} weight="bold" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
