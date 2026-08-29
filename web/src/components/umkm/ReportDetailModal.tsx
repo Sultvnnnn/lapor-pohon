@@ -211,48 +211,60 @@ export const ReportDetailModal = ({
         </div>
 
         {/* Metrik Analisis AI */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-4">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#111111]/50 block mb-1">
-              Volume Kayu
-            </span>
-            <span className="text-xl font-extrabold text-[#19382B]">
-              {report.canopy_volume ? report.canopy_volume.toFixed(2) : "0.00"} m³
-            </span>
-          </div>
+        {(() => {
+          const canopyVol = typeof report.canopy_volume === "number" ? report.canopy_volume : parseFloat(String(report.canopy_volume || 0));
+          const biomassEst = typeof report.biomass_estimate === "number" ? report.biomass_estimate : parseFloat(String(report.biomass_estimate || 0));
+          const displayLat = typeof report.latitude === "number" ? report.latitude : parseFloat(String(report.latitude));
+          const displayLng = typeof report.longitude === "number" ? report.longitude : parseFloat(String(report.longitude));
+          const hasCoords = !isNaN(displayLat) && !isNaN(displayLng);
 
-          <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-4">
-            <span className="text-[10px] font-bold uppercase tracking-widest text-[#111111]/50 block mb-1">
-              Estimasi Biomassa
-            </span>
-            <span className="text-xl font-extrabold text-[#19382B]">
-              {report.biomass_estimate ? report.biomass_estimate.toFixed(2) : "0.00"} kg
-            </span>
-          </div>
-        </div>
+          return (
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-4">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#111111]/50 block mb-1">
+                    Volume Kanopi
+                  </span>
+                  <span className="text-xl font-extrabold text-[#19382B]">
+                    {!isNaN(canopyVol) ? canopyVol.toFixed(2) : "0.00"} m³
+                  </span>
+                </div>
 
-        {/* Deskripsi & Lokasi Real (Nama Tempat Readability) */}
-        <div className="space-y-3 text-xs text-[#111111]">
-          <div className="space-y-1">
-            <span className="text-[11px] font-bold uppercase tracking-widest text-[#111111]/50 flex items-center gap-1.5">
-              <Info weight="bold" className="w-3.5 h-3.5 text-[#19382B]" />
-              Deskripsi Laporan Warga
-            </span>
-            <p className="bg-[#f8f9f5] border border-black/5 p-3 rounded-xl leading-relaxed text-[#111111]/80 font-normal">
-              {report.description || "Tidak ada deskripsi detail tambahan."}
-            </p>
-          </div>
+                <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-4">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#111111]/50 block mb-1">
+                    Estimasi Biomassa
+                  </span>
+                  <span className="text-xl font-extrabold text-[#19382B]">
+                    {!isNaN(biomassEst) ? biomassEst.toFixed(2) : "0.00"} kg
+                  </span>
+                </div>
+              </div>
 
-          <div className="flex items-center justify-between bg-[#ecefe6] p-3 rounded-xl text-xs font-bold text-[#19382B]">
-            <span className="flex items-center gap-1.5 shrink-0">
-              <MapPin weight="bold" className="w-4 h-4 text-[#19382B]" />
-              Lokasi Usaha / Area Pohon
-            </span>
-            <span className="font-semibold text-right text-[11px] text-[#111111]">
-              {addressName || `${report.latitude.toFixed(4)}, ${report.longitude.toFixed(4)}`}
-            </span>
-          </div>
-        </div>
+              {/* Deskripsi & Lokasi Real (Nama Tempat Readability) */}
+              <div className="space-y-3 text-xs text-[#111111]">
+                <div className="space-y-1">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[#111111]/50 flex items-center gap-1.5">
+                    <Info weight="bold" className="w-3.5 h-3.5 text-[#19382B]" />
+                    Deskripsi Laporan Warga
+                  </span>
+                  <p className="bg-[#f8f9f5] border border-black/5 p-3 rounded-xl leading-relaxed text-[#111111]/80 font-normal">
+                    {report.description || "Tidak ada deskripsi detail tambahan."}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between bg-[#ecefe6] p-3 rounded-xl text-xs font-bold text-[#19382B]">
+                  <span className="flex items-center gap-1.5 shrink-0">
+                    <MapPin weight="bold" className="w-4 h-4 text-[#19382B]" />
+                    Lokasi Usaha / Area Pohon
+                  </span>
+                  <span className="font-semibold text-right text-[11px] text-[#111111]">
+                    {addressName || (hasCoords ? `${displayLat.toFixed(4)}, ${displayLng.toFixed(4)}` : "Lokasi Terverifikasi")}
+                  </span>
+                </div>
+              </div>
+            </>
+          );
+        })()}
 
         {/* Status Klaim / Tombol Klaim Kayu */}
         {isSoldOut ? (
