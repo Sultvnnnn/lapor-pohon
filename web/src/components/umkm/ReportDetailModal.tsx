@@ -131,6 +131,7 @@ export const ReportDetailModal = ({
               <TreeImageWithBoundingBox
                 imageUrl={displayImage}
                 boundingBoxes={rawBoxes}
+                riskScore={risk}
                 alt="Deteksi AI Bounding Box Pohon"
               />
             ) : (

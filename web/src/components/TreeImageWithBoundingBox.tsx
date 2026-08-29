@@ -8,6 +8,7 @@ export type BoundingBox = {
   width: number;
   height: number;
   confidence: number;
+  risk_score?: number;
   label?: string;
 };
 
@@ -15,39 +16,51 @@ type Props = {
   imageUrl: string;
   boundingBoxes: BoundingBox[];
   personBoxes?: BoundingBox[];
+  riskScore?: number;
   alt?: string;
   className?: string;
   imgClassName?: string;
   isLightbox?: boolean;
 };
 
-const getBoxStyle = (box: BoundingBox) => {
+const getBoxStyle = (box: BoundingBox, globalRiskScore?: number) => {
   if (box.label === "person") {
     return {
       border: "border-cyan-400 border-2 shadow-sm",
       bg: "bg-cyan-600 text-white font-bold",
-      label: `🧍 Kalibrasi Manusia (${Math.round(box.confidence * 100)}%)`,
+      label: "Manusia",
     };
   }
 
-  if (box.confidence >= 0.7) {
+  const treeConf = Math.round((box.confidence || 0) * 100);
+
+  const rawBoxRisk = typeof box.risk_score === "number" ? box.risk_score : globalRiskScore;
+  let boxRisk: number | null = null;
+  if (typeof rawBoxRisk === "number" && !isNaN(rawBoxRisk)) {
+    boxRisk = rawBoxRisk <= 1 ? Math.round(rawBoxRisk * 100) : Math.round(rawBoxRisk);
+  }
+
+  const riskPart = boxRisk !== null && boxRisk > 0 ? ` | Risiko ${boxRisk}%` : "";
+  const treeLabel = `Pohon ${treeConf}%${riskPart}`;
+
+  if ((box.confidence || 0) >= 0.7) {
     return {
       border: "border-green-500 border-2 shadow-sm",
       bg: "bg-green-600 text-white font-bold",
-      label: `🌲 Pohon ${Math.round(box.confidence * 100)}%`,
+      label: treeLabel,
     };
   }
-  if (box.confidence >= 0.4) {
+  if ((box.confidence || 0) >= 0.4) {
     return {
       border: "border-yellow-500 border-2 shadow-sm",
       bg: "bg-amber-500 text-black font-bold",
-      label: `🌲 Pohon ${Math.round(box.confidence * 100)}%`,
+      label: treeLabel,
     };
   }
   return {
     border: "border-red-500 border-2 shadow-sm",
     bg: "bg-red-600 text-white font-bold",
-    label: `🌲 Pohon ${Math.round(box.confidence * 100)}%`,
+    label: treeLabel,
   };
 };
 
@@ -55,6 +68,7 @@ export const TreeImageWithBoundingBox = ({
   imageUrl,
   boundingBoxes = [],
   personBoxes = [],
+  riskScore,
   alt,
   className,
   imgClassName,
@@ -112,7 +126,7 @@ export const TreeImageWithBoundingBox = ({
         />
 
         {allBoxes.map((box, idx) => {
-          const style = getBoxStyle(box);
+          const style = getBoxStyle(box, riskScore);
           return (
             <div
               key={idx}
@@ -147,7 +161,7 @@ export const TreeImageWithBoundingBox = ({
       />
 
       {allBoxes.map((box, idx) => {
-        const style = getBoxStyle(box);
+        const style = getBoxStyle(box, riskScore);
         return (
           <div
             key={idx}
@@ -170,4 +184,3 @@ export const TreeImageWithBoundingBox = ({
     </div>
   );
 };
-

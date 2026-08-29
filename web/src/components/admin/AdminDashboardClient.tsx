@@ -34,7 +34,7 @@ import { uploadReportImage } from "@/lib/storageUtils";
 import { TreeImageWithBoundingBox, BoundingBox } from "@/components/TreeImageWithBoundingBox";
 import { AdminMapView } from "./AdminMapView";
 import { getRiskLevel, riskLevelConfig } from "@/lib/riskLevel";
-import { StatusTimeline } from "@/components/StatusTimeline";
+import { StatusTimeline, parseWibDate } from "@/components/StatusTimeline";
 
 /* ── Custom Floating Label Dropdown Component (Sesuai Contoh di Gambar) ── */
 export interface CustomSelectOption {
@@ -474,6 +474,7 @@ export const AdminDashboardClient = ({
   // Lightbox Image Zoom Modal State
   const [previewZoomImage, setPreviewZoomImage] = useState<string | null>(null);
   const [previewZoomBoxes, setPreviewZoomBoxes] = useState<BoundingBox[]>([]);
+  const [previewZoomRiskScore, setPreviewZoomRiskScore] = useState<number | undefined>(undefined);
   const [deleteConfirmReport, setDeleteConfirmReport] = useState<AdminReportItem | null>(null);
 
   // Lock body scroll when modal or drawer is open
@@ -1118,7 +1119,7 @@ export const AdminDashboardClient = ({
       <ClientPortal>
         <AnimatePresence>
           {selectedReport && (
-            <div className="fixed inset-0 z-[99999] flex justify-end font-sans overflow-hidden p-0 sm:p-4 pointer-events-none">
+            <div className="fixed inset-0 z-[99999] flex justify-end font-sans overflow-hidden p-0 pointer-events-none">
               {/* Backdrop Overlay (Click to Close) */}
               <motion.div
                 initial={{ opacity: 0 }}
@@ -1130,11 +1131,11 @@ export const AdminDashboardClient = ({
 
               {/* Floating Right Drawer Panel Box */}
               <motion.div
-                initial={{ y: "100%", opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: "100%", opacity: 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="relative z-10 pointer-events-auto w-full max-w-full sm:max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[calc(100vh-2rem)] rounded-t-[2rem] sm:rounded-[2.2rem] bg-white shadow-2xl overflow-hidden flex flex-col font-sans border-t sm:border border-black/10 mt-auto sm:my-auto"
+                initial={{ x: "100%", opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: "100%", opacity: 0 }}
+                transition={{ type: "spring", stiffness: 320, damping: 32 }}
+                className="relative z-10 pointer-events-auto w-full sm:w-[540px] md:w-[600px] max-w-full h-full bg-white shadow-2xl overflow-hidden flex flex-col font-sans border-l border-black/10 rounded-l-[1.8rem] sm:rounded-l-[2.2rem] ml-auto"
               >
                 {/* Drawer Top Header Bar */}
                 <div className="p-3.5 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
@@ -1146,13 +1147,19 @@ export const AdminDashboardClient = ({
                       <Clock size={13} weight="bold" className="text-gray-400" />
                       <span>
                         {selectedReport.created_at
-                          ? new Date(selectedReport.created_at).toLocaleString("id-ID", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
+                          ? (() => {
+                              const d = parseWibDate(selectedReport.created_at);
+                              return d
+                                ? d.toLocaleString("id-ID", {
+                                    timeZone: "Asia/Jakarta",
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }) + " WIB"
+                                : selectedReport.created_at;
+                            })()
                           : "-"}
                       </span>
                     </span>
@@ -1286,6 +1293,7 @@ export const AdminDashboardClient = ({
                             const boxes = parseBoundingBoxes(selectedReport);
                             setPreviewZoomImage(selectedReport.image_url);
                             setPreviewZoomBoxes(boxes);
+                            setPreviewZoomRiskScore(selectedReport.risk_score);
                           }}
                           className="rounded-2xl overflow-hidden border border-black/10 bg-black/5 shadow-xs h-48 sm:h-52 cursor-pointer relative group flex-1"
                           title="Klik untuk memperbesar foto"
@@ -1296,6 +1304,7 @@ export const AdminDashboardClient = ({
                               <TreeImageWithBoundingBox
                                 imageUrl={selectedReport.image_url}
                                 boundingBoxes={boxes}
+                                riskScore={selectedReport.risk_score}
                                 alt="Deteksi AI Pohon Rawan"
                                 className="relative w-full h-48 sm:h-52 overflow-hidden rounded-2xl"
                                 imgClassName="block w-full h-48 sm:h-52 rounded-2xl object-cover"
@@ -1334,6 +1343,7 @@ export const AdminDashboardClient = ({
                       onPreviewProof={(url) => {
                         setPreviewZoomImage(url);
                         setPreviewZoomBoxes([]);
+                        setPreviewZoomRiskScore(undefined);
                       }}
                     />
 
@@ -1553,6 +1563,7 @@ export const AdminDashboardClient = ({
                   <TreeImageWithBoundingBox
                     imageUrl={previewZoomImage}
                     boundingBoxes={previewZoomBoxes}
+                    riskScore={previewZoomRiskScore}
                     alt="Foto Laporan Diperbesar dengan Deteksi AI"
                     isLightbox={true}
                   />

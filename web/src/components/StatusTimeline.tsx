@@ -1,7 +1,16 @@
 "use client";
 
 import React from "react";
-import { Clock, WarningCircle, Check, Calendar, CheckCircle, Eye } from "@phosphor-icons/react";
+import {
+  Clock,
+  Calendar,
+  CheckCircle,
+  Eye,
+  PaperPlaneTilt,
+  ShieldCheck,
+  HardHat,
+  XCircle,
+} from "@phosphor-icons/react";
 
 export type ReportStatusItem = {
   status?: string;
@@ -12,12 +21,30 @@ export type ReportStatusItem = {
   scheduled_at?: string;
 };
 
-const formatDate = (dateStr?: string) => {
+export const parseWibDate = (dateStr?: string): Date | null => {
   if (!dateStr) return null;
   try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString("id-ID", {
+    let normalized = dateStr.trim();
+    if (normalized.includes(" ") && !normalized.includes("T")) {
+      normalized = normalized.replace(" ", "T");
+    }
+    if (!normalized.endsWith("Z") && !/[+-]\d{2}:?\d{2}$/.test(normalized)) {
+      normalized += "Z";
+    }
+    const d = new Date(normalized);
+    return isNaN(d.getTime()) ? null : d;
+  } catch (e) {
+    return null;
+  }
+};
+
+export const formatDate = (dateStr?: string) => {
+  if (!dateStr) return null;
+  try {
+    const d = parseWibDate(dateStr);
+    if (!d) return dateStr;
+    return d.toLocaleString("id-ID", {
+      timeZone: "Asia/Jakarta",
       day: "numeric",
       month: "short",
       year: "numeric",
@@ -35,7 +62,8 @@ export const StatusTimeline: React.FC<{
 }> = ({ report, onPreviewProof }) => {
   const s = (report.status || "").toLowerCase().trim();
   const createdAtFormatted = formatDate(report.created_at);
-  const updatedAtFormatted = formatDate(report.updated_at) || createdAtFormatted;
+  const updatedAtFormatted = formatDate(report.updated_at);
+  const scheduledAtFormatted = formatDate(report.scheduled_at);
 
   const isRejected = s.includes("ditolak") || s.includes("rejected") || s.includes("batal");
   const isCompleted = s.includes("selesai") || s.includes("resolved") || s.includes("completed");
@@ -55,18 +83,26 @@ export const StatusTimeline: React.FC<{
     activeStep = 0;
   }
 
+  // Calculate distinct accurate timestamp for each step
+  const hasDistinctUpdate = report.updated_at && report.created_at && report.updated_at !== report.created_at;
+
+  const step0Time = createdAtFormatted;
+  const step1Time = isRejected || activeStep >= 1 ? (hasDistinctUpdate ? updatedAtFormatted : createdAtFormatted) : null;
+  const step2Time = isScheduled || isInProgress || activeStep >= 2 ? (scheduledAtFormatted || (hasDistinctUpdate ? updatedAtFormatted : null)) : null;
+  const step3Time = isCompleted ? (hasDistinctUpdate ? updatedAtFormatted : createdAtFormatted) : null;
+
   const allSteps = [
     {
       id: 0,
       title: "Laporan Diterima Sistem",
-      time: createdAtFormatted,
+      time: step0Time,
       desc: "Laporan pohon rawan telah berhasil dikirim oleh Warga dan masuk ke sistem DLH.",
       isUnlocked: true,
     },
     {
       id: 1,
       title: isRejected ? "Laporan Ditolak / Tidak Valid" : "Verifikasi & Penilaian Risiko DLH",
-      time: isRejected || activeStep >= 1 ? updatedAtFormatted : null,
+      time: step1Time,
       desc: isRejected
         ? report.admin_note || "Laporan tidak memenuhi kriteria verifikasi petugas DLH."
         : activeStep >= 1
@@ -77,7 +113,7 @@ export const StatusTimeline: React.FC<{
     {
       id: 2,
       title: "Penjadwalan & Penanganan Lapangan",
-      time: isScheduled || isInProgress || activeStep >= 2 ? updatedAtFormatted : null,
+      time: step2Time,
       desc: isInProgress
         ? "Tim lapangan DLH sedang berada di lokasi untuk tindakan pemangkasan/penebangan."
         : activeStep > 2
@@ -89,7 +125,7 @@ export const StatusTimeline: React.FC<{
     {
       id: 3,
       title: "Selesai Penanganan",
-      time: isCompleted ? updatedAtFormatted : null,
+      time: step3Time,
       desc: isCompleted
         ? "Penanganan pohon rawan telah selesai dilaksanakan secara penuh oleh tim DLH."
         : "",
@@ -102,7 +138,7 @@ export const StatusTimeline: React.FC<{
   const visibleSteps = allSteps.filter((st) => st.isUnlocked).slice().reverse();
 
   return (
-    <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-4 sm:p-5 space-y-4">
+    <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-4 sm:p-5 space-y-4 font-sans">
       <div className="flex items-center justify-between border-b border-black/5 pb-3">
         <h4 className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
           <Clock size={15} weight="bold" className="text-[#19382B]" />
@@ -110,35 +146,54 @@ export const StatusTimeline: React.FC<{
         </h4>
         {report.updated_at && (
           <span className="text-[10px] font-semibold text-gray-500 bg-white border border-black/10 px-2.5 py-0.5 rounded-full shadow-2xs">
-            Diperbarui: {updatedAtFormatted}
+            Diperbarui: {updatedAtFormatted} WIB
           </span>
         )}
       </div>
 
-      <div className={`relative pl-6 space-y-6 pt-1 ${visibleSteps.length > 1 ? "before:absolute before:left-[11px] before:top-3.5 before:bottom-3.5 before:w-[2px] before:bg-gray-200" : ""}`}>
+      <div
+        className={`relative pl-8 space-y-6 pt-1 ${
+          visibleSteps.length > 1
+            ? "before:absolute before:left-[11px] before:top-3.5 before:bottom-3.5 before:w-[2px] before:bg-gray-200"
+            : ""
+        }`}
+      >
         {visibleSteps.map((step, idx) => {
           const isLatest = idx === 0;
-          const isPassed = !isLatest;
 
           let iconElement = null;
           let nodeBg = "bg-gray-100 text-gray-400 border-gray-300";
 
           if (isRejected && step.id === 1) {
             nodeBg = "bg-red-500 text-white border-red-600 ring-4 ring-red-100";
-            iconElement = <WarningCircle size={13} weight="bold" />;
-          } else if (isLatest) {
-            nodeBg = "bg-emerald-600 text-white border-emerald-600 ring-4 ring-emerald-100";
-            iconElement = <Check size={12} weight="bold" />;
-          } else {
-            nodeBg = "bg-[#19382B] text-white border-[#19382B]";
-            iconElement = <Check size={12} weight="bold" />;
+            iconElement = <XCircle size={13} weight="bold" />;
+          } else if (step.id === 0) {
+            nodeBg = isLatest
+              ? "bg-emerald-600 text-white border-emerald-600 ring-4 ring-emerald-100"
+              : "bg-[#19382B] text-white border-[#19382B]";
+            iconElement = <PaperPlaneTilt size={12} weight="bold" />;
+          } else if (step.id === 1) {
+            nodeBg = isLatest
+              ? "bg-emerald-600 text-white border-emerald-600 ring-4 ring-emerald-100"
+              : "bg-[#19382B] text-white border-[#19382B]";
+            iconElement = <ShieldCheck size={13} weight="bold" />;
+          } else if (step.id === 2) {
+            nodeBg = isLatest
+              ? "bg-emerald-600 text-white border-emerald-600 ring-4 ring-emerald-100"
+              : "bg-[#19382B] text-white border-[#19382B]";
+            iconElement = <HardHat size={13} weight="bold" />;
+          } else if (step.id === 3) {
+            nodeBg = isLatest
+              ? "bg-emerald-600 text-white border-emerald-600 ring-4 ring-emerald-100"
+              : "bg-[#19382B] text-white border-[#19382B]";
+            iconElement = <CheckCircle size={13} weight="fill" />;
           }
 
           return (
             <div key={step.id} className="relative group">
-              {/* Step Icon Node */}
+              {/* Step Icon Node — Perfectly centered on left-[11px] line */}
               <div
-                className={`absolute -left-[31px] top-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${nodeBg}`}
+                className={`absolute -left-[32px] top-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${nodeBg}`}
               >
                 {iconElement}
               </div>
@@ -159,7 +214,7 @@ export const StatusTimeline: React.FC<{
                   </h5>
                   {step.time && (
                     <span className="text-[10px] font-semibold text-gray-400 font-mono">
-                      {step.time}
+                      {step.time} WIB
                     </span>
                   )}
                 </div>
@@ -176,13 +231,19 @@ export const StatusTimeline: React.FC<{
                       Jadwal Penanganan Pemangkasan DLH:
                     </p>
                     <p className="text-xs font-extrabold text-amber-950">
-                      {new Date(step.scheduledAt).toLocaleString("id-ID", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })} WIB
+                      {(() => {
+                        const d = parseWibDate(step.scheduledAt);
+                        return d
+                          ? d.toLocaleString("id-ID", {
+                              timeZone: "Asia/Jakarta",
+                              day: "numeric",
+                              month: "long",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }) + " WIB"
+                          : step.scheduledAt;
+                      })()}
                     </p>
                   </div>
                 )}

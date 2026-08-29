@@ -38,7 +38,7 @@ import { createClient } from "@/lib/supabase/client";
 import { TreeImageWithBoundingBox } from "@/components/TreeImageWithBoundingBox";
 import { LocationMapModal } from "@/components/dashboard/LocationMapModal";
 import { getRiskLevel, riskLevelConfig } from "@/lib/riskLevel";
-import { StatusTimeline } from "@/components/StatusTimeline";
+import { StatusTimeline, parseWibDate } from "./StatusTimeline";
 
 type BoundingBox = {
   x: number;
@@ -393,6 +393,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
     useState<ReportHistoryItem | null>(null);
   const [previewZoomImage, setPreviewZoomImage] = useState<string | null>(null);
   const [previewZoomBoxes, setPreviewZoomBoxes] = useState<BoundingBox[]>([]);
+  const [previewZoomRiskScore, setPreviewZoomRiskScore] = useState<number | undefined>(undefined);
   // Delete Report States
   const [deleteConfirmItem, setDeleteConfirmItem] =
     useState<ReportHistoryItem | null>(null);
@@ -1184,13 +1185,18 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                       <span className="text-[#19382B] text-[10px] font-extrabold">🔍 Klik Perbesar</span>
                     </p>
                     <div
-                      onClick={() => setPreviewZoomImage(submittedReport.imageUrl)}
+                      onClick={() => {
+                        setPreviewZoomImage(submittedReport.imageUrl);
+                        setPreviewZoomBoxes(submittedReport.boundingBoxes);
+                        setPreviewZoomRiskScore(submittedReport.riskScore);
+                      }}
                       className="rounded-2xl overflow-hidden border border-black/5 bg-[#ecefe6]/40 p-2 cursor-pointer relative group"
                       title="Klik untuk memperbesar foto"
                     >
                       <TreeImageWithBoundingBox
                         imageUrl={submittedReport.imageUrl}
                         boundingBoxes={submittedReport.boundingBoxes}
+                        riskScore={submittedReport.riskScore}
                       />
                       <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1 pointer-events-none">
                         <Eye size={16} weight="bold" />
@@ -1868,7 +1874,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       <ClientPortal>
         <AnimatePresence>
           {selectedHistoryItem && (
-            <div className="fixed inset-0 z-[99999] flex justify-end font-sans overflow-hidden p-0 sm:p-4 pointer-events-none">
+            <div className="fixed inset-0 z-[99999] flex justify-end font-sans overflow-hidden p-0 pointer-events-none">
               {/* Backdrop Overlay (Click to Close) */}
               <motion.div
                 initial={{ opacity: 0 }}
@@ -1880,11 +1886,11 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
               {/* Floating Right Drawer Panel Box */}
               <motion.div
-                initial={{ y: "100%", opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                exit={{ y: "100%", opacity: 0 }}
-                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                className="relative z-10 pointer-events-auto w-full max-w-full sm:max-w-2xl h-[100dvh] sm:h-auto sm:max-h-[calc(100vh-2rem)] rounded-t-[2rem] sm:rounded-[2.2rem] bg-white shadow-2xl overflow-hidden flex flex-col font-sans border-t sm:border border-black/10 mt-auto sm:my-auto"
+                initial={{ x: "100%", opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={{ x: "100%", opacity: 0 }}
+                transition={{ type: "spring", stiffness: 320, damping: 32 }}
+                className="relative z-10 pointer-events-auto w-full sm:w-[540px] md:w-[600px] max-w-full h-full bg-white shadow-2xl overflow-hidden flex flex-col font-sans border-l border-black/10 rounded-l-[1.8rem] sm:rounded-l-[2.2rem] ml-auto"
               >
                 {/* Drawer Top Header Bar */}
                 <div className="p-3.5 sm:p-5 border-b border-gray-100 flex items-center justify-between bg-white shrink-0">
@@ -1896,13 +1902,19 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                       <Clock size={13} weight="bold" className="text-gray-400" />
                       <span>
                         {selectedHistoryItem.created_at
-                          ? new Date(selectedHistoryItem.created_at).toLocaleString("id-ID", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })
+                          ? (() => {
+                              const d = parseWibDate(selectedHistoryItem.created_at);
+                              return d
+                                ? d.toLocaleString("id-ID", {
+                                    timeZone: "Asia/Jakarta",
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }) + " WIB"
+                                : selectedHistoryItem.created_at;
+                            })()
                           : "-"}
                       </span>
                     </span>
@@ -2036,6 +2048,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                             const boxes = parseBoundingBoxes(selectedHistoryItem);
                             setPreviewZoomImage(selectedHistoryItem.image_url);
                             setPreviewZoomBoxes(boxes);
+                            setPreviewZoomRiskScore(selectedHistoryItem.risk_score);
                           }}
                           className="rounded-2xl overflow-hidden border border-black/10 bg-black/5 shadow-xs h-48 sm:h-52 cursor-pointer relative group flex-1"
                           title="Klik untuk memperbesar foto"
@@ -2046,6 +2059,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                               <TreeImageWithBoundingBox
                                 imageUrl={selectedHistoryItem.image_url}
                                 boundingBoxes={boxes}
+                                riskScore={selectedHistoryItem.risk_score}
                                 alt="Deteksi AI Pohon Rawan"
                                 className="relative w-full h-48 sm:h-52 overflow-hidden rounded-2xl"
                                 imgClassName="block w-full h-48 sm:h-52 rounded-2xl object-cover"
@@ -2084,6 +2098,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                       onPreviewProof={(url) => {
                         setPreviewZoomImage(url);
                         setPreviewZoomBoxes([]);
+                        setPreviewZoomRiskScore(undefined);
                       }}
                     />
 
@@ -2274,6 +2289,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   <TreeImageWithBoundingBox
                     imageUrl={previewZoomImage}
                     boundingBoxes={previewZoomBoxes}
+                    riskScore={previewZoomRiskScore}
                     alt="Foto Laporan Diperbesar dengan Deteksi AI"
                     isLightbox={true}
                   />
