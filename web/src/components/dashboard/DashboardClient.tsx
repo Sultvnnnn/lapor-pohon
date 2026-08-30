@@ -47,7 +47,7 @@ export const DashboardClient = ({
       className="max-w-[1000px] w-full mx-auto space-y-8 sm:space-y-12 pb-16 pt-2 sm:pt-6 px-1 sm:px-4 font-sans"
       style={{ fontFamily: "'Plus Jakarta Sans', sans-serif" }}
     >
-      {/* ── 1. Header Minimalis & Stats (Welcome Text Kiri, 2 Card Putih Kanan) ── */}
+      {/* ── 1. Header Minimalis (Welcome Text) ── */}
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
@@ -60,36 +60,8 @@ export const DashboardClient = ({
             Halo, <span className="font-serif italic font-medium text-[#0b3d2c]">{displayName}</span>
           </h1>
           <p className="text-xs sm:text-sm text-[#111111]/60 leading-relaxed font-medium">
-            Foto pohon yang berisiko di sekitarmu, lalu pantau status penanganannya di sini
+            Mari bantu jaga lingkungan dengan melaporkan pohon berisiko di sekitarmu
           </p>
-        </div>
-
-        {/* Metrik Info Cepat (Card Putih Bersih di Pinggir Kanan) */}
-        <div className="grid grid-cols-2 sm:flex items-center gap-3 sm:gap-4 shrink-0 md:ml-auto">
-          <div className="bg-white border border-black/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-center min-w-[130px] sm:min-w-[145px] shadow-xs">
-            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#111111]/40 mb-1">
-              Total Laporan
-            </span>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl sm:text-3xl font-extrabold text-[#19382B] tracking-tight">
-                {totalReports}
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white border border-black/5 rounded-2xl p-4 sm:p-5 flex flex-col justify-center min-w-[130px] sm:min-w-[145px] shadow-xs">
-            <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-[#111111]/40 mb-1">
-              Pohon Pengganti
-            </span>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-2xl sm:text-3xl font-extrabold text-[#19382B] tracking-tight">
-                {totalReports * 2}
-              </span>
-              <span className="text-xs font-semibold text-[#111111]/40">
-                Bibit
-              </span>
-            </div>
-          </div>
         </div>
       </motion.div>
 

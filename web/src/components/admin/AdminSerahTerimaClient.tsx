@@ -21,6 +21,28 @@ interface AdminSerahTerimaClientProps {
   adminEmail: string;
 }
 
+// Helper functions for localStorage fallback persistence
+export const getCompletedTickets = (): Set<string> => {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem("laporpohon_completed_tickets");
+    if (raw) {
+      const arr = JSON.parse(raw);
+      return new Set(Array.isArray(arr) ? arr : []);
+    }
+  } catch {}
+  return new Set();
+};
+
+export const markTicketCompletedInStorage = (ticketCodeOrId: string) => {
+  if (typeof window === "undefined" || !ticketCodeOrId) return;
+  try {
+    const existing = getCompletedTickets();
+    existing.add(ticketCodeOrId);
+    localStorage.setItem("laporpohon_completed_tickets", JSON.stringify(Array.from(existing)));
+  } catch {}
+};
+
 export function AdminSerahTerimaClient({
   initialCatalogs = [],
   adminEmail,
@@ -36,6 +58,8 @@ export function AdminSerahTerimaClient({
   // Refresh catalogs data from Supabase
   const refreshCatalogs = async () => {
     try {
+      const completedSet = getCompletedTickets();
+
       const { data: catData } = await supabase
         .from("biomass_catalogs")
         .select(`
@@ -61,23 +85,43 @@ export function AdminSerahTerimaClient({
         const merged: any[] = [];
 
         (catData || []).forEach((c) => {
-          merged.push(c);
+          const code = c.claim_ticket_code || `KLM-2026-TRM-${(c.report_id || c.id).slice(0, 4).toUpperCase()}`;
+          const isDone =
+            c.handover_status === "COMPLETED" ||
+            c.status === "sold_out" ||
+            c.reports?.status === "completed" ||
+            completedSet.has(c.id) ||
+            (c.report_id && completedSet.has(c.report_id)) ||
+            completedSet.has(code);
+
+          merged.push({
+            ...c,
+            handover_status: isDone ? "COMPLETED" : (c.handover_status || "WAITING_PICKUP"),
+            status: isDone ? "sold_out" : (c.status || "claimed"),
+          });
         });
 
         (repData || []).forEach((r) => {
           if (!catMap.has(r.id)) {
+            const code = `KLM-2026-TRM-${r.id.slice(0, 4).toUpperCase()}`;
+            const isDone =
+              r.status === "completed" ||
+              r.handover_status === "COMPLETED" ||
+              completedSet.has(r.id) ||
+              completedSet.has(code);
+
             merged.push({
               id: r.id,
               report_id: r.id,
               wood_type: r.tree_type || "Pohon kayu olahan dinas",
               volume_kg: r.biomass_estimate ? Number(r.biomass_estimate) : 120.0,
-              status: "claimed",
+              status: isDone ? "sold_out" : "claimed",
               claimed_by_name: r.claimed_by_name || "UMKM terdaftar",
               created_at: r.created_at,
               updated_at: r.created_at,
               reports: r,
-              claim_ticket_code: `KLM-2026-TRM-${r.id.slice(0, 4).toUpperCase()}`,
-              handover_status: "WAITING_PICKUP",
+              claim_ticket_code: code,
+              handover_status: isDone ? "COMPLETED" : "WAITING_PICKUP",
             });
           }
         });
@@ -99,8 +143,15 @@ export function AdminSerahTerimaClient({
 
     try {
       const targetReportId = selectedHandoverItem.report_id || selectedHandoverItem.id;
+      const targetCatalogId = selectedHandoverItem.id;
+      const ticketCode = selectedHandoverItem.claim_ticket_code || `KLM-2026-TRM-${targetReportId.slice(0, 4).toUpperCase()}`;
       const handoverTime = new Date().toISOString();
       const notes = handoverNoteInput || "Kayu resmi diserahkan oleh petugas dinas kota.";
+
+      // Mark completed in localStorage for instant persistent state
+      markTicketCompletedInStorage(selectedHandoverItem.id);
+      if (targetReportId) markTicketCompletedInStorage(targetReportId);
+      if (ticketCode) markTicketCompletedInStorage(ticketCode);
 
       const handoverPayload = {
         handover_status: "COMPLETED",
@@ -110,16 +161,31 @@ export function AdminSerahTerimaClient({
         updated_at: handoverTime,
       };
 
-      // 1. Try to update existing biomass_catalogs row by id OR report_id
-      const { data: updatedData } = await supabase
-        .from("biomass_catalogs")
-        .update(handoverPayload)
-        .or(`id.eq.${selectedHandoverItem.id},report_id.eq.${targetReportId}`)
-        .select();
+      // 1. Try to update existing biomass_catalogs row strictly by id OR report_id
+      let updatedData: any[] | null = null;
+      if (targetCatalogId) {
+        const { data, error } = await supabase
+          .from("biomass_catalogs")
+          .update(handoverPayload)
+          .eq("id", targetCatalogId)
+          .select();
+        if (error) console.log("Catalog update error by id", error);
+        updatedData = data;
+      }
 
-      // 2. If no existing row was updated, insert a completed row into biomass_catalogs
+      if ((!updatedData || updatedData.length === 0) && targetReportId) {
+        const { data, error } = await supabase
+          .from("biomass_catalogs")
+          .update(handoverPayload)
+          .eq("report_id", targetReportId)
+          .select();
+        if (error) console.log("Catalog update error by report_id", error);
+        updatedData = data;
+      }
+
+      // 2. If no existing row was updated, insert a completed row into biomass_catalogs for THIS item only
       if (!updatedData || updatedData.length === 0) {
-        await supabase
+        const { error: insertErr } = await supabase
           .from("biomass_catalogs")
           .insert({
             report_id: targetReportId,
@@ -129,37 +195,41 @@ export function AdminSerahTerimaClient({
             claimed_by_name: selectedHandoverItem.claimed_by_name || "Pengguna UMKM",
             claimed_by_business_name: selectedHandoverItem.claimed_by_business_name || "Kerajinan Kayu",
             claimed_by_phone: selectedHandoverItem.claimed_by_phone || null,
-            claim_ticket_code: selectedHandoverItem.claim_ticket_code || `KLM-2026-TRM-${targetReportId.slice(0, 4).toUpperCase()}`,
+            claim_ticket_code: ticketCode,
             created_at: handoverTime,
             ...handoverPayload,
           });
+        if (insertErr) console.log("Catalog insert error", insertErr);
       }
 
-      // 3. Update reports table if report_id exists so report is also marked completed
+      // 3. Update reports table ONLY with valid columns (status & admin_note)
       if (targetReportId) {
-        await supabase
+        const { error: repErr } = await supabase
           .from("reports")
           .update({
             status: "completed",
             admin_note: notes,
           })
           .eq("id", targetReportId);
+        if (repErr) console.log("Report update error", repErr);
       }
 
-      // 4. Update local state
+      // 4. Update local state strictly for target item
       setCatalogs((prev) =>
         prev.map((item) =>
-          item.id === selectedHandoverItem.id || item.report_id === targetReportId
+          item.id === selectedHandoverItem.id || (item.report_id && item.report_id === targetReportId) || item.claim_ticket_code === ticketCode
             ? {
-                ...item,
-                handover_status: "COMPLETED",
-                status: "sold_out",
-                handover_at: handoverTime,
-                handover_notes: notes,
-              }
+              ...item,
+              handover_status: "COMPLETED",
+              status: "sold_out",
+              handover_at: handoverTime,
+              handover_notes: notes,
+            }
             : item
         )
       );
+
+      await refreshCatalogs();
     } catch (e) {
       console.log("Error handover", e);
     } finally {
@@ -180,13 +250,13 @@ export function AdminSerahTerimaClient({
       statusFilter === "all"
         ? true
         : statusFilter === "WAITING_PICKUP"
-        ? !isDone
-        : isDone;
+          ? !isDone
+          : isDone;
 
     return matchesSearch && matchesStatus;
   });
 
-  const waitingCount = catalogs.filter((c) => c.handover_status !== "COMPLETED" && (c.status === "claimed" || c.claimed_by_name)).length;
+  const waitingCount = catalogs.filter((c) => c.handover_status !== "COMPLETED").length;
   const completedCount = catalogs.filter((c) => c.handover_status === "COMPLETED").length;
 
   return (
@@ -199,10 +269,10 @@ export function AdminSerahTerimaClient({
       >
         <div className="space-y-1.5 max-w-xl">
           <h1 className="text-2xl sm:text-3xl font-bold text-[#111111] tracking-tight">
-            Verifikasi &amp; serah terima kayu UMKM
+            Serah Terima Kayu UMKM
           </h1>
           <p className="text-xs sm:text-sm text-[#111111]/60 font-medium leading-relaxed">
-            Kelola verifikasi penjemputan pasokan kayu hasil penebangan pemeliharaan pohon oleh pelaku usaha UMKM.
+            Kelola jadwal penjemputan dan proses serah terima kayu tebangan dengan pelaku UMKM.
           </p>
         </div>
 
@@ -214,11 +284,11 @@ export function AdminSerahTerimaClient({
             </span>
             <span className="text-2xl sm:text-3xl font-extrabold text-[#111111]">{waitingCount}</span>
           </div>
-          <div className="bg-[#ecefe6] border border-black/8 rounded-2xl p-4 min-w-[140px] shadow-sm">
-            <span className="text-[11px] font-medium text-[#19382B] block mb-1">
+          <div className="bg-white border border-black/8 rounded-2xl p-4 min-w-[140px] shadow-2xs">
+            <span className="text-[11px] font-medium text-[#111111]/60 block mb-1">
               Sudah diserahkan
             </span>
-            <span className="text-2xl sm:text-3xl font-extrabold text-[#19382B]">{completedCount}</span>
+            <span className="text-2xl sm:text-3xl font-extrabold text-[#111111]">{completedCount}</span>
           </div>
         </div>
       </motion.div>
@@ -281,15 +351,14 @@ export function AdminSerahTerimaClient({
                 >
                   {/* Top Header: Ticket & Status */}
                   <div className="flex items-center justify-between border-b border-black/5 pb-2.5">
-                    <span className="bg-[#ecefe6] text-[#19382B] px-2.5 py-0.5 rounded font-bold text-xs border border-black/5">
+                    <span className="bg-[#ecefe6] text-[#19382B] px-3 py-1 rounded-full font-bold text-xs border border-black/5">
                       {ticketCode}
                     </span>
                     <span
-                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 border ${
-                        isHandoverDone
-                          ? "bg-[#ecefe6] text-[#19382B] border-black/5"
-                          : "bg-white text-[#111111] border-black/10"
-                      }`}
+                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 border ${isHandoverDone
+                        ? "bg-[#ecefe6] text-[#19382B] border-black/5"
+                        : "bg-white text-[#111111] border-black/10"
+                        }`}
                     >
                       {isHandoverDone ? (
                         <>
@@ -319,21 +388,18 @@ export function AdminSerahTerimaClient({
                     </div>
                   </div>
 
-                  {/* Lokasi Tebangan: Hanya Tombol Maps (Tanpa Deskripsi Teks Sesuai Revisi 5) */}
-                  <div>
+                  {/* Single Row Action Bar: Peta Lokasi & Verifikasi Button (Verifikasi dibuat lebih besar) */}
+                  <div className="pt-2 border-t border-gray-100 flex items-center gap-2">
                     <a
                       href={mapsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="bg-[#19382B] text-white hover:bg-[#234A39] px-3 py-1.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 shadow-2xs border border-black/5"
+                      className="shrink-0 bg-[#f8f9f5] hover:bg-gray-100 text-[#19382B] px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border border-black/10 transition-all"
                     >
-                      <NavigationArrow size={11} weight="bold" />
-                      <span>Peta lokasi ({hasCoords ? `${displayLat?.toFixed(4)}, ${displayLng?.toFixed(4)}` : "Peta Penebangan"})</span>
+                      <NavigationArrow size={14} weight="bold" className="text-[#19382B]" />
+                      <span className="truncate">Peta Lokasi</span>
                     </a>
-                  </div>
 
-                  {/* Action Button */}
-                  <div className="pt-2 border-t border-gray-100">
                     {!isHandoverDone ? (
                       <button
                         type="button"
@@ -341,14 +407,14 @@ export function AdminSerahTerimaClient({
                           setSelectedHandoverItem(item);
                           setHandoverNoteInput("");
                         }}
-                        className="w-full bg-[#19382B] hover:bg-[#234A39] text-white font-bold py-2 rounded-xl text-xs transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+                        className="flex-1 bg-[#19382B] hover:bg-[#234A39] text-white font-extrabold py-2.5 px-4 rounded-xl text-xs sm:text-sm transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                       >
-                        <Handshake size={15} weight="bold" />
-                        <span>Verifikasi &amp; serahkan</span>
+                        <Handshake size={18} weight="bold" className="text-[#88d937]" />
+                        <span>Verifikasi</span>
                       </button>
                     ) : (
-                      <span className="text-[11px] font-bold text-gray-400 italic block text-center">
-                        Sudah diserahkan (Selesai)
+                      <span className="flex-1 text-[11px] font-bold text-gray-400 italic text-center py-2.5 bg-gray-50 rounded-xl border border-black/5">
+                        Sudah diserahkan
                       </span>
                     )}
                   </div>
@@ -362,12 +428,12 @@ export function AdminSerahTerimaClient({
         <div className="hidden md:block overflow-x-auto rounded-xl border border-black/5">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="bg-[#19382B] text-white text-[11px] font-bold uppercase tracking-wider">
-                <th className="py-3.5 px-4 rounded-tl-xl">Kode &amp; Usaha UMKM</th>
-                <th className="py-3.5 px-4">Spesifikasi Kayu</th>
-                <th className="py-3.5 px-4">Lokasi Tebangan</th>
-                <th className="py-3.5 px-4">Status</th>
-                <th className="py-3.5 px-4 text-right rounded-tr-xl">Aksi Petugas</th>
+              <tr className="bg-[#19382B] text-white text-[11px] font-bold uppercase tracking-wider text-center">
+                <th className="py-3.5 px-4 rounded-tl-xl">INFO UMKM</th>
+                <th className="py-3.5 px-4">DETAIL KAYU</th>
+                <th className="py-3.5 px-4">LOKASI PENGAMBILAN</th>
+                <th className="py-3.5 px-4">STATUS</th>
+                <th className="py-3.5 px-4 rounded-tr-xl">AKSI PETUGAS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 font-sans">
@@ -434,11 +500,10 @@ export function AdminSerahTerimaClient({
                       {/* Col 4: Status */}
                       <td className="py-3.5 px-4">
                         <span
-                          className={`text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 border ${
-                            isHandoverDone
-                              ? "bg-[#ecefe6] text-[#19382B] border-black/5"
-                              : "bg-white text-[#111111] border-black/10"
-                          }`}
+                          className={`text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 border ${isHandoverDone
+                            ? "bg-[#ecefe6] text-[#19382B] border-black/5"
+                            : "bg-white text-[#111111] border-black/10"
+                            }`}
                         >
                           {isHandoverDone ? (
                             <>
@@ -568,7 +633,7 @@ export function AdminSerahTerimaClient({
                   ) : (
                     <>
                       <CheckCircle size={16} weight="bold" className="text-white" />
-                      <span>Konfirmasi penyerahan</span>
+                      <span>Konfirmasi</span>
                     </>
                   )}
                 </button>

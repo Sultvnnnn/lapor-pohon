@@ -31,8 +31,8 @@ export default async function AdminDashboardPage() {
     redirect("/dashboard");
   }
 
-  // 3. Fetch all reports across all users for admin executive control
-  const { data: reports, error } = await supabase
+  // 3. Fetch all reports & profiles across all users for admin executive control
+  const { data: rawReports, error } = await supabase
     .from("reports")
     .select("*")
     .order("created_at", { ascending: false });
@@ -40,6 +40,28 @@ export default async function AdminDashboardPage() {
   if (error) {
     console.error("[ERROR] Admin page fetching reports failed:", error.message);
   }
+
+  // Fetch profiles to map names server-side safely without schema cache relation dependency
+  const { data: profiles } = await supabase
+    .from("profiles")
+    .select("id, full_name, email");
+
+  const profileMap = new Map<string, { full_name: string; email: string }>();
+  if (profiles) {
+    profiles.forEach((p) => {
+      profileMap.set(p.id, { full_name: p.full_name || "", email: p.email || "" });
+    });
+  }
+
+  const reports = (rawReports || []).map((r) => {
+    const prof = profileMap.get(r.user_id);
+    return {
+      ...r,
+      reporter_name: prof?.full_name || r.reporter_name || "",
+      reporter_email: prof?.email || r.reporter_email || "",
+      profiles: prof || null,
+    };
+  });
 
   return (
     <AdminDashboardClient

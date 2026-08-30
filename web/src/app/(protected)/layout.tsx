@@ -36,7 +36,7 @@ export default async function ProtectedLayout({
   const normalizedRole = String(profile.role).toLowerCase().trim();
 
   return (
-    <div className="min-h-screen bg-[#ecefe6] text-[#111111] font-sans flex flex-col md:flex-row relative">
+    <div className="min-h-screen bg-[#f8f9f5] text-[#111111] font-sans flex flex-col md:flex-row relative">
       {/* Desktop Sidebar (visible on md: 768px+) */}
       <DashboardSidebar userEmail={user.email} userRole={normalizedRole} />
 

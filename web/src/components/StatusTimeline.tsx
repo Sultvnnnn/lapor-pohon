@@ -94,40 +94,38 @@ export const StatusTimeline: React.FC<{
   const allSteps = [
     {
       id: 0,
-      title: "Laporan Diterima Sistem",
+      title: "Laporan Diterima",
       time: step0Time,
-      desc: "Laporan pohon rawan telah berhasil dikirim oleh Warga dan masuk ke sistem DLH.",
+      desc: "Laporan Anda berhasil masuk ke dalam sistem.",
       isUnlocked: true,
     },
     {
       id: 1,
-      title: isRejected ? "Laporan Ditolak / Tidak Valid" : "Verifikasi & Penilaian Risiko DLH",
+      title: isRejected ? "Laporan Ditolak / Tidak Valid" : "Laporan Terverifikasi",
       time: step1Time,
       desc: isRejected
-        ? report.admin_note || "Laporan tidak memenuhi kriteria verifikasi petugas DLH."
+        ? report.admin_note || "Laporan tidak memenuhi kriteria verifikasi."
         : activeStep >= 1
-        ? "Laporan telah terverifikasi oleh Dinas Lingkungan Hidup."
-        : "",
+          ? "Laporan telah diperiksa dan disetujui oleh petugas."
+          : "",
       isUnlocked: isRejected || activeStep >= 1,
     },
     {
       id: 2,
-      title: "Penjadwalan & Penanganan Lapangan",
+      title: "Jadwal Penanganan",
       time: step2Time,
       desc: isInProgress
-        ? "Tim lapangan DLH sedang berada di lokasi untuk tindakan pemangkasan/penebangan."
-        : activeStep > 2
-        ? "Penanganan teknis lapangan telah dilakukan."
-        : "Petugas DLH telah mengonfirmasi jadwal penanganan lapangan.",
+        ? "Tim lapangan sedang berada di lokasi untuk penanganan."
+        : "Jadwal tindakan ke lokasi telah ditentukan petugas.",
       scheduledAt: report.scheduled_at,
       isUnlocked: !isRejected && activeStep >= 2,
     },
     {
       id: 3,
-      title: "Selesai Penanganan",
+      title: "Penanganan Selesai",
       time: step3Time,
       desc: isCompleted
-        ? "Penanganan pohon rawan telah selesai dilaksanakan secara penuh oleh tim DLH."
+        ? "Tim telah selesai menangani pohon di lokasi."
         : "",
       proofUrl: isCompleted ? report.proof_image_url : undefined,
       isUnlocked: !isRejected && isCompleted,
@@ -142,7 +140,7 @@ export const StatusTimeline: React.FC<{
       <div className="flex items-center justify-between border-b border-black/5 pb-3">
         <h4 className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-[#111111]/70 flex items-center gap-1.5">
           <Clock size={15} weight="bold" className="text-[#19382B]" />
-          <span>Flow Pemantauan Status Aduan (Terbaru di Atas)</span>
+          <span>Riwayat Penanganan</span>
         </h4>
         {report.updated_at && (
           <span className="text-[10px] font-semibold text-gray-500 bg-white border border-black/10 px-2.5 py-0.5 rounded-full shadow-2xs">
@@ -152,11 +150,10 @@ export const StatusTimeline: React.FC<{
       </div>
 
       <div
-        className={`relative pl-8 space-y-6 pt-1 ${
-          visibleSteps.length > 1
+        className={`relative pl-8 space-y-6 pt-1 ${visibleSteps.length > 1
             ? "before:absolute before:left-[11px] before:top-3.5 before:bottom-3.5 before:w-[2px] before:bg-gray-200"
             : ""
-        }`}
+          }`}
       >
         {visibleSteps.map((step, idx) => {
           const isLatest = idx === 0;
@@ -202,13 +199,12 @@ export const StatusTimeline: React.FC<{
               <div className="space-y-1.5">
                 <div className="flex flex-wrap items-center justify-between gap-1">
                   <h5
-                    className={`text-xs font-bold ${
-                      isRejected && step.id === 1
+                    className={`text-xs font-bold ${isRejected && step.id === 1
                         ? "text-red-600 font-extrabold"
                         : isLatest
-                        ? "text-[#19382B] font-extrabold text-sm"
-                        : "text-[#111111]"
-                    }`}
+                          ? "text-[#19382B] font-extrabold text-sm"
+                          : "text-[#111111]"
+                      }`}
                   >
                     {step.title}
                   </h5>
@@ -228,20 +224,20 @@ export const StatusTimeline: React.FC<{
                   <div className="mt-2 bg-amber-50/90 border border-amber-300 p-3 rounded-xl space-y-0.5">
                     <p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
                       <Calendar size={14} weight="bold" className="text-amber-700" />
-                      Jadwal Penanganan Pemangkasan DLH:
+                      Jadwal Tindakan:
                     </p>
                     <p className="text-xs font-extrabold text-amber-950">
                       {(() => {
                         const d = parseWibDate(step.scheduledAt);
                         return d
                           ? d.toLocaleString("id-ID", {
-                              timeZone: "Asia/Jakarta",
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }) + " WIB"
+                            timeZone: "Asia/Jakarta",
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          }) + " WIB"
                           : step.scheduledAt;
                       })()}
                     </p>
@@ -251,17 +247,17 @@ export const StatusTimeline: React.FC<{
                 {/* Proof Image attachment under Stage 3 (Selesai Penanganan) */}
                 {step.proofUrl && (
                   <div className="pt-2 space-y-1">
-                    <div className="flex items-center justify-between text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
+                    <div className="flex items-center justify-between text-[10px] font-extrabold tracking-wider text-emerald-700">
                       <span className="flex items-center gap-1.5">
                         <CheckCircle size={14} weight="fill" className="text-emerald-600" />
-                        Foto Bukti Penanganan Lapangan (DLH)
+                        Foto Bukti Penanganan
                       </span>
                       {onPreviewProof && (
                         <span
                           onClick={() => onPreviewProof(step.proofUrl!)}
-                          className="text-emerald-800 text-[9px] font-extrabold cursor-pointer"
+                          className="text-emerald-800 text-[9px] font-extrabold cursor-pointer hover:underline"
                         >
-                          🔍 Klik Perbesar
+                          Perbesar
                         </span>
                       )}
                     </div>
@@ -277,7 +273,7 @@ export const StatusTimeline: React.FC<{
                       />
                       <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1 pointer-events-none">
                         <Eye size={16} weight="bold" />
-                        <span>Klik Perbesar</span>
+                        <span>Perbesar</span>
                       </div>
                     </div>
                   </div>

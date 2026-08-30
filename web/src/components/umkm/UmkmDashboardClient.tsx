@@ -8,6 +8,7 @@ import { SemarangRiskMap, ReportItem } from "./SemarangRiskMap";
 import { UmkmReportModal } from "./UmkmReportModal";
 import { ReportDetailModal } from "./ReportDetailModal";
 import { WoodCatalogCard, BiomassCatalogItem } from "./WoodCatalogCard";
+import { LocationMapModal } from "../dashboard/LocationMapModal";
 import {
   Storefront,
   Funnel,
@@ -21,6 +22,7 @@ import {
   Clock,
   X,
   CircleNotch,
+  ArrowCounterClockwise,
 } from "@phosphor-icons/react";
 import { parseCoordinates } from "../admin/AdminDashboardClient";
 
@@ -77,6 +79,7 @@ export const UmkmDashboardClient = ({
   const [userAddressName, setUserAddressName] = useState<string | null>(null);
   const [radiusKm, setRadiusKm] = useState<number | null>(null);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
 
   // Active View Tab: 'katalog' | 'klaim' | 'peta' | 'penindakan'
   const [activeTab, setActiveTab] = useState<"katalog" | "peta" | "penindakan">("katalog");
@@ -92,9 +95,21 @@ export const UmkmDashboardClient = ({
     const savedName = localStorage.getItem("umkm_business_name");
     const savedType = localStorage.getItem("umkm_business_type");
     const savedPhone = localStorage.getItem("umkm_phone");
+    const savedLat = localStorage.getItem("umkm_lat");
+    const savedLng = localStorage.getItem("umkm_lng");
+    const savedAddress = localStorage.getItem("umkm_address");
+
     if (savedName) setBusinessName(savedName);
     if (savedType) setBusinessType(savedType);
     if (savedPhone) setPhone(savedPhone);
+    if (savedLat && savedLng) {
+      const lat = Number(savedLat);
+      const lng = Number(savedLng);
+      if (!isNaN(lat) && !isNaN(lng)) {
+        setUserLocation({ lat, lng });
+        setUserAddressName(savedAddress || "Lokasi usaha tersimpan");
+      }
+    }
 
     const loadProfile = async () => {
       try {
@@ -136,15 +151,48 @@ export const UmkmDashboardClient = ({
     };
   }, []);
 
+  const saveUserLocation = (lat: number, lng: number, addressStr: string) => {
+    setUserLocation({ lat, lng });
+    setUserAddressName(addressStr);
+    try {
+      localStorage.setItem("umkm_lat", String(lat));
+      localStorage.setItem("umkm_lng", String(lng));
+      localStorage.setItem("umkm_address", addressStr);
+    } catch (e) { }
+  };
+
+  const isWithinIndonesia = (lat: number, lng: number): boolean => {
+    return (
+      typeof lat === "number" &&
+      typeof lng === "number" &&
+      !isNaN(lat) &&
+      !isNaN(lng) &&
+      lat >= -11.0 &&
+      lat <= 6.0 &&
+      lng >= 95.0 &&
+      lng <= 141.0
+    );
+  };
+
   const detectUserLocation = async () => {
     setIsDetectingLocation(true);
 
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          setUserLocation({ lat, lng });
+          let lat = position.coords.latitude;
+          let lng = position.coords.longitude;
+
+          // Sanitize coordinates if browser/IP proxy returned location outside Indonesia
+          if (!isWithinIndonesia(lat, lng)) {
+            console.warn("[WARN] Detected location outside Indonesia, using Tangerang fallback.");
+            lat = -6.1783;
+            lng = 106.6319;
+            saveUserLocation(lat, lng, "Tangerang, Banten, Indonesia");
+            setIsDetectingLocation(false);
+            showToast("Lokasi diset ke Tangerang, Banten.", "GPS Usaha", "info");
+            return;
+          }
 
           try {
             const res = await fetch(
@@ -153,20 +201,25 @@ export const UmkmDashboardClient = ({
             if (res.ok) {
               const data = await res.json();
               const addr = data.address || {};
-              const name = addr.suburb || addr.city_district || addr.city || addr.town || "Lokasi Anda";
-              setUserAddressName(`${name}, Indonesia`);
+              const name = addr.suburb || addr.village || addr.neighbourhood || addr.city_district || addr.city || addr.town || "Lokasi Anda";
+              const regency = addr.county || addr.regency || addr.state || "Indonesia";
+              const fullAddr = `${name}, ${regency}`;
+              saveUserLocation(lat, lng, fullAddr);
+            } else {
+              saveUserLocation(lat, lng, `Koordinat (${lat.toFixed(3)}, ${lng.toFixed(3)})`);
             }
           } catch {
-            setUserAddressName(`Koordinat (${lat.toFixed(3)}, ${lng.toFixed(3)})`);
+            saveUserLocation(lat, lng, `Koordinat (${lat.toFixed(3)}, ${lng.toFixed(3)})`);
           } finally {
             setIsDetectingLocation(false);
-            showToast("Lokasi usaha terdeteksi.", "GPS Usaha", "success");
+            showToast("Lokasi GPS usaha terdeteksi secara akurat.", "GPS Usaha", "success");
           }
         },
-        () => {
+        (err) => {
+          console.log("GPS geolocation error", err);
           fallbackIpGeolocate();
         },
-        { enableHighAccuracy: true, timeout: 8000 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
     } else {
       fallbackIpGeolocate();
@@ -178,10 +231,11 @@ export const UmkmDashboardClient = ({
       const res = await fetch("https://ipapi.co/json/");
       if (res.ok) {
         const data = await res.json();
-        if (data.latitude && data.longitude) {
-          setUserLocation({ lat: data.latitude, lng: data.longitude });
+        if (data.latitude && data.longitude && isWithinIndonesia(data.latitude, data.longitude)) {
+          const lat = data.latitude;
+          const lng = data.longitude;
           const ipAddr = `${data.city || "Kota"}, ${data.region || ""}, Indonesia`;
-          setUserAddressName(ipAddr);
+          saveUserLocation(lat, lng, ipAddr);
           setIsDetectingLocation(false);
           showToast(`Lokasi usaha terdeteksi: ${ipAddr}`, "GPS Usaha", "success");
           return;
@@ -191,9 +245,10 @@ export const UmkmDashboardClient = ({
       console.log("IP API failed");
     }
 
+    // Default Tangerang fallback if IP service fails or returns abroad location
+    saveUserLocation(-6.1783, 106.6319, "Tangerang, Banten, Indonesia");
     setIsDetectingLocation(false);
-    setUserAddressName("Lokasi usaha terdaftar");
-    showToast("Lokasi terdeteksi.", "GPS Usaha", "success");
+    showToast("Lokasi diset ke Tangerang, Banten.", "GPS Usaha", "info");
   };
 
   const fetchReportsAndCatalogs = async () => {
@@ -402,13 +457,13 @@ export const UmkmDashboardClient = ({
         prev.map((c) =>
           c.id === catalogItem.id || c.report_id === targetReportId
             ? {
-                ...c,
-                status: "claimed",
-                claimed_by_name: displayName,
-                claimed_by_business_name: businessName,
-                claim_ticket_code: newTicketCode,
-                handover_status: "WAITING_PICKUP",
-              }
+              ...c,
+              status: "claimed",
+              claimed_by_name: displayName,
+              claimed_by_business_name: businessName,
+              claim_ticket_code: newTicketCode,
+              handover_status: "WAITING_PICKUP",
+            }
             : c
         )
       );
@@ -428,6 +483,65 @@ export const UmkmDashboardClient = ({
       setClaimingId(null);
     }
   };
+
+  const calculateDistanceKm = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number
+  ): number => {
+    const R = 6371; // Earth radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  };
+
+  const getItemCoordinates = (item: BiomassCatalogItem): { lat: number; lng: number } | null => {
+    if (typeof item.pickup_latitude === "number" && typeof item.pickup_longitude === "number") {
+      return { lat: item.pickup_latitude, lng: item.pickup_longitude };
+    }
+    const rep = item.reports;
+    if (!rep) return null;
+    if (typeof rep.latitude === "number" && typeof rep.longitude === "number") {
+      return { lat: rep.latitude, lng: rep.longitude };
+    }
+    return parseCoordinates(rep);
+  };
+
+  // Process catalogs with distance calculation, radius filter & ascending distance sort (closest first)
+  const processedCatalogs = catalogs
+    .map((item) => {
+      let distanceKm: number | null = null;
+      if (userLocation) {
+        const itemCoords = getItemCoordinates(item);
+        if (itemCoords) {
+          distanceKm = calculateDistanceKm(
+            userLocation.lat,
+            userLocation.lng,
+            itemCoords.lat,
+            itemCoords.lng
+          );
+        }
+      }
+      return { ...item, distanceKm };
+    })
+    .filter((item) => {
+      if (radiusKm === null || item.distanceKm === null) return true;
+      return item.distanceKm <= radiusKm;
+    })
+    .sort((a, b) => {
+      if (a.distanceKm === null && b.distanceKm === null) return 0;
+      if (a.distanceKm === null) return 1;
+      if (b.distanceKm === null) return -1;
+      return a.distanceKm - b.distanceKm;
+    });
 
   // Compute metrics
   const mappedReports = reports.map((r) => {
@@ -459,19 +573,19 @@ export const UmkmDashboardClient = ({
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <span className="inline-flex items-center gap-1.5 bg-[#ecefe6] text-[#19382B] px-3 py-1 rounded-full text-[10px] font-bold border border-black/5">
               <Storefront size={13} weight="fill" />
-              <span>{businessName}</span>
+              <span>{displayName}</span>
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111] leading-tight">
-            Panel UMKM <span className="font-serif italic font-medium text-[#19382B]">{displayName}</span>
+            Dashboard UMKM <span className="font-serif italic font-medium text-[#19382B]">{businessName}</span>
           </h1>
           <p className="text-xs sm:text-sm text-[#111111]/60 leading-relaxed font-medium">
-            Klaim pasokan kayu hasil penebangan pemeliharaan pohon &amp; manfaatkan untuk produk olahan UMKM lokal.
+            Dapatkan pasokan kayu tebangan gratis untuk bahan baku usaha Anda.
           </p>
         </div>
 
         {/* Standardized Stat Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 shrink-0 lg:ml-auto">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 shrink-0 lg:ml-auto">
           <div className="bg-white border border-black/8 rounded-2xl p-4 flex flex-col justify-center min-w-[130px] shadow-sm">
             <span className="text-[11px] font-medium text-[#111111]/60 mb-1">
               Katalog kayu
@@ -481,30 +595,12 @@ export const UmkmDashboardClient = ({
             </span>
           </div>
 
-          <div className="bg-[#ecefe6] border border-black/8 rounded-2xl p-4 flex flex-col justify-center min-w-[130px] shadow-sm">
-            <span className="text-[11px] font-medium text-[#19382B] mb-1">
+          <div className="bg-white border border-black/8 rounded-2xl p-4 flex flex-col justify-center min-w-[130px] shadow-sm">
+            <span className="text-[11px] font-medium text-[#111111]/60 mb-1">
               Kayu terklaim
             </span>
-            <span className="text-2xl sm:text-3xl font-extrabold text-[#19382B] tracking-tight">
+            <span className="text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight">
               {claimedCatalogsCount}
-            </span>
-          </div>
-
-          <div className="bg-white border border-black/8 rounded-2xl p-4 flex flex-col justify-center min-w-[130px] shadow-sm">
-            <span className="text-[11px] font-medium text-[#111111]/60 mb-1">
-              Jadwal petugas
-            </span>
-            <span className="text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight">
-              {scheduledReports.length}
-            </span>
-          </div>
-
-          <div className="bg-white border border-black/8 rounded-2xl p-4 flex flex-col justify-center min-w-[130px] shadow-sm">
-            <span className="text-[11px] font-medium text-[#111111]/60 mb-1">
-              Risiko tinggi
-            </span>
-            <span className="text-2xl sm:text-3xl font-extrabold text-[#111111] tracking-tight">
-              {criticalReports.length}
             </span>
           </div>
         </div>
@@ -514,66 +610,21 @@ export const UmkmDashboardClient = ({
       <div className="bg-white rounded-2xl border border-black/8 shadow-sm overflow-hidden">
         {/* Controls Section */}
         <div className="p-4 sm:p-6 space-y-4 border-b border-black/5 bg-white">
-          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5">
-            {/* Tab View Switcher */}
-            <div className="bg-[#ecefe6] p-1 rounded-full flex gap-1 border border-black/5 overflow-x-auto scrollbar-none w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={() => setActiveTab("katalog")}
-                className={`flex-1 sm:flex-initial px-4 py-2 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
-                  activeTab === "katalog"
-                    ? "bg-[#19382B] text-white shadow-sm"
-                    : "text-[#111111]/70 hover:bg-black/5 hover:text-[#111111]"
-                }`}
-              >
-                <Package size={15} weight="bold" />
-                <span>Katalog kayu ({catalogs.length})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("peta")}
-                className={`flex-1 sm:flex-initial px-4 py-2 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
-                  activeTab === "peta"
-                    ? "bg-[#19382B] text-white shadow-sm"
-                    : "text-[#111111]/70 hover:bg-black/5 hover:text-[#111111]"
-                }`}
-              >
-                <MapTrifold size={15} weight="bold" />
-                <span>Peta lokasi</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveTab("penindakan")}
-                className={`flex-1 sm:flex-initial px-4 py-2 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
-                  activeTab === "penindakan"
-                    ? "bg-[#19382B] text-white shadow-sm"
-                    : "text-[#111111]/70 hover:bg-black/5 hover:text-[#111111]"
-                }`}
-              >
-                <CalendarCheck size={15} weight="bold" />
-                <span>Jadwal petugas ({scheduledReports.length})</span>
-              </button>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3.5">
+            {/* Header Badge */}
+            <div className="inline-flex items-center gap-2 bg-[#ecefe6] text-[#19382B] px-4 py-2 rounded-full text-xs font-bold border border-black/5">
+              <Package size={16} weight="bold" />
+              <span>Daftar Kayu Tersedia ({catalogs.length})</span>
             </div>
 
-            {/* Action CTA Button */}
-            <button
-              type="button"
-              onClick={() => setIsReportModalOpen(true)}
-              className="bg-[#19382B] hover:bg-[#234A39] text-white px-5 py-2.5 rounded-full text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-sm shrink-0 active:scale-95 cursor-pointer"
-            >
-              <ShieldWarning size={16} weight="bold" className="text-white" />
-              <span>Lapor pohon rawan sekitar usaha</span>
-            </button>
           </div>
 
-          {/* Filter Radius Usaha & GPS Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-gray-100 text-xs">
-            <div className="flex items-center gap-2.5">
+          {/* Filter Radius Usaha & GPS Bar (Scrollable on Mobile) */}
+          <div className="space-y-3 pt-3 border-t border-gray-100 text-xs">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 max-w-full shrink-0">
               <span className="font-bold text-[#111111]/60 flex items-center gap-1.5 shrink-0">
                 <Funnel size={14} weight="bold" className="text-[#19382B]" />
-                Filter radius usaha:
+                Filter:
               </span>
 
               <select
@@ -582,12 +633,16 @@ export const UmkmDashboardClient = ({
                   const val = e.target.value;
                   setRadiusKm(val === "all" ? null : Number(val));
                 }}
-                className="bg-[#f8f9f5] border border-black/10 text-xs font-bold text-[#111111] rounded-full px-4 py-1.5 focus:outline-none focus:border-[#19382B] cursor-pointer"
+                className="bg-[#f8f9f5] border border-black/10 text-xs font-bold text-[#111111] rounded-full px-3.5 py-1.5 focus:outline-none focus:border-[#19382B] cursor-pointer shrink-0"
               >
                 <option value="all">Semua wilayah</option>
                 <option value="0.5">Radius 500 meter</option>
                 <option value="1">Radius 1 kilometer</option>
                 <option value="2">Radius 2 kilometer</option>
+                <option value="5">Radius 5 kilometer</option>
+                <option value="10">Radius 10 kilometer</option>
+                <option value="25">Radius 25 kilometer</option>
+                <option value="50">Radius 50 kilometer</option>
               </select>
 
               <button
@@ -597,119 +652,91 @@ export const UmkmDashboardClient = ({
                 className="flex items-center justify-center gap-1.5 text-xs font-bold bg-[#19382B] text-white hover:bg-[#234A39] px-3.5 py-1.5 rounded-full transition-all shadow-sm shrink-0 cursor-pointer border border-black/5"
               >
                 <NavigationArrow weight="bold" className={`w-3.5 h-3.5 text-white ${isDetectingLocation ? "animate-spin" : ""}`} />
-                <span>{isDetectingLocation ? "Mendeteksi..." : "Deteksi GPS usaha"}</span>
+                <span>{isDetectingLocation ? "Mendeteksi..." : "Deteksi GPS"}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsMapPickerOpen(true)}
+                className="flex items-center justify-center gap-1.5 text-xs font-bold bg-[#ecefe6] text-[#19382B] hover:bg-[#dce8d0] px-3.5 py-1.5 rounded-full transition-all shadow-2xs shrink-0 cursor-pointer border border-black/5"
+              >
+                <MapTrifold weight="bold" className="w-3.5 h-3.5 text-[#19382B]" />
+                <span>Pilih / Cari di Peta</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={fetchReportsAndCatalogs}
+                className="flex items-center justify-center gap-1.5 text-xs font-bold bg-[#19382B] text-white hover:bg-[#234A39] px-3.5 py-1.5 rounded-full transition-all shadow-2xs shrink-0 cursor-pointer border border-black/5 active:scale-95"
+                title="Perbarui Data Katalog"
+              >
+                <ArrowCounterClockwise weight="bold" className="w-3.5 h-3.5 text-[#88d937]" />
+                <span>Perbarui Data</span>
               </button>
             </div>
 
-            <div className="text-[11px] font-medium text-[#111111]/70 truncate">
+            <div className="text-[11px] font-medium text-[#111111]/70 leading-normal break-words">
               {userAddressName ? (
                 <span className="text-[#19382B] font-bold">Lokasi usaha: {userAddressName}</span>
               ) : (
-                <span className="text-gray-600">Klik "Deteksi GPS usaha" untuk memperbarui lokasi</span>
+                <span className="text-gray-600">Klik "Deteksi GPS" untuk memperbarui lokasi</span>
               )}
             </div>
           </div>
         </div>
 
-        {/* Display Content */}
+        {/* Display Content: Katalog Kayu Only */}
         <div className="p-4 sm:p-6">
-          {activeTab === "katalog" && (
-            <div className="space-y-4 font-sans">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-black/5 pb-3">
-                <div className="space-y-1">
-                  <h3 className="text-xl sm:text-2xl font-bold text-[#111111] tracking-tight">
-                    Katalog kayu terverifikasi dinas
-                  </h3>
-                  <p className="text-xs text-[#111111]/60 font-medium">
-                    Pohon yang disetujui atau ditebang oleh dinas kota dimasukkan ke katalog dan siap diklaim UMKM.
-                  </p>
-                </div>
-
-                <span className="text-xs font-bold bg-[#19382B] text-white px-3.5 py-1.5 rounded-full border border-black/5 self-start sm:self-auto shrink-0">
-                  {catalogs.length} kayu siap olah
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {catalogs.length === 0 ? (
-                  <div className="col-span-full bg-white rounded-2xl border border-black/8 p-12 text-center text-xs font-medium text-[#111111]/50 space-y-2">
-                    <Package size={36} className="mx-auto text-gray-300" />
-                    <p>Belum ada sampel kayu di katalog saat ini.</p>
-                  </div>
-                ) : (
-                  catalogs.map((item) => (
-                    <WoodCatalogCard
-                      key={item.id}
-                      item={item}
-                      onClaim={handleClaimWoodItem}
-                      onViewDetail={(rep) => setSelectedReportDetail(rep)}
-                      isClaiming={claimingId === item.id}
-                    />
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "peta" && (
-            <div className="space-y-4 font-sans">
-              <SemarangRiskMap
-                reports={mappedReports}
-                onSelectReport={(rep) => setSelectedReportDetail(rep)}
-                userLocation={userLocation}
-              />
-            </div>
-          )}
-
-          {activeTab === "penindakan" && (
-            <div className="space-y-4 font-sans">
-              <div className="border-b border-black/5 pb-3">
+          <div className="space-y-4 font-sans">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-black/5 pb-3">
+              <div className="space-y-1">
                 <h3 className="text-xl sm:text-2xl font-bold text-[#111111] tracking-tight">
-                  Jadwal penanganan petugas dinas
+                  Katalog Kayu Tersedia
                 </h3>
                 <p className="text-xs text-[#111111]/60 font-medium">
-                  Pantau tanggal eksekusi penebangan/pemangkasan pohon oleh regu lapangan.
+                  Pilih dan klaim kayu tebangan yang Anda butuhkan.
                 </p>
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {scheduledReports.length === 0 ? (
-                  <div className="col-span-full bg-white rounded-2xl border border-black/8 p-12 text-center text-xs font-medium text-gray-400">
-                    Belum ada jadwal penanganan eksekusi aktif.
-                  </div>
-                ) : (
-                  scheduledReports.map((r) => (
-                    <div key={r.id} className="bg-white border border-black/8 rounded-2xl p-4 space-y-2 shadow-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-[#19382B] bg-[#ecefe6] px-2.5 py-0.5 rounded-full">
-                          {r.tree_type || "Pohon kayu olahan"}
-                        </span>
-                        <span className="text-[10px] font-bold text-gray-500">
-                          #{r.id.slice(0, 8)}
-                        </span>
-                      </div>
-                      <p className="text-xs font-medium text-[#111111] line-clamp-2">
-                        {r.description || "Penanganan penebangan pohon kota"}
-                      </p>
-                      {r.scheduled_at && (
-                        <div className="text-xs font-bold text-[#19382B] bg-[#ecefe6] p-2 rounded-xl flex items-center gap-1.5">
-                          <CalendarCheck size={16} weight="bold" />
-                          <span>
-                            Jadwal: {new Date(r.scheduled_at).toLocaleDateString("id-ID", {
-                              weekday: "long",
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric",
-                            })}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
             </div>
-          )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+              {processedCatalogs.length === 0 ? (
+                <div className="col-span-full bg-white rounded-2xl border border-black/8 p-12 text-center text-xs font-medium text-[#111111]/50 space-y-2">
+                  <Package size={36} className="mx-auto text-gray-300" />
+                  <p>Tidak ada sampel kayu di dalam radius {radiusKm ? (radiusKm < 1 ? `${radiusKm * 1000}m` : `${radiusKm}km`) : "tertentu"}.</p>
+                  <button
+                    type="button"
+                    onClick={() => setRadiusKm(null)}
+                    className="text-xs font-bold text-[#19382B] underline pt-1 inline-block cursor-pointer"
+                  >
+                    Tampilkan semua wilayah
+                  </button>
+                </div>
+              ) : (
+                processedCatalogs.map((item) => (
+                  <WoodCatalogCard
+                    key={item.id}
+                    item={item}
+                    distanceKm={item.distanceKm}
+                    onClaim={handleClaimWoodItem}
+                    onViewDetail={(rep) =>
+                      setSelectedReportDetail({
+                        ...(rep || item.reports || {}),
+                        id: rep?.id || item.report_id || item.id,
+                        volume_kg: item.volume_kg,
+                        biomass_estimate: item.volume_kg || rep?.biomass_estimate,
+                        diameter_cm: item.diameter_cm,
+                        length_m: item.length_m,
+                        distanceKm: item.distanceKm,
+                        wood_type: item.wood_type || rep?.tree_type,
+                      } as any)
+                    }
+                    isClaiming={claimingId === item.id}
+                  />
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -808,6 +835,18 @@ export const UmkmDashboardClient = ({
             setSelectedReportDetail(null);
             handleClaimWoodItem(match);
           }
+        }}
+      />
+
+      {/* Map Location Picker Modal for Business GPS */}
+      <LocationMapModal
+        isOpen={isMapPickerOpen}
+        onClose={() => setIsMapPickerOpen(false)}
+        initialLat={userLocation?.lat || -6.1783}
+        initialLng={userLocation?.lng || 106.6319}
+        onSelectLocation={(lat, lng, addr) => {
+          saveUserLocation(lat, lng, addr);
+          showToast(`Lokasi usaha diset ke: ${addr}`, "GPS Usaha", "success");
         }}
       />
     </div>

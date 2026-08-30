@@ -100,17 +100,17 @@ type TabMode = "scan" | "progress";
 
 const submitStepLabels: Record<SubmitStep, string> = {
   idle: "",
-  uploading: "Mengunggah foto laporan ke cloud...",
-  analyzing: "Menganalisis bahaya & volume dengan AI YOLOv8 (Memuat server AI)...",
-  saving: "Menyimpan data laporan ke database...",
+  uploading: "Mengunggah foto...",
+  analyzing: "Mengecek kondisi pohon...",
+  saving: "Menyimpan laporan...",
 };
 
 const loadingMessages = [
-  "Foto sedang dianalisis...",
-  "Tunggu sebentar...",
-  "Sedikit lagi...",
-  "Membutuhkan beberapa saat...",
-  "Mengkalkulasi tajuk & biomassa...",
+  "Sedang mengecek foto...",
+  "Mohon tunggu sebentar...",
+  "Menghitung tingkat risiko...",
+  "Memproses data laporan...",
+  "Hampir selesai...",
 ];
 
 export const getReportStatusConfig = (statusRaw?: string) => {
@@ -289,7 +289,7 @@ export const parseBoundingBoxes = (item: any): BoundingBox[] => {
     try {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
-    } catch (e) {}
+    } catch (e) { }
   }
   return [];
 };
@@ -452,7 +452,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [submitProgress, setSubmitProgress] = useState(0);
 
-  // Cycle loading messages & calculate progress sequentially during photo analysis
+  // Cycle loading messages at a comfortable pace & calculate progress smoothly during photo analysis
   useEffect(() => {
     if (!isSubmitting) {
       setLoadingMessageIndex(0);
@@ -466,12 +466,11 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       setSubmitProgress((prev) => Math.max(prev, 90));
     }
 
-    const interval = setInterval(() => {
-      setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
-
+    // 1. Smooth Progress Bar Timer (Ticks every 250ms)
+    const progressInterval = setInterval(() => {
       setSubmitProgress((prev) => {
         if (submitStep === "uploading") {
-          return Math.min(prev + 5, 30);
+          return Math.min(prev + 5, 35);
         } else if (submitStep === "analyzing") {
           return prev < 88 ? prev + 2 : prev;
         } else if (submitStep === "saving") {
@@ -479,9 +478,17 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
         }
         return prev;
       });
-    }, 350);
+    }, 250);
 
-    return () => clearInterval(interval);
+    // 2. Slow & Comfortable Reading Pace for Loading Messages (Changes every 2.5 seconds)
+    const messageInterval = setInterval(() => {
+      setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
+    }, 2500);
+
+    return () => {
+      clearInterval(progressInterval);
+      clearInterval(messageInterval);
+    };
   }, [isSubmitting, submitStep]);
 
   useEffect(() => {
@@ -715,8 +722,16 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
-        const lat = parseFloat(position.coords.latitude.toFixed(6));
-        const lng = parseFloat(position.coords.longitude.toFixed(6));
+        let lat = parseFloat(position.coords.latitude.toFixed(6));
+        let lng = parseFloat(position.coords.longitude.toFixed(6));
+
+        // Sanitize coordinates if browser returned location outside Indonesia (e.g. Australia/Queensland)
+        if (lat < -11.0 || lat > 6.0 || lng < 95.0 || lng > 141.0) {
+          console.warn("[WARN] Detected location outside Indonesia, using Tangerang fallback.");
+          lat = -6.1783;
+          lng = 106.6319;
+          setDetectedAddress("Tangerang, Banten, Indonesia");
+        }
 
         formLogic.setValue("latitude", lat as any);
         formLogic.setValue("longitude", lng as any);
@@ -746,12 +761,17 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
       },
       (error) => {
         console.error("[ERROR] Geolocation error:", error.message);
-        alert(
-          "Gagal mengambil lokasi GPS. Silakan pastikan izin lokasi diaktifkan di HP kamu."
-        );
+        // Fallback to Tangerang coordinates if GPS error occurs
+        const fallbackLat = -6.1783;
+        const fallbackLng = 106.6319;
+        formLogic.setValue("latitude", fallbackLat as any);
+        formLogic.setValue("longitude", fallbackLng as any);
+        formLogic.trigger(["latitude", "longitude"]);
+        setDetectedAddress("Tangerang, Banten, Indonesia");
         setIsGettingLocation(false);
+        setLocationSuccess(true);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 
@@ -927,65 +947,65 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
         data: { user },
       } = await supabaseClient.auth.getUser();
 
-        const combinedBoundingBoxes = [
-          ...(Array.isArray(aiData.bounding_boxes) ? aiData.bounding_boxes : []),
-          ...(Array.isArray(aiData.person_boxes) ? aiData.person_boxes : []),
-        ];
+      const combinedBoundingBoxes = [
+        ...(Array.isArray(aiData.bounding_boxes) ? aiData.bounding_boxes : []),
+        ...(Array.isArray(aiData.person_boxes) ? aiData.person_boxes : []),
+      ];
 
-        const basePayload: any = {
-          image_url: imageUrl,
-          description: data.description || "Laporan Pohon Rawan Tumbang",
-          location: `POINT(${data.longitude} ${data.latitude})`,
-          risk_score: aiData.risk_score || 0,
-          canopy_volume: aiData.canopy_volume || 0,
-          biomass_estimate: aiData.biomass_estimate || 0,
-          bounding_box: combinedBoundingBoxes,
-          status: "pending",
-        };
+      const basePayload: any = {
+        image_url: imageUrl,
+        description: data.description || "Laporan Pohon Rawan Tumbang",
+        location: `POINT(${data.longitude} ${data.latitude})`,
+        risk_score: aiData.risk_score || 0,
+        canopy_volume: aiData.canopy_volume || 0,
+        biomass_estimate: aiData.biomass_estimate || 0,
+        bounding_box: combinedBoundingBoxes,
+        status: "pending",
+      };
 
-        if (user?.id) {
-          basePayload.user_id = user.id;
-        }
+      if (user?.id) {
+        basePayload.user_id = user.id;
+      }
 
-        let insertedReportItem: ReportHistoryItem | null = null;
+      let insertedReportItem: ReportHistoryItem | null = null;
 
-        const { data: insertedData, error: dbError } = await supabaseClient
-          .from("reports")
-          .insert(basePayload)
-          .select()
-          .single();
+      const { data: insertedData, error: dbError } = await supabaseClient
+        .from("reports")
+        .insert(basePayload)
+        .select()
+        .single();
 
-        if (!dbError && insertedData) {
-          insertedReportItem = insertedData as ReportHistoryItem;
-        } else if (dbError) {
-          console.error(`[ERROR] DB Insert error: ${dbError.message}`);
+      if (!dbError && insertedData) {
+        insertedReportItem = insertedData as ReportHistoryItem;
+      } else if (dbError) {
+        console.error(`[ERROR] DB Insert error: ${dbError.message}`);
 
-          if (dbError.message.includes("user_id")) {
-            delete basePayload.user_id;
-            const { data: retryData, error: retryError } = await supabaseClient
-              .from("reports")
-              .insert(basePayload)
-              .select()
-              .single();
+        if (dbError.message.includes("user_id")) {
+          delete basePayload.user_id;
+          const { data: retryData, error: retryError } = await supabaseClient
+            .from("reports")
+            .insert(basePayload)
+            .select()
+            .single();
 
-            if (!retryError && retryData) {
-              insertedReportItem = retryData as ReportHistoryItem;
-            } else if (retryError) {
-              console.error(`[ERROR] Retry DB Insert error: ${retryError.message}`);
-            }
+          if (!retryError && retryData) {
+            insertedReportItem = retryData as ReportHistoryItem;
+          } else if (retryError) {
+            console.error(`[ERROR] Retry DB Insert error: ${retryError.message}`);
           }
         }
+      }
 
-        setSubmittedReport({
-          id: insertedReportItem?.id,
-          imageUrl,
-          boundingBoxes: combinedBoundingBoxes,
-          riskScore: aiData.risk_score || 0,
-          canopyVolume: aiData.canopy_volume || 0,
-          biomassEstimate: aiData.biomass_estimate || 0,
-          detections: aiData.detections || 0,
-          rawReportItem: insertedReportItem || undefined,
-        });
+      setSubmittedReport({
+        id: insertedReportItem?.id,
+        imageUrl,
+        boundingBoxes: combinedBoundingBoxes,
+        riskScore: aiData.risk_score || 0,
+        canopyVolume: aiData.canopy_volume || 0,
+        biomassEstimate: aiData.biomass_estimate || 0,
+        detections: aiData.detections || 0,
+        rawReportItem: insertedReportItem || undefined,
+      });
 
       formLogic.reset();
       setCapturedFile(null);
@@ -1033,10 +1053,10 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-bold text-[#111111] tracking-tight">
-              Pemindai AI & LaporPohon
+              Lapor & Pantau
             </h2>
             <p className="text-[11px] sm:text-xs text-[#111111]/60">
-              Foto pohon rawan di sekitarmu atau cek status laporanmu di sini.
+              Ambil foto pohon langsung di lokasi, atau cek riwayat laporan
             </p>
           </div>
         </div>
@@ -1091,10 +1111,10 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   </div>
                   <div className="space-y-0.5">
                     <h3 className="text-base sm:text-lg font-bold text-[#111111] tracking-tight">
-                      Laporan Berhasil Dianalisis!
+                      Pengecekan Selesai!
                     </h3>
                     <p className="text-xs text-[#111111]/60 font-medium">
-                      Hasil deteksi otomatis AI YOLOv8 &amp; estimasi biomassa sirkular
+                      Berikut adalah hasil pengecekan tingkat risiko dan perkiraan ukuran pohon.
                     </p>
                   </div>
                 </div>
@@ -1124,10 +1144,10 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   <WarningCircle size={36} weight="fill" className="text-amber-600 mx-auto" />
                   <div className="space-y-1">
                     <h4 className="font-bold text-sm text-[#111111]">
-                      Objek Pohon Tidak Terdeteksi dalam Foto
+                      Pohon Tidak Terdeteksi
                     </h4>
                     <p className="text-xs text-[#111111]/70 leading-relaxed max-w-md mx-auto">
-                      Sistem AI YOLOv8 tidak menemukan objek pohon rawan tumbang pada foto ini. Silakan pastikan tajuk dan batang pohon terlihat jelas dengan pencahayaan memadai.
+                      Kami tidak dapat menemukan pohon di foto ini. Silakan ambil foto ulang dan pastikan batang hingga daun terlihat jelas dengan cahaya yang cukup.
                     </p>
                   </div>
                   <button
@@ -1145,35 +1165,35 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                 </div>
               ) : (
                 <>
-                  {/* Key Metrics Grid (Informasi di atas) */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="bg-[#f8f9f5] border border-black/5 p-4 rounded-2xl space-y-1">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">
+                  {/* Key Metrics Grid (Unified 1 Row on Mobile & Desktop) */}
+                  <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
+                    <div className="bg-[#f8f9f5] border border-black/5 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl text-center sm:text-left space-y-0.5">
+                      <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#111111]/40 truncate">
                         Skor Risiko AI
                       </p>
-                      <p className="text-xl sm:text-2xl font-extrabold text-[#19382B]">
+                      <p className="text-sm sm:text-xl font-extrabold text-[#19382B] whitespace-nowrap">
                         {submittedReport.riskScore <= 1
                           ? Math.round(submittedReport.riskScore * 100)
                           : Math.round(submittedReport.riskScore)}{" "}
-                        <span className="text-xs font-normal text-[#111111]/50">/ 100</span>
+                        <span className="text-[10px] sm:text-xs font-normal text-[#111111]/50">/ 100</span>
                       </p>
                     </div>
 
-                    <div className="bg-[#f8f9f5] border border-black/5 p-4 rounded-2xl space-y-1">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">
-                        Estimasi Volume Kanopi
+                    <div className="bg-[#f8f9f5] border border-black/5 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl text-center sm:text-left space-y-0.5">
+                      <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#111111]/40 truncate">
+                        Volume Kanopi
                       </p>
-                      <p className="text-xl sm:text-2xl font-extrabold text-[#19382B]">
-                        {submittedReport.canopyVolume} <span className="text-xs font-normal text-[#111111]/50">m³</span>
+                      <p className="text-sm sm:text-xl font-extrabold text-[#19382B] whitespace-nowrap">
+                        {submittedReport.canopyVolume} <span className="text-[10px] sm:text-xs font-normal text-[#111111]/50">m³</span>
                       </p>
                     </div>
 
-                    <div className="bg-[#f8f9f5] border border-black/5 p-4 rounded-2xl space-y-1">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">
-                        Estimasi Biomassa Kayu
+                    <div className="bg-[#f8f9f5] border border-black/5 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl text-center sm:text-left space-y-0.5">
+                      <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#111111]/40 truncate">
+                        Biomassa Kayu
                       </p>
-                      <p className="text-xl sm:text-2xl font-extrabold text-[#19382B]">
-                        {submittedReport.biomassEstimate} <span className="text-xs font-normal text-[#111111]/50">kg</span>
+                      <p className="text-sm sm:text-xl font-extrabold text-[#19382B] whitespace-nowrap">
+                        {submittedReport.biomassEstimate} <span className="text-[10px] sm:text-xs font-normal text-[#111111]/50">kg</span>
                       </p>
                     </div>
                   </div>
@@ -1660,19 +1680,24 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
         {/* ── TAB 2: PROGRESS LAPORAN SAYA (MONITORING PAGE) ── */}
         {activeTab === "progress" && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-xs font-bold tracking-wider text-[#111111]/70">
                 Riwayat Laporan
               </p>
-              <button
-                type="button"
-                onClick={fetchReportHistory}
-                disabled={isLoadingHistory}
-                className="text-xs font-semibold text-[#19382B] hover:underline flex items-center gap-1"
-              >
-                <ArrowCounterClockwise size={14} className={isLoadingHistory ? "animate-spin" : ""} />
-                <span>Perbarui Data</span>
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={fetchReportHistory}
+                  disabled={isLoadingHistory}
+                  className="text-xs font-semibold text-[#19382B] hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <ArrowCounterClockwise size={14} className={isLoadingHistory ? "animate-spin" : ""} />
+                  <span>Perbarui Data</span>
+                </button>
+                <span className="inline-flex items-center gap-1 bg-[#ecefe6] text-[#19382B] px-2.5 py-1 rounded-full text-[11px] font-extrabold border border-black/5">
+                  Total Laporan: <span className="font-black text-xs">{reportHistory.length}</span>
+                </span>
+              </div>
             </div>
 
             {isLoadingHistory ? (
@@ -1691,97 +1716,220 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
-                {reportHistory.map((item) => {
-                  const riskLevel = getRiskLevel(item.risk_score);
-                  const riskConf = riskLevelConfig[riskLevel];
-                  const st = getReportStatusConfig(item.status);
+              <div>
+                {/* ── 1. Desktop Table View (Muncul di Layar Laptop / Desktop `hidden sm:block`) ── */}
+                <div className="hidden sm:block overflow-x-auto border border-black/8 rounded-2xl bg-white shadow-2xs">
+                  <table className="w-full text-left text-xs font-sans border-collapse">
+                    <thead>
+                      <tr className="bg-[#19382B] text-white text-[11px] font-bold uppercase tracking-wider">
+                        <th className="py-3.5 px-4 rounded-tl-2xl">Laporan &amp; Foto</th>
+                        <th className="py-3.5 px-4">Status</th>
+                        <th className="py-3.5 px-4">Tingkat Risiko</th>
+                        <th className="py-3.5 px-4">Lokasi &amp; Waktu</th>
+                        <th className="py-3.5 px-4 text-center rounded-tr-2xl">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 font-medium">
+                      {reportHistory.map((item) => {
+                        const riskLevel = getRiskLevel(item.risk_score);
+                        const riskConf = riskLevelConfig[riskLevel];
+                        const st = getReportStatusConfig(item.status);
 
-                  return (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="bg-[#f8f9f5] border border-black/8 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:bg-white hover:shadow-xs transition-all"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        {/* Thumbnail */}
-                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-black/10 shrink-0 border border-black/5">
-                          <img
-                            src={item.image_url}
-                            alt="Foto Laporan"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
+                        return (
+                          <tr key={item.id} className="hover:bg-[#f8f9f5]/60 transition-colors">
+                            {/* Column 1: Foto & Laporan Title */}
+                            <td className="py-3.5 px-4">
+                              <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/10 shrink-0 border border-black/5 shadow-2xs">
+                                  <img
+                                    src={item.image_url}
+                                    alt="Foto Laporan"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                                <div className="space-y-0.5 min-w-0 max-w-[200px] md:max-w-[280px]">
+                                  <p className="font-bold text-[#111111] text-xs line-clamp-2 leading-snug">
+                                    {item.description || "Laporan Pohon Rawan Tumbang"}
+                                  </p>
+                                  <span className="text-[10px] text-[#111111]/40 font-mono block">
+                                    ID: #{item.id.slice(0, 8)}
+                                  </span>
+                                </div>
+                              </div>
+                            </td>
 
-                        {/* Info */}
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span
-                              className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${st.bg} ${st.text} ${st.border}`}
-                            >
-                              {st.label}
-                            </span>
-                            <span
-                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${riskConf.bgColor} ${riskConf.textColor}`}
-                            >
-                              Risiko:{" "}
-                              {item.risk_score <= 1
-                                ? Math.round(item.risk_score * 100)
-                                : Math.round(item.risk_score)}
-                              /100
-                            </span>
+                            {/* Column 2: Status */}
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <span
+                                className={`inline-block text-[10px] font-bold px-2.5 py-1 rounded-full border ${st.bg} ${st.text} ${st.border}`}
+                              >
+                                {st.label}
+                              </span>
+                            </td>
+
+                            {/* Column 3: Tingkat Risiko */}
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <span
+                                className={`inline-block text-[10px] font-bold px-2.5 py-1 rounded-full ${riskConf.bgColor} ${riskConf.textColor}`}
+                              >
+                                Risiko:{" "}
+                                {item.risk_score <= 1
+                                  ? Math.round(item.risk_score * 100)
+                                  : Math.round(item.risk_score)}
+                                /100
+                              </span>
+                            </td>
+
+                            {/* Column 4: Lokasi & Waktu */}
+                            <td className="py-3.5 px-4 whitespace-nowrap">
+                              <div className="space-y-0.5 text-[11px] text-[#111111]/70">
+                                <p className="flex items-center gap-1 font-semibold text-[#111111]">
+                                  <MapPin size={13} className="text-[#19382B] shrink-0" />
+                                  <span>{formatLocationDisplay(item.location)}</span>
+                                </p>
+                                <p className="flex items-center gap-1 text-[10px] text-[#111111]/50">
+                                  <Clock size={12} className="shrink-0" />
+                                  <span>
+                                    {new Date(item.created_at).toLocaleDateString("id-ID", {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    })}
+                                  </span>
+                                </p>
+                              </div>
+                            </td>
+
+                            {/* Column 5: Aksi (Lihat Detail di Kiri, Hapus di Kanan) */}
+                            <td className="py-3.5 px-4 whitespace-nowrap text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedHistoryItem(item)}
+                                  className="bg-[#19382B] hover:bg-[#234A39] text-white px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+                                >
+                                  <Eye size={14} weight="bold" />
+                                  <span>Lihat Detail</span>
+                                </button>
+
+                                {st.isPending && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeleteConfirmItem(item)}
+                                    className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/60 p-2 rounded-full text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95"
+                                    title="Batalkan Laporan Ini"
+                                  >
+                                    <Trash size={14} weight="bold" />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* ── 2. Mobile Card List View (Hanya Muncul di Layar HP `block sm:hidden`) ── */}
+                <div className="block sm:hidden space-y-3 max-h-[500px] overflow-y-auto pr-1">
+                  {reportHistory.map((item) => {
+                    const riskLevel = getRiskLevel(item.risk_score);
+                    const riskConf = riskLevelConfig[riskLevel];
+                    const st = getReportStatusConfig(item.status);
+
+                    return (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-[#f8f9f5] border border-black/8 rounded-2xl p-4 space-y-3 shadow-2xs hover:bg-white hover:border-[#19382B]/30 hover:shadow-xs transition-all"
+                      >
+                        {/* Section Top Info: Thumbnail + Text Details */}
+                        <div className="flex items-start gap-3.5">
+                          {/* Thumbnail Image */}
+                          <div className="w-16 h-16 rounded-xl overflow-hidden bg-black/10 shrink-0 border border-black/5 shadow-2xs">
+                            <img
+                              src={item.image_url}
+                              alt="Foto Laporan"
+                              className="w-full h-full object-cover"
+                            />
                           </div>
 
-                          <p className="text-xs font-semibold text-[#111111] truncate max-w-xs sm:max-w-md">
-                            {item.description || "Laporan Pohon Rawan Tumbang"}
-                          </p>
+                          {/* Text Details */}
+                          <div className="space-y-1.5 min-w-0 flex-1">
+                            {/* Status & Risk Badges */}
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span
+                                className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${st.bg} ${st.text} ${st.border}`}
+                              >
+                                {st.label}
+                              </span>
+                              <span
+                                className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${riskConf.bgColor} ${riskConf.textColor}`}
+                              >
+                                Risiko:{" "}
+                                {item.risk_score <= 1
+                                  ? Math.round(item.risk_score * 100)
+                                  : Math.round(item.risk_score)}
+                                /100
+                              </span>
+                            </div>
 
-                          <div className="flex items-center gap-3 text-[10px] text-[#111111]/50 font-medium">
-                            <span className="flex items-center gap-1">
-                              <Clock size={12} />
-                              {new Date(item.created_at).toLocaleDateString("id-ID", {
-                                day: "numeric",
-                                month: "short",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <MapPin size={12} />
-                              {formatLocationDisplay(item.location)}
-                            </span>
+                            {/* Description Title */}
+                            <p className="text-xs font-bold text-[#111111] leading-snug line-clamp-2">
+                              {item.description || "Laporan Pohon Rawan Tumbang"}
+                            </p>
+
+                            {/* Date & Location */}
+                            <div className="flex flex-wrap items-center gap-y-1 gap-x-3 text-[10px] text-[#111111]/60 font-medium">
+                              <span className="flex items-center gap-1">
+                                <Clock size={12} className="text-[#19382B]" />
+                                {new Date(item.created_at).toLocaleDateString("id-ID", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <MapPin size={12} className="text-[#19382B]" />
+                                {formatLocationDisplay(item.location)}
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      {/* Action Buttons: Cancel Report (ONLY if pending) & View Detail */}
-                      <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                        {st.isPending && (
+                        {/* Section Action Buttons: diperlebar (w-full) */}
+                        <div className="flex items-center gap-2 pt-2 border-t border-black/5">
+                          {st.isPending && (
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmItem(item)}
+                              className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/60 px-3.5 py-2 rounded-full text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 shrink-0"
+                              title="Batalkan Laporan Ini"
+                            >
+                              <Trash size={14} weight="bold" />
+                              <span>Batalkan</span>
+                            </button>
+                          )}
+
                           <button
                             type="button"
-                            onClick={() => setDeleteConfirmItem(item)}
-                            className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200/60 px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
-                            title="Batalkan Laporan Ini"
+                            onClick={() => setSelectedHistoryItem(item)}
+                            className="w-full flex-1 bg-[#19382B] text-white hover:bg-[#234A39] py-2.5 px-4 rounded-full text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 active:scale-98 cursor-pointer"
                           >
-                            <Trash size={14} weight="bold" />
-                            <span>Batalkan</span>
+                            <Eye size={15} weight="bold" />
+                            <span>Lihat Detail</span>
                           </button>
-                        )}
-
-                        <button
-                          type="button"
-                          onClick={() => setSelectedHistoryItem(item)}
-                          className="bg-[#19382B] text-white hover:bg-[#234A39] px-3.5 py-1.5 rounded-full text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
-                        >
-                          <Eye size={14} weight="bold" />
-                          <span>Lihat Detail AI</span>
-                        </button>
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -1903,18 +2051,18 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                       <span>
                         {selectedHistoryItem.created_at
                           ? (() => {
-                              const d = parseWibDate(selectedHistoryItem.created_at);
-                              return d
-                                ? d.toLocaleString("id-ID", {
-                                    timeZone: "Asia/Jakarta",
-                                    day: "numeric",
-                                    month: "short",
-                                    year: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }) + " WIB"
-                                : selectedHistoryItem.created_at;
-                            })()
+                            const d = parseWibDate(selectedHistoryItem.created_at);
+                            return d
+                              ? d.toLocaleString("id-ID", {
+                                timeZone: "Asia/Jakarta",
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              }) + " WIB"
+                              : selectedHistoryItem.created_at;
+                          })()
                           : "-"}
                       </span>
                     </span>
@@ -1940,10 +2088,10 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                       </div>
                       <div>
                         <h3 className="font-extrabold text-sm sm:text-base text-[#111111] leading-tight">
-                          Laporan Pohon Rawan Tumbang
+                          Detail Laporan Pohon Rawan
                         </h3>
                         <p className="text-[11px] sm:text-xs text-gray-500 font-medium mt-0.5">
-                          Aduan Warga • {new Date(selectedHistoryItem.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                          {new Date(selectedHistoryItem.created_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
                         </p>
                       </div>
                     </div>
@@ -1968,7 +2116,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
                       return (
                         <div className="bg-[#f8f9f5] border border-black/5 p-2.5 sm:p-3.5 rounded-2xl flex flex-col justify-between space-y-1">
-                          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">Risiko AI</span>
+                          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">TINGKAT RISIKO</span>
                           <p className="text-sm sm:text-base font-extrabold text-[#19382B]">
                             {displayRisk} <span className="text-[10px] font-normal text-gray-500">/100</span>
                           </p>
@@ -1980,32 +2128,30 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                     })()}
 
                     <div className="bg-[#f8f9f5] border border-black/5 p-2.5 sm:p-3.5 rounded-2xl flex flex-col justify-between space-y-1">
-                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">Volume Tajuk</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">PERKIRAAN KANOPI</span>
                       <p className="text-sm sm:text-base font-extrabold text-[#19382B]">
                         {selectedHistoryItem.canopy_volume || 0} <span className="text-[10px] font-normal text-gray-500">m³</span>
                       </p>
-                      <span className="text-[9px] text-gray-400 font-semibold truncate">Estimasi Kanopi</span>
                     </div>
 
                     <div className="bg-[#f8f9f5] border border-black/5 p-2.5 sm:p-3.5 rounded-2xl flex flex-col justify-between space-y-1">
-                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">Biomassa Kayu</span>
+                      <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">POTENSI KAYU</span>
                       <p className="text-sm sm:text-base font-extrabold text-[#19382B]">
                         {selectedHistoryItem.biomass_estimate || 0} <span className="text-[10px] font-normal text-gray-500">kg</span>
                       </p>
-                      <span className="text-[9px] text-gray-400 font-semibold truncate">Potensi Kayu</span>
                     </div>
                   </div>
 
-                  {/* 3. Informasi Umum Aduan — KOORDINAT GPS & TITIK ALAMAT 2 GRID 1 BARIS */}
+                  {/* 3. Informasi Laporan — Titik Koordinat & Lokasi Pohon 2 GRID 1 BARIS */}
                   <div className="p-4 sm:p-5 space-y-3">
-                    <h4 className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-gray-400">Informasi Umum Aduan</h4>
+                    <h4 className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-gray-400">Informasi Laporan</h4>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-stretch">
+                    <div className="grid grid-cols-2 gap-2 sm:gap-3.5 items-stretch">
                       {(() => {
                         const coords = parseCoordinates(selectedHistoryItem);
                         return (
                           <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-3.5 space-y-1 flex flex-col justify-center">
-                            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">KOORDINAT GPS</p>
+                            <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">Titik Koordinat</p>
                             <p className="font-bold text-[#111111] text-xs font-mono">
                               {coords ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}` : "N/A"}
                             </p>
@@ -2014,7 +2160,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                       })()}
 
                       <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-3.5 space-y-1 flex flex-col justify-center">
-                        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">TITIK ALAMAT LOKASI</p>
+                        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">Lokasi Pohon</p>
                         <p className="text-xs font-semibold text-[#111111] leading-relaxed break-words">
                           {formatLocationDisplay(selectedHistoryItem.location)}
                         </p>
@@ -2023,7 +2169,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
                     {selectedHistoryItem.description && (
                       <div className="bg-[#f8f9f5] border border-black/5 rounded-2xl p-3.5 space-y-1">
-                        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">CATATAN / DESKRIPSI WARGA</p>
+                        <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-gray-400">Catatan Tambahan</p>
                         <p className="text-xs font-semibold text-[#111111] leading-relaxed break-words">
                           {selectedHistoryItem.description}
                         </p>
@@ -2031,15 +2177,15 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                     )}
                   </div>
 
-                  {/* 5. Lampiran Visual & Peta — GAMBAR DI BAGIAN BAWAH DENGAN UKURAN FOTO DAN PETA SAMA PERSIS */}
+                  {/* 5. Foto & Lokasi (Klik untuk perbesar) */}
                   <div className="p-4 sm:p-5 space-y-3.5">
-                    <h4 className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-gray-400">Lampiran Visual &amp; Peta (Klik Foto untuk Memperbesar)</h4>
+                    <h4 className="text-[11px] sm:text-xs font-extrabold uppercase tracking-wider text-gray-400">Foto &amp; Lokasi (Klik untuk perbesar)</h4>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-stretch">
                       {/* Visual Deteksi Radar Pohon AI (Bounding Box + Lightbox Clickable) */}
                       <div className="flex flex-col space-y-1.5">
                         <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                          <span>Foto &amp; Deteksi AI</span>
+                          <span>Foto Kondisi</span>
                           <span className="text-[#19382B] text-[9px] font-extrabold cursor-pointer">🔍 Klik Perbesar</span>
                         </div>
 
@@ -2076,7 +2222,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
                       {/* Mini Map Lokasi GPS (Ukuran h-48 sm:h-52 Sama Persis dengan Foto) */}
                       <div className="flex flex-col space-y-1.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Peta Lokasi GPS</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">Peta Lokasi</span>
                         {(() => {
                           const coords = parseCoordinates(selectedHistoryItem);
                           return coords ? (
@@ -2128,7 +2274,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                       className="w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white px-5 py-3 rounded-2xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-95"
                     >
                       <Trash size={16} weight="bold" />
-                      <span>Batalkan &amp; Hapus Laporan</span>
+                      <span>Batalkan Laporan</span>
                     </button>
                   )}
                   <button
@@ -2136,7 +2282,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                     onClick={() => setSelectedHistoryItem(null)}
                     className="w-full sm:flex-1 py-3 rounded-2xl text-xs font-extrabold bg-gray-100 text-[#111111] hover:bg-gray-200 transition-all cursor-pointer text-center active:scale-95"
                   >
-                    Tutup Detail
+                    Tutup
                   </button>
                 </div>
               </motion.div>
@@ -2177,10 +2323,10 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               {/* Title & Subtitle */}
               <div className="space-y-1">
                 <h3 className="text-lg sm:text-xl font-bold text-[#111111] tracking-tight">
-                  Laporan Berhasil!
+                  Laporan Terkirim!
                 </h3>
                 <p className="text-xs sm:text-sm text-[#111111]/60 font-medium leading-relaxed">
-                  Foto &amp; lokasi pohon rawan telah tersimpan di sistem.
+                  Terima kasih, foto dan lokasi pohon sudah masuk ke sistem kami.
                 </p>
               </div>
 
@@ -2188,7 +2334,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
               {submittedReport && (
                 <div className="bg-white border border-black/5 rounded-2xl p-3.5 text-left space-y-2.5 shadow-xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">Status AI</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-[#111111]/40">Tingkat Risiko</span>
                     {(() => {
                       const rl = getRiskLevel(submittedReport.riskScore);
                       const conf = riskLevelConfig[rl];
@@ -2202,7 +2348,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   </div>
 
                   <div className="flex items-center justify-between text-xs font-bold text-[#111111] pt-1 border-t border-black/5">
-                    <span className="text-[11px] text-[#111111]/50 font-medium">Estimasi Tajuk &amp; Biomassa</span>
+                    <span className="text-[11px] text-[#111111]/50 font-medium">Perkiraan Volume</span>
                     <span className="text-xs font-extrabold text-[#19382B]">
                       {submittedReport.canopyVolume} m³ ({submittedReport.biomassEstimate} kg)
                     </span>
@@ -2231,11 +2377,11 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   }}
                   className="w-full bg-[#19382B] hover:bg-[#234A39] text-white py-3 rounded-full text-xs sm:text-sm font-bold transition-all shadow-xs active:scale-95 flex items-center justify-center gap-2"
                 >
-                  <span>Lihat Detail Laporan</span>
+                  <span>Lihat Detail</span>
                   <ArrowRight size={16} weight="bold" />
                 </button>
 
-                {/* Secondary Button: Buka Pantau Laporan Saya */}
+                {/* Secondary Button: Pantau Laporan Saya */}
                 <button
                   type="button"
                   onClick={() => {
@@ -2244,7 +2390,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   }}
                   className="w-full bg-white hover:bg-gray-100 text-[#111111] py-2.5 rounded-full text-xs font-bold transition-all border border-black/10 active:scale-95"
                 >
-                  <span>Buka Pantau Laporan Saya</span>
+                  <span>Pantau Laporan Saya</span>
                 </button>
               </div>
             </motion.div>

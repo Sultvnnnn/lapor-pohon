@@ -19,6 +19,7 @@ import { createClient } from "@/lib/supabase/client";
 import { parseCoordinates } from "../admin/AdminDashboardClient";
 import { BiomassCatalogItem } from "./WoodCatalogCard";
 import { CustomSelect } from "@/components/ui/CustomSelect";
+import { getCompletedTickets } from "../admin/AdminSerahTerimaClient";
 
 interface UmkmClaimsClientProps {
   initialDisplayName: string;
@@ -42,6 +43,8 @@ export function UmkmClaimsClient({
   const fetchUserClaims = async () => {
     setIsLoading(true);
     try {
+      const completedSet = getCompletedTickets();
+
       const { data: catData } = await supabase
         .from("biomass_catalogs")
         .select(`
@@ -52,26 +55,37 @@ export function UmkmClaimsClient({
         .order("created_at", { ascending: false });
 
       if (catData && catData.length > 0) {
-        const formatted: BiomassCatalogItem[] = catData.map((c: any) => ({
-          id: c.id,
-          report_id: c.report_id,
-          wood_type: c.wood_type || "Pohon kayu olahan dinas",
-          volume_kg: c.volume_kg || 120.0,
-          status: c.status || "claimed",
-          claimed_by: c.claimed_by,
-          claimed_by_name: c.claimed_by_name || c.profiles?.full_name || displayName,
-          claimed_by_business_name: c.claimed_by_business_name,
-          claimed_by_business_type: c.claimed_by_business_type,
-          claimed_by_phone: c.claimed_by_phone,
-          created_at: c.created_at,
-          updated_at: c.updated_at,
-          reports: c.reports,
-          claim_ticket_code: c.claim_ticket_code || `KLM-2026-TRM-${c.id.slice(0, 4).toUpperCase()}`,
-          handover_status: c.handover_status || "WAITING_PICKUP",
-          handover_notes: c.handover_notes,
-          diameter_cm: c.diameter_cm || 45,
-          length_m: c.length_m || 3.5,
-        }));
+        const formatted: BiomassCatalogItem[] = catData.map((c: any) => {
+          const code = c.claim_ticket_code || `KLM-2026-TRM-${(c.report_id || c.id).slice(0, 4).toUpperCase()}`;
+          const isDone =
+            c.handover_status === "COMPLETED" ||
+            c.status === "sold_out" ||
+            c.reports?.status === "completed" ||
+            completedSet.has(c.id) ||
+            (c.report_id && completedSet.has(c.report_id)) ||
+            completedSet.has(code);
+
+          return {
+            id: c.id,
+            report_id: c.report_id,
+            wood_type: c.wood_type || "Pohon kayu olahan dinas",
+            volume_kg: c.volume_kg || 120.0,
+            status: isDone ? "sold_out" : (c.status || "claimed"),
+            claimed_by: c.claimed_by,
+            claimed_by_name: c.claimed_by_name || c.profiles?.full_name || displayName,
+            claimed_by_business_name: c.claimed_by_business_name,
+            claimed_by_business_type: c.claimed_by_business_type,
+            claimed_by_phone: c.claimed_by_phone,
+            created_at: c.created_at,
+            updated_at: c.updated_at,
+            reports: c.reports,
+            claim_ticket_code: code,
+            handover_status: isDone ? "COMPLETED" : (c.handover_status || "WAITING_PICKUP"),
+            handover_notes: c.handover_notes,
+            diameter_cm: c.diameter_cm || 45,
+            length_m: c.length_m || 3.5,
+          };
+        });
         setCatalogs(formatted);
       } else {
         const { data: repData } = await supabase
@@ -81,21 +95,30 @@ export function UmkmClaimsClient({
           .order("created_at", { ascending: false });
 
         if (repData && repData.length > 0) {
-          const derived: BiomassCatalogItem[] = repData.map((r) => ({
-            id: r.id,
-            report_id: r.id,
-            wood_type: r.tree_type || "Pohon kayu olahan dinas",
-            volume_kg: r.biomass_estimate ? Number(r.biomass_estimate) : 150.0,
-            status: "claimed",
-            claimed_by_name: r.claimed_by_name || displayName,
-            created_at: r.created_at,
-            updated_at: r.created_at,
-            reports: r,
-            claim_ticket_code: `KLM-2026-TRM-${r.id.slice(0, 4).toUpperCase()}`,
-            handover_status: "WAITING_PICKUP",
-            diameter_cm: 45,
-            length_m: 3.5,
-          }));
+          const derived: BiomassCatalogItem[] = repData.map((r) => {
+            const code = `KLM-2026-TRM-${r.id.slice(0, 4).toUpperCase()}`;
+            const isDone =
+              r.status === "completed" ||
+              r.handover_status === "COMPLETED" ||
+              completedSet.has(r.id) ||
+              completedSet.has(code);
+
+            return {
+              id: r.id,
+              report_id: r.id,
+              wood_type: r.tree_type || "Pohon kayu olahan dinas",
+              volume_kg: r.biomass_estimate ? Number(r.biomass_estimate) : 150.0,
+              status: isDone ? "sold_out" : "claimed",
+              claimed_by_name: r.claimed_by_name || displayName,
+              created_at: r.created_at,
+              updated_at: r.created_at,
+              reports: r,
+              claim_ticket_code: code,
+              handover_status: isDone ? "COMPLETED" : "WAITING_PICKUP",
+              diameter_cm: 45,
+              length_m: 3.5,
+            };
+          });
           setCatalogs(derived);
         } else {
           setCatalogs([]);
@@ -144,16 +167,6 @@ export function UmkmClaimsClient({
         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-black/5 pb-4"
       >
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center gap-1 text-xs font-bold text-[#19382B] hover:underline"
-            >
-              <ArrowLeft size={14} weight="bold" />
-              <span>Kembali ke katalog</span>
-            </Link>
-          </div>
-
           <h1 className="text-2xl sm:text-3xl font-bold text-[#111111] tracking-tight">
             Klaim &amp; tiket digital saya
           </h1>
@@ -162,50 +175,50 @@ export function UmkmClaimsClient({
           </p>
         </div>
 
-        {/* Standardized Stat Cards */}
-        <div className="flex items-center gap-3 shrink-0">
-          <div className="bg-white border border-black/8 rounded-2xl p-4 min-w-[130px] shadow-sm">
+        {/* Standardized Equal Stat Cards */}
+        <div className="grid grid-cols-2 gap-3 shrink-0 w-full sm:w-auto">
+          <div className="bg-white border border-black/8 rounded-2xl p-4 flex flex-col justify-center min-w-[120px] shadow-sm">
             <span className="text-[11px] font-medium text-[#111111]/60 block mb-1">
               Menunggu penjemputan
             </span>
             <span className="text-2xl sm:text-3xl font-extrabold text-[#111111]">{waitingPickupCount}</span>
           </div>
 
-          <div className="bg-[#ecefe6] border border-black/8 rounded-2xl p-4 min-w-[130px] shadow-sm">
-            <span className="text-[11px] font-medium text-[#19382B] block mb-1">
-              Sudah diserahkan
+          <div className="bg-white border border-black/8 rounded-2xl p-4 flex flex-col justify-center min-w-[120px] shadow-sm">
+            <span className="text-[11px] font-medium text-[#111111]/60 block mb-1">
+              Sudah diambil
             </span>
-            <span className="text-2xl sm:text-3xl font-extrabold text-[#19382B]">{completedCount}</span>
+            <span className="text-2xl sm:text-3xl font-extrabold text-[#111111]">{completedCount}</span>
           </div>
         </div>
       </motion.div>
 
       {/* Unified Card Container for Controls & Content */}
-      <div className="bg-white rounded-2xl border border-black/8 shadow-sm p-5 sm:p-6 space-y-5">
-        {/* Filter & Search Bar with Custom Dropdown */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-black/5 pb-4">
-          <div className="relative flex-1 max-w-md">
-            <MagnifyingGlass size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+      <div className="bg-white rounded-2xl border border-black/8 shadow-sm p-4 sm:p-6 space-y-5">
+        {/* Filter & Search Bar in 1 Single Row (Scaled & Fitted) */}
+        <div className="flex flex-row items-center gap-2 border-b border-black/5 pb-4">
+          <div className="relative flex-1 min-w-0">
+            <MagnifyingGlass size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             <input
               type="text"
-              placeholder="Cari kode tiket, nama usaha, atau jenis kayu..."
+              placeholder="Cari tiket..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#f8f9f5] border border-black/10 rounded-full pl-9 pr-4 py-2 text-xs font-medium focus:outline-none focus:border-[#19382B] text-[#111111]"
+              className="w-full bg-[#f8f9f5] border border-black/10 rounded-full pl-8 pr-2.5 py-2 text-xs font-medium focus:outline-none focus:border-[#19382B] text-[#111111] truncate"
             />
           </div>
 
-          <div className="shrink-0 min-w-[200px]">
+          <div className="shrink-0 w-36 sm:w-48">
             <CustomSelect
               label="Status"
               value={statusFilter}
               onChange={(val) => setStatusFilter(val)}
               options={[
-                { value: "all", label: "Semua status klaim" },
-                { value: "WAITING_PICKUP", label: "Menunggu penjemputan" },
-                { value: "COMPLETED", label: "Sudah diserahkan" },
+                { value: "all", label: "Semua status" },
+                { value: "WAITING_PICKUP", label: "Menunggu" },
+                { value: "COMPLETED", label: "Diambil" },
               ]}
-              className="w-full"
+              className="w-full text-xs"
             />
           </div>
         </div>
@@ -259,20 +272,19 @@ export function UmkmClaimsClient({
                   >
                     {/* Header Card: Kode & Status */}
                     <div className="flex items-center justify-between border-b border-black/5 pb-2.5">
-                      <span className="font-bold text-xs text-[#19382B] bg-[#ecefe6] px-2.5 py-0.5 rounded border border-black/5">
+                      <span className="font-bold text-xs text-[#19382B] bg-[#ecefe6] px-3 py-1 rounded-full border border-black/5">
                         {ticketCode}
                       </span>
                       <span
-                        className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 border ${
-                          isCompleted
-                            ? "bg-[#ecefe6] text-[#19382B] border-black/5"
-                            : "bg-white text-[#111111] border-black/10"
-                        }`}
+                        className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 border ${isCompleted
+                          ? "bg-[#ecefe6] text-[#19382B] border-black/5"
+                          : "bg-white text-[#111111] border-black/10"
+                          }`}
                       >
                         {isCompleted ? (
                           <>
                             <CheckCircle size={12} weight="fill" className="text-[#19382B]" />
-                            <span>Sudah diserahkan</span>
+                            <span>Sudah diambil</span>
                           </>
                         ) : (
                           <>
@@ -294,28 +306,25 @@ export function UmkmClaimsClient({
                       </div>
                     </div>
 
-                    {/* Lokasi Tebangan: Hanya Tombol Maps (Tanpa Deskripsi) */}
-                    <div>
+                    {/* Action Bar (Fit Perfectly Inside Card Width) */}
+                    <div className="pt-2 border-t border-gray-100 flex items-center gap-2 min-w-0 w-full">
                       <a
                         href={mapsUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="bg-[#19382B] text-white hover:bg-[#234A39] px-3 py-1.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 shadow-2xs border border-black/5"
+                        className="shrink-0 bg-[#f8f9f5] hover:bg-gray-100 text-[#19382B] px-3 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 border border-black/10 transition-all"
                       >
-                        <NavigationArrow size={11} weight="bold" />
-                        <span>Peta lokasi ({hasCoords ? `${displayLat?.toFixed(4)}, ${displayLng?.toFixed(4)}` : "Peta Penebangan"})</span>
+                        <NavigationArrow size={13} weight="bold" className="text-[#19382B]" />
+                        <span>Peta Lokasi</span>
                       </a>
-                    </div>
 
-                    {/* Action Button */}
-                    <div className="pt-2 border-t border-gray-100">
                       <button
                         type="button"
                         onClick={() => setSelectedTicketItem(item)}
-                        className="w-full bg-[#19382B] hover:bg-[#234A39] text-white font-bold py-2 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-2xs active:scale-98 cursor-pointer"
+                        className="flex-1 min-w-0 bg-[#19382B] hover:bg-[#234A39] text-white font-extrabold py-2 px-3 rounded-xl text-xs transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
                       >
-                        <Ticket size={15} weight="bold" />
-                        <span>Buka tiket &amp; surat jalan digital</span>
+                        <Ticket size={15} weight="bold" className="text-[#88d937] shrink-0" />
+                        <span className="truncate">Buka Tiket</span>
                       </button>
                     </div>
                   </div>
@@ -392,16 +401,15 @@ export function UmkmClaimsClient({
                         {/* Col 4: Status */}
                         <td className="py-3.5 px-4">
                           <span
-                            className={`text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 border ${
-                              isCompleted
-                                ? "bg-[#ecefe6] text-[#19382B] border-black/5"
-                                : "bg-white text-[#111111] border-black/10"
-                            }`}
+                            className={`text-[10px] font-bold px-2.5 py-1 rounded-full inline-flex items-center gap-1 border ${isCompleted
+                              ? "bg-[#ecefe6] text-[#19382B] border-black/5"
+                              : "bg-white text-[#111111] border-black/10"
+                              }`}
                           >
                             {isCompleted ? (
                               <>
                                 <CheckCircle size={12} weight="fill" className="text-[#19382B]" />
-                                <span>Sudah diserahkan</span>
+                                <span>Sudah diambil</span>
                               </>
                             ) : (
                               <>
@@ -498,8 +506,8 @@ export function UmkmClaimsClient({
                   </div>
                   <div>
                     <span className="text-[10px] font-bold text-[#111111]/50 block">Status penyerahan:</span>
-                    <strong className={selectedTicketItem.handover_status === "COMPLETED" ? "text-[#19382B]" : "text-gray-700"}>
-                      {selectedTicketItem.handover_status === "COMPLETED" ? "Sudah diserahkan" : "Menunggu penjemputan"}
+                    <strong className={selectedTicketItem.handover_status === "COMPLETED" || selectedTicketItem.status === "sold_out" ? "text-[#19382B]" : "text-gray-700"}>
+                      {selectedTicketItem.handover_status === "COMPLETED" || selectedTicketItem.status === "sold_out" ? "Sudah diserahkan • Tiket Ditutup" : "Menunggu penjemputan"}
                     </strong>
                   </div>
                 </div>

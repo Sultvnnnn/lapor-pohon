@@ -15,72 +15,72 @@ import Link from "next/link";
 const ADMIN_STEPS = [
   {
     step: 1,
-    title: "Monitoring aduan pohon rawan warga",
+    title: "Pantau Laporan Warga",
     icon: ShieldCheck,
-    tag: "Tahap 1 — Verifikasi aduan",
-    badgeColor: "bg-[#ecefe6] text-[#19382B] border-black/5",
+    tag: "Tahap 1: Verifikasi Aduan",
+    badgeColor: "bg-[#f8f9f5] text-[#19382B] border-black/10",
     description:
-      "Admin dinas memantau aduan pohon kritis warga dari seluruh wilayah kota yang mendeteksi tingkat risiko bahaya, tingkat kerawanan, dan koordinat lokasi.",
+      "Admin bertugas memeriksa laporan baru yang masuk, termasuk melihat seberapa bahaya kondisi pohon dan lokasi tepatnya.",
     highlights: [
-      "Periksa foto aduan warga dan analisis tingkat kerawanan.",
-      "Verifikasi lokasi titik koordinat GPS pohon di peta interaktif.",
-      "Ubah status laporan menjadi 'Terverifikasi dinas'.",
+      "Cek foto dan detail laporan pohon dari warga.",
+      "Pastikan titik lokasi pohon sudah sesuai di peta.",
+      "Ubah status laporan menjadi 'Terverifikasi'.",
     ],
   },
   {
     step: 2,
-    title: "Penjadwalan pemangkasan pohon dinas",
+    title: "Atur Jadwal Penanganan",
     icon: Calendar,
-    tag: "Tahap 2 — Penjadwalan",
-    badgeColor: "bg-white text-[#111111] border-black/10",
+    tag: "Tahap 2: Penjadwalan",
+    badgeColor: "bg-[#f8f9f5] text-[#19382B] border-black/10",
     description:
-      "Petugas dinas menentukan tanggal dan jam penanganan eksekusi pemangkasan atau penebangan pohon di lapangan oleh regu operasional.",
+      "Tentukan waktu yang tepat untuk mengirim tim ke lokasi, baik untuk memangkas maupun menebang pohon.",
     highlights: [
-      "Pilih status 'Penjadwalan pemangkasan' di modal laporan.",
-      "Tentukan tanggal & jam eksekusi lapangan pada kalender.",
-      "Sistem secara otomatis mengabarkan jadwal penanganan ke warga.",
+      "Pilih status 'Jadwalkan Penanganan'.",
+      "Tentukan tanggal dan waktu pelaksanaan tugas di lapangan.",
+      "Sistem akan otomatis mengirimkan jadwal ini kepada pelapor.",
     ],
   },
   {
     step: 3,
-    title: "Input spesifikasi biomassa kayu tebangan",
+    title: "Catat Data Kayu",
     icon: Tree,
-    tag: "Tahap 3 — Penyelesaian & biomassa",
-    badgeColor: "bg-[#ecefe6] text-[#19382B] border-black/5",
+    tag: "Tahap 3: Penyelesaian",
+    badgeColor: "bg-[#f8f9f5] text-[#19382B] border-black/10",
     description:
-      "Setelah eksekusi tebangan selesai, admin mengunggah foto bukti penanganan dari galeri dan mencatat spesifikasi kayu tebangan.",
+      "Setelah tim selesai bekerja di lokasi, segera unggah foto bukti pengerjaan dan catat data kayu hasil tebangan.",
     highlights: [
-      "Pilih status 'Selesai penanganan' dan unggah foto bukti lapangan.",
-      "Isikan jenis kayu (misal: Jati/Mahoni), panjang (m), dan diameter (cm).",
-      "Spesifikasi kayu otomatis dipublikasikan ke katalog UMKM kota.",
+      "Ubah status menjadi 'Selesai Penanganan' dan unggah foto buktinya.",
+      "Masukkan detail kayu (contoh: jenis pohon, panjang, dan diameter).",
+      "Data kayu ini akan langsung tampil di katalog UMKM.",
     ],
   },
   {
     step: 4,
-    title: "Verifikasi tiket klaim & surat jalan digital UMKM",
+    title: "Verifikasi Tiket UMKM",
     icon: Handshake,
-    tag: "Tahap 4 — Verifikasi penjemputan",
-    badgeColor: "bg-white text-[#111111] border-black/10",
+    tag: "Tahap 4: Persiapan Penjemputan",
+    badgeColor: "bg-[#f8f9f5] text-[#19382B] border-black/10",
     description:
-      "Pelaku UMKM yang mengklaim kayu tebangan akan mendatangi titik tebangan membawa tiket klaim digital & surat jalan resmi dinas.",
+      "Pastikan perwakilan UMKM yang datang mengambil kayu membawa tiket digital yang cocok dengan data di sistem.",
     highlights: [
-      "Buka menu navbar 'Serah terima kayu' (/admin/serah-terima).",
-      "Cocokkan kode tiket klaim dan nama usaha UMKM.",
-      "Periksa lokasi tebangan di peta dan identitas penerima.",
+      "Buka menu 'Serah Terima Kayu'.",
+      "Cocokkan kode tiket dan nama usaha UMKM.",
+      "Pastikan lokasi pengambilan dan identitas penerima sudah benar.",
     ],
   },
   {
     step: 5,
-    title: "Serah terima kayu & penutupan laporan resmi",
+    title: "Serah Terima & Selesai",
     icon: CheckCircle,
-    tag: "Tahap 5 — Finalisasi & penutupan",
-    badgeColor: "bg-[#ecefe6] text-[#19382B] border-black/5",
+    tag: "Tahap 5: Finalisasi",
+    badgeColor: "bg-[#f8f9f5] text-[#19382B] border-black/10",
     description:
-      "Petugas menekan tombol 'Verifikasi & serahkan', mengisikan catatan serah terima, dan laporan ditutup secara resmi.",
+      "Selesaikan seluruh rangkaian proses dengan menyerahkan kayu kepada UMKM dan mencatat buktinya.",
     highlights: [
-      "Tekan tombol 'Verifikasi & serahkan' pada tabel serah terima.",
-      "Masukkan catatan penyerahan kayu di lokasi tebangan.",
-      "Status klaim diperbarui menjadi 'Sudah diserahkan' secara final.",
+      "Klik tombol 'Verifikasi & Serahkan' pada tabel.",
+      "Tambahkan catatan sebagai bukti penyerahan kayu di lokasi.",
+      "Status laporan akan langsung diperbarui menjadi 'Selesai' secara permanen.",
     ],
   },
 ];
@@ -98,10 +98,10 @@ export function PanduanAdminClient() {
       {/* Header Banner */}
       <div className="max-w-5xl mx-auto space-y-2">
         <h1 className="text-2xl sm:text-3xl font-bold text-[#111111] tracking-tight">
-          Panduan operasional admin dinas
+          Panduan Operasional Admin
         </h1>
         <p className="text-xs sm:text-sm text-[#111111]/70 font-medium max-w-2xl leading-relaxed">
-          Tata cara pengelolaan aduan pohon rawan, eksekusi lapangan, pencatatan biomassa kayu tebangan, dan verifikasi serah terima kayu UMKM.
+          Panduan lengkap mulai dari memantau laporan warga, mengatur jadwal penanganan, hingga proses serah terima kayu ke UMKM.
         </p>
       </div>
 
@@ -124,14 +124,14 @@ export function PanduanAdminClient() {
                   className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex items-center gap-3 border ${
                     isActive
                       ? "bg-[#19382B] text-white border-[#19382B] shadow-sm"
-                      : "bg-[#f8f9f5] hover:bg-[#ecefe6] text-[#111111] border-black/5"
+                      : "bg-[#f8f9f5] hover:bg-gray-100 text-[#111111] border-black/5"
                   }`}
                 >
                   <div
                     className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
                       isActive
                         ? "bg-white text-[#19382B]"
-                        : "bg-[#ecefe6] text-[#19382B]"
+                        : "bg-[#f8f9f5] text-[#19382B] border border-black/10"
                     }`}
                   >
                     {item.step}
@@ -186,7 +186,7 @@ export function PanduanAdminClient() {
               {currentStep.highlights.map((pt, i) => (
                 <div
                   key={i}
-                  className="flex items-start gap-2.5 p-3 rounded-xl bg-[#ecefe6] border border-black/5 text-xs font-medium text-[#111111]"
+                  className="flex items-start gap-2.5 p-3 rounded-xl bg-[#f8f9f5] border border-black/8 text-xs font-medium text-[#111111]"
                 >
                   <CheckCircle size={16} weight="fill" className="text-[#19382B] shrink-0 mt-0.5" />
                   <span>{pt}</span>

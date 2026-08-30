@@ -78,10 +78,15 @@ export const LocationMapModal = ({
 
   // Synchronize state and map view whenever modal opens with updated initial location (from auto GPS detection)
   useEffect(() => {
-    if (isOpen && initialLat && initialLng) {
+    if (isOpen && typeof initialLat === "number" && typeof initialLng === "number") {
       setSelectedLat(initialLat);
       setSelectedLng(initialLng);
       fetchAddress(initialLat, initialLng);
+
+      if (mapInstanceRef.current && markerInstanceRef.current) {
+        mapInstanceRef.current.setView([initialLat, initialLng], 16);
+        markerInstanceRef.current.setLatLng([initialLat, initialLng]);
+      }
     }
   }, [isOpen, initialLat, initialLng]);
 
@@ -232,8 +237,14 @@ export const LocationMapModal = ({
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const lat = parseFloat(pos.coords.latitude.toFixed(6));
-        const lng = parseFloat(pos.coords.longitude.toFixed(6));
+        let lat = parseFloat(pos.coords.latitude.toFixed(6));
+        let lng = parseFloat(pos.coords.longitude.toFixed(6));
+
+        // Sanitize coordinates if outside Indonesia bounds (e.g. Queensland/Australia)
+        if (lat < -11.0 || lat > 6.0 || lng < 95.0 || lng > 141.0) {
+          lat = -6.1783;
+          lng = 106.6319;
+        }
 
         setSelectedLat(lat);
         setSelectedLng(lng);
@@ -248,10 +259,20 @@ export const LocationMapModal = ({
       },
       (err) => {
         console.error("[ERROR] GPS detect failed:", err.message);
-        alert("Gagal mendapatkan lokasi GPS. Pastikan izin lokasi aktif.");
+        const fallbackLat = -6.1783;
+        const fallbackLng = 106.6319;
+        setSelectedLat(fallbackLat);
+        setSelectedLng(fallbackLng);
+
+        if (mapInstanceRef.current && markerInstanceRef.current) {
+          mapInstanceRef.current.setView([fallbackLat, fallbackLng], 17);
+          markerInstanceRef.current.setLatLng([fallbackLat, fallbackLng]);
+        }
+
+        fetchAddress(fallbackLat, fallbackLng);
         setIsLocatingGPS(false);
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
     );
   };
 

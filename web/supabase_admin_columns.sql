@@ -90,5 +90,8 @@ ADD COLUMN IF NOT EXISTS claimed_by_name TEXT;
 ALTER TABLE public.reports 
 ADD COLUMN IF NOT EXISTS tree_type TEXT;
 
+ALTER TABLE public.reports 
+ADD COLUMN IF NOT EXISTS handover_status TEXT DEFAULT 'WAITING_PICKUP';
+
 -- ── 7. MUAT ULANG CACHE SKEMA POSTGREST SUPABASE ──
 NOTIFY pgrst, 'reload schema';
