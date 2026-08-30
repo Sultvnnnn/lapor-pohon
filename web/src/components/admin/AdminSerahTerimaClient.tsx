@@ -36,7 +36,7 @@ export function AdminSerahTerimaClient({
   // Refresh catalogs data from Supabase
   const refreshCatalogs = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: catData } = await supabase
         .from("biomass_catalogs")
         .select(`
           *,
@@ -45,8 +45,44 @@ export function AdminSerahTerimaClient({
         `)
         .order("created_at", { ascending: false });
 
-      if (!error && data) {
-        setCatalogs(data);
+      const { data: repData } = await supabase
+        .from("reports")
+        .select("*")
+        .or("claimed_by_name.neq.null,status.eq.completed")
+        .order("created_at", { ascending: false });
+
+      if (catData || repData) {
+        const catMap = new Map<string, any>();
+        (catData || []).forEach((c) => {
+          if (c.report_id) catMap.set(c.report_id, c);
+          if (c.id) catMap.set(c.id, c);
+        });
+
+        const merged: any[] = [];
+
+        (catData || []).forEach((c) => {
+          merged.push(c);
+        });
+
+        (repData || []).forEach((r) => {
+          if (!catMap.has(r.id)) {
+            merged.push({
+              id: r.id,
+              report_id: r.id,
+              wood_type: r.tree_type || "Pohon kayu olahan dinas",
+              volume_kg: r.biomass_estimate ? Number(r.biomass_estimate) : 120.0,
+              status: "claimed",
+              claimed_by_name: r.claimed_by_name || "UMKM terdaftar",
+              created_at: r.created_at,
+              updated_at: r.created_at,
+              reports: r,
+              claim_ticket_code: `KLM-2026-TRM-${r.id.slice(0, 4).toUpperCase()}`,
+              handover_status: "WAITING_PICKUP",
+            });
+          }
+        });
+
+        setCatalogs(merged);
       }
     } catch {
       console.log("Error refreshing catalogs");
@@ -62,32 +98,68 @@ export function AdminSerahTerimaClient({
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase
-        .from("biomass_catalogs")
-        .update({
-          handover_status: "COMPLETED",
-          status: "sold_out",
-          handover_at: new Date().toISOString(),
-          handover_notes: handoverNoteInput || "Kayu resmi diserahkan oleh petugas dinas kota.",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", selectedHandoverItem.id);
+      const targetReportId = selectedHandoverItem.report_id || selectedHandoverItem.id;
+      const handoverTime = new Date().toISOString();
+      const notes = handoverNoteInput || "Kayu resmi diserahkan oleh petugas dinas kota.";
 
-      if (!error) {
-        setCatalogs((prev) =>
-          prev.map((item) =>
-            item.id === selectedHandoverItem.id
-              ? {
-                  ...item,
-                  handover_status: "COMPLETED",
-                  status: "sold_out",
-                  handover_at: new Date().toISOString(),
-                  handover_notes: handoverNoteInput || "Kayu resmi diserahkan oleh petugas dinas kota.",
-                }
-              : item
-          )
-        );
+      const handoverPayload = {
+        handover_status: "COMPLETED",
+        status: "sold_out",
+        handover_at: handoverTime,
+        handover_notes: notes,
+        updated_at: handoverTime,
+      };
+
+      // 1. Try to update existing biomass_catalogs row by id OR report_id
+      const { data: updatedData } = await supabase
+        .from("biomass_catalogs")
+        .update(handoverPayload)
+        .or(`id.eq.${selectedHandoverItem.id},report_id.eq.${targetReportId}`)
+        .select();
+
+      // 2. If no existing row was updated, insert a completed row into biomass_catalogs
+      if (!updatedData || updatedData.length === 0) {
+        await supabase
+          .from("biomass_catalogs")
+          .insert({
+            report_id: targetReportId,
+            wood_type: selectedHandoverItem.wood_type || "Pohon kayu olahan dinas",
+            volume_kg: selectedHandoverItem.volume_kg || 100.0,
+            claimed_by: selectedHandoverItem.claimed_by || null,
+            claimed_by_name: selectedHandoverItem.claimed_by_name || "Pengguna UMKM",
+            claimed_by_business_name: selectedHandoverItem.claimed_by_business_name || "Kerajinan Kayu",
+            claimed_by_phone: selectedHandoverItem.claimed_by_phone || null,
+            claim_ticket_code: selectedHandoverItem.claim_ticket_code || `KLM-2026-TRM-${targetReportId.slice(0, 4).toUpperCase()}`,
+            created_at: handoverTime,
+            ...handoverPayload,
+          });
       }
+
+      // 3. Update reports table if report_id exists so report is also marked completed
+      if (targetReportId) {
+        await supabase
+          .from("reports")
+          .update({
+            status: "completed",
+            admin_note: notes,
+          })
+          .eq("id", targetReportId);
+      }
+
+      // 4. Update local state
+      setCatalogs((prev) =>
+        prev.map((item) =>
+          item.id === selectedHandoverItem.id || item.report_id === targetReportId
+            ? {
+                ...item,
+                handover_status: "COMPLETED",
+                status: "sold_out",
+                handover_at: handoverTime,
+                handover_notes: notes,
+              }
+            : item
+        )
+      );
     } catch (e) {
       console.log("Error handover", e);
     } finally {

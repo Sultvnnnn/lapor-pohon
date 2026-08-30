@@ -48,7 +48,7 @@ export function UmkmClaimsClient({
           *,
           reports (*)
         `)
-        .or(`claimed_by.eq.${userId},status.eq.claimed`)
+        .or(`claimed_by.eq.${userId},claimed_by_name.ilike.%${displayName}%`)
         .order("created_at", { ascending: false });
 
       if (catData && catData.length > 0) {
@@ -59,7 +59,10 @@ export function UmkmClaimsClient({
           volume_kg: c.volume_kg || 120.0,
           status: c.status || "claimed",
           claimed_by: c.claimed_by,
-          claimed_by_name: c.profiles?.full_name || displayName,
+          claimed_by_name: c.claimed_by_name || c.profiles?.full_name || displayName,
+          claimed_by_business_name: c.claimed_by_business_name,
+          claimed_by_business_type: c.claimed_by_business_type,
+          claimed_by_phone: c.claimed_by_phone,
           created_at: c.created_at,
           updated_at: c.updated_at,
           reports: c.reports,
@@ -74,7 +77,7 @@ export function UmkmClaimsClient({
         const { data: repData } = await supabase
           .from("reports")
           .select("*")
-          .or(`claimed_by_name.ilike.%${displayName}%,status.eq.completed`)
+          .or(`claimed_by_name.ilike.%${displayName}%`)
           .order("created_at", { ascending: false });
 
         if (repData && repData.length > 0) {

@@ -203,13 +203,15 @@ export const UmkmDashboardClient = ({
       .select("*")
       .order("created_at", { ascending: false });
 
+    const reportsList: ReportItem[] = (repData as ReportItem[]) || [];
     if (repData) {
-      setReports(repData as ReportItem[]);
+      setReports(reportsList);
     }
 
     // 2. Fetch biomass_catalogs with joined report data & profile claims
+    let catData: any[] = [];
     try {
-      const { data: catData, error: catErr } = await supabase
+      const { data, error } = await supabase
         .from("biomass_catalogs")
         .select(`
           *,
@@ -218,28 +220,89 @@ export const UmkmDashboardClient = ({
         `)
         .order("created_at", { ascending: false });
 
-      if (!catErr && catData && catData.length > 0) {
-        const formattedCatalogs: BiomassCatalogItem[] = catData.map((c: any) => ({
+      if (!error && data) {
+        catData = data;
+      }
+    } catch (err) {
+      console.log("Error loading biomass_catalogs", err);
+    }
+
+    // Combine completed/resolved reports with biomass_catalogs entries
+    const completedReports = reportsList.filter(
+      (r) => r.status === "completed" || r.status === "resolved" || !!r.proof_image_url || !!r.claimed_by_name
+    );
+
+    const catByReportId = new Map<string, any>();
+    catData.forEach((c) => {
+      if (c.report_id) catByReportId.set(c.report_id, c);
+      if (c.id) catByReportId.set(c.id, c);
+    });
+
+    const combinedCatalogs: BiomassCatalogItem[] = [];
+    const processedCatIds = new Set<string>();
+
+    completedReports.forEach((r) => {
+      const catRow = catByReportId.get(r.id);
+      if (catRow) {
+        processedCatIds.add(catRow.id);
+        combinedCatalogs.push({
+          id: catRow.id,
+          report_id: catRow.report_id || r.id,
+          wood_type: catRow.wood_type || r.tree_type || "Pohon kayu olahan dinas",
+          volume_kg: catRow.volume_kg || (r.biomass_estimate ? Number(r.biomass_estimate) : 100.0),
+          status: catRow.status || (r.claimed_by_name ? "claimed" : "available"),
+          claimed_by: catRow.claimed_by,
+          claimed_by_name: catRow.claimed_by_name || catRow.profiles?.full_name || r.claimed_by_name || (catRow.claimed_by ? "UMKM terdaftar" : null),
+          claimed_by_business_name: catRow.claimed_by_business_name,
+          claimed_by_business_type: catRow.claimed_by_business_type,
+          claimed_by_phone: catRow.claimed_by_phone,
+          created_at: catRow.created_at || r.created_at,
+          updated_at: catRow.updated_at || r.created_at,
+          reports: catRow.reports || r,
+          claim_ticket_code: catRow.claim_ticket_code || `KLM-2026-TRM-${r.id.slice(0, 4).toUpperCase()}`,
+          handover_status: catRow.handover_status || (catRow.status === "claimed" || r.claimed_by_name ? "WAITING_PICKUP" : "AVAILABLE"),
+        });
+      } else {
+        combinedCatalogs.push({
+          id: r.id,
+          report_id: r.id,
+          wood_type: r.tree_type || "Pohon kayu olahan dinas",
+          volume_kg: r.biomass_estimate ? Number(r.biomass_estimate) : (r.canopy_volume ? Number(r.canopy_volume) * 10 : 120.0),
+          status: r.claimed_by_name ? "claimed" : "available",
+          claimed_by_name: r.claimed_by_name || null,
+          created_at: r.created_at,
+          updated_at: r.created_at,
+          reports: r,
+          claim_ticket_code: `KLM-2026-TRM-${r.id.slice(0, 4).toUpperCase()}`,
+          handover_status: r.claimed_by_name ? "WAITING_PICKUP" : "AVAILABLE",
+        });
+      }
+    });
+
+    // Add any catData entries that weren't matched to completedReports
+    catData.forEach((c) => {
+      if (!processedCatIds.has(c.id)) {
+        combinedCatalogs.push({
           id: c.id,
           report_id: c.report_id,
-          wood_type: c.wood_type || "Pohon kayu olahan",
+          wood_type: c.wood_type || "Pohon kayu olahan dinas",
           volume_kg: c.volume_kg || 100.0,
           status: c.status || "available",
           claimed_by: c.claimed_by,
-          claimed_by_name: c.profiles?.full_name || (c.claimed_by ? "UMKM terdaftar" : null),
+          claimed_by_name: c.claimed_by_name || c.profiles?.full_name || (c.claimed_by ? "UMKM terdaftar" : null),
+          claimed_by_business_name: c.claimed_by_business_name,
+          claimed_by_business_type: c.claimed_by_business_type,
+          claimed_by_phone: c.claimed_by_phone,
           created_at: c.created_at,
           updated_at: c.updated_at,
           reports: c.reports,
-          claim_ticket_code: c.claim_ticket_code || `KLM-2026-${c.id.slice(0, 5).toUpperCase()}`,
+          claim_ticket_code: c.claim_ticket_code || `KLM-2026-TRM-${c.id.slice(0, 4).toUpperCase()}`,
           handover_status: c.handover_status || (c.status === "claimed" ? "WAITING_PICKUP" : "AVAILABLE"),
-        }));
-        setCatalogs(formattedCatalogs);
-      } else {
-        deriveCatalogFromReports(repData as ReportItem[] || []);
+        });
       }
-    } catch {
-      deriveCatalogFromReports(repData as ReportItem[] || []);
-    }
+    });
+
+    setCatalogs(combinedCatalogs);
   };
 
   const deriveCatalogFromReports = (allRep: ReportItem[]) => {
@@ -286,28 +349,47 @@ export const UmkmDashboardClient = ({
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      await supabase
-        .from("biomass_catalogs")
-        .update({
-          claimed_by: user?.id || null,
-          claimed_by_name: displayName || user?.email || "UMKM terdaftar",
-          claimed_by_business_name: businessName || "Kerajinan Kayu Mutiara Jati",
-          claimed_by_business_type: businessType || "Kerajinan kayu",
-          claimed_by_phone: phone || "0812-3456-7890",
-          claim_ticket_code: newTicketCode,
-          handover_status: "WAITING_PICKUP",
-          status: "claimed",
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", catalogItem.id);
+      const claimPayload = {
+        claimed_by: user?.id || null,
+        claimed_by_name: displayName || user?.email || "UMKM terdaftar",
+        claimed_by_business_name: businessName || "Kerajinan Kayu Mutiara Jati",
+        claimed_by_business_type: businessType || "Kerajinan kayu",
+        claimed_by_phone: phone || "0812-3456-7890",
+        claim_ticket_code: newTicketCode,
+        handover_status: "WAITING_PICKUP",
+        status: "claimed",
+        updated_at: new Date().toISOString(),
+      };
 
-      if (catalogItem.report_id) {
+      // 1. Try to update existing biomass_catalogs row by id OR report_id
+      const targetReportId = catalogItem.report_id || catalogItem.id;
+      const { data: updatedData } = await supabase
+        .from("biomass_catalogs")
+        .update(claimPayload)
+        .or(`id.eq.${catalogItem.id},report_id.eq.${targetReportId}`)
+        .select();
+
+      // 2. If no existing row was updated, insert a new row into biomass_catalogs
+      if (!updatedData || updatedData.length === 0) {
+        await supabase
+          .from("biomass_catalogs")
+          .insert({
+            report_id: targetReportId,
+            wood_type: catalogItem.wood_type || catalogItem.reports?.tree_type || "Pohon kayu olahan dinas",
+            volume_kg: catalogItem.volume_kg || 100.0,
+            created_at: new Date().toISOString(),
+            ...claimPayload,
+          });
+      }
+
+      // 3. Update reports table if report_id exists
+      if (targetReportId) {
         await supabase
           .from("reports")
           .update({
-            claimed_by_name: displayName,
+            claimed_by_name: displayName || user?.email || "UMKM terdaftar",
           })
-          .eq("id", catalogItem.report_id);
+          .eq("id", targetReportId);
       }
 
       showToast(
@@ -318,7 +400,7 @@ export const UmkmDashboardClient = ({
 
       setCatalogs((prev) =>
         prev.map((c) =>
-          c.id === catalogItem.id
+          c.id === catalogItem.id || c.report_id === targetReportId
             ? {
                 ...c,
                 status: "claimed",
@@ -333,7 +415,7 @@ export const UmkmDashboardClient = ({
 
       setReports((prev) =>
         prev.map((r) =>
-          r.id === catalogItem.report_id ? { ...r, claimed_by_name: displayName } : r
+          r.id === targetReportId ? { ...r, claimed_by_name: displayName } : r
         )
       );
 
