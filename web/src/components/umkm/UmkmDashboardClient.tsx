@@ -24,6 +24,8 @@ import {
   X,
   CircleNotch,
   ArrowCounterClockwise,
+  CaretDown,
+  Check,
 } from "@phosphor-icons/react";
 import { parseCoordinates } from "../admin/AdminDashboardClient";
 
@@ -80,6 +82,7 @@ export const UmkmDashboardClient = ({
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [userAddressName, setUserAddressName] = useState<string | null>(null);
   const [radiusKm, setRadiusKm] = useState<number | null>(null);
+  const [isRadiusDropdownOpen, setIsRadiusDropdownOpen] = useState(false);
   const [isDetectingLocation, setIsDetectingLocation] = useState(false);
   const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
 
@@ -631,23 +634,76 @@ export const UmkmDashboardClient = ({
                 Filter:
               </span>
 
-              <select
-                value={radiusKm === null ? "all" : String(radiusKm)}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setRadiusKm(val === "all" ? null : Number(val));
-                }}
-                className="bg-[#f8f9f5] border border-black/10 text-xs font-bold text-[#111111] rounded-full px-3.5 py-1.5 focus:outline-none focus:border-[#19382B] cursor-pointer shrink-0"
-              >
-                <option value="all">Semua wilayah</option>
-                <option value="0.5">Radius 500 meter</option>
-                <option value="1">Radius 1 kilometer</option>
-                <option value="2">Radius 2 kilometer</option>
-                <option value="5">Radius 5 kilometer</option>
-                <option value="10">Radius 10 kilometer</option>
-                <option value="25">Radius 25 kilometer</option>
-                <option value="50">Radius 50 kilometer</option>
-              </select>
+              {/* Custom Radius Filter Dropdown */}
+              <div className="relative shrink-0 font-sans">
+                <button
+                  type="button"
+                  onClick={() => setIsRadiusDropdownOpen(!isRadiusDropdownOpen)}
+                  className="bg-[#f8f9f5] border border-black/10 text-xs font-bold text-[#111111] rounded-full px-3.5 py-1.5 focus:outline-none focus:border-[#19382B] cursor-pointer shrink-0 flex items-center gap-1.5 hover:bg-[#ecefe6]/60 transition-colors shadow-2xs"
+                >
+                  <span>
+                    {[
+                      { value: null, label: "Semua wilayah" },
+                      { value: 0.5, label: "Radius 500 meter" },
+                      { value: 1, label: "Radius 1 kilometer" },
+                      { value: 2, label: "Radius 2 kilometer" },
+                      { value: 5, label: "Radius 5 kilometer" },
+                      { value: 10, label: "Radius 10 kilometer" },
+                      { value: 25, label: "Radius 25 kilometer" },
+                      { value: 50, label: "Radius 50 kilometer" },
+                    ].find(o => o.value === radiusKm)?.label || "Semua wilayah"}
+                  </span>
+                  <CaretDown size={13} weight="bold" className={`text-gray-500 transition-transform duration-200 ${isRadiusDropdownOpen ? "rotate-180 text-[#19382B]" : ""}`} />
+                </button>
+
+                <AnimatePresence>
+                  {isRadiusDropdownOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-30"
+                        onClick={() => setIsRadiusDropdownOpen(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, y: -5, scale: 0.98 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -5, scale: 0.98 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute left-0 top-full mt-1.5 z-40 bg-white border border-black/10 rounded-2xl shadow-xl p-1.5 space-y-1 font-sans w-48 max-h-56 overflow-y-auto"
+                      >
+                        {[
+                          { value: null, label: "Semua wilayah" },
+                          { value: 0.5, label: "Radius 500 meter" },
+                          { value: 1, label: "Radius 1 kilometer" },
+                          { value: 2, label: "Radius 2 kilometer" },
+                          { value: 5, label: "Radius 5 kilometer" },
+                          { value: 10, label: "Radius 10 kilometer" },
+                          { value: 25, label: "Radius 25 kilometer" },
+                          { value: 50, label: "Radius 50 kilometer" },
+                        ].map((opt) => (
+                          <button
+                            key={String(opt.value)}
+                            type="button"
+                            onClick={() => {
+                              setRadiusKm(opt.value);
+                              setIsRadiusDropdownOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-colors cursor-pointer ${
+                              radiusKm === opt.value
+                                ? "bg-[#19382B] text-white font-extrabold"
+                                : "text-[#111111] hover:bg-[#f8f9f5]"
+                            }`}
+                          >
+                            <span>{opt.label}</span>
+                            {radiusKm === opt.value && (
+                              <Check size={14} weight="bold" className="text-[#88d937]" />
+                            )}
+                          </button>
+                        ))}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+              </div>
 
               <button
                 type="button"
