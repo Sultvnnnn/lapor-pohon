@@ -1,10 +1,49 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowUpRight, Scan, Leaf, Recycle, Tree, Storefront } from "@phosphor-icons/react";
+import { createClient } from "@/lib/supabase/client";
 
 export const FeaturesSection = () => {
+  const supabase = createClient();
+  const [kewajibanTanam, setKewajibanTanam] = useState<number>(6);
+  const [totalPlanted, setTotalPlanted] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchDynamicStats = async () => {
+      try {
+        // Fetch total reports count from Supabase
+        const { count: reportsCount } = await supabase
+          .from("reports")
+          .select("*", { count: "exact", head: true });
+
+        const count = reportsCount ?? 0;
+        const computedObligation = count > 0 ? count * 2 : 6;
+        setKewajibanTanam(computedObligation);
+
+        // Fetch total trees planted from tree_plantings
+        const { data: plantings } = await supabase
+          .from("tree_plantings")
+          .select("tree_count");
+
+        if (plantings) {
+          const sum = plantings.reduce((acc, item) => acc + (item.tree_count || 0), 0);
+          setTotalPlanted(sum);
+        }
+      } catch (e) {
+        console.error("FeaturesSection stats error:", e);
+      }
+    };
+
+    fetchDynamicStats();
+  }, []);
+
+  const progressPercent = kewajibanTanam > 0
+    ? Math.min(100, Math.round((totalPlanted / kewajibanTanam) * 100))
+    : 0;
+
   return (
     <section id="fitur" className="py-16 sm:py-24 bg-white overflow-hidden font-sans border-t border-black/5">
       <div className="w-full max-w-[1300px] mx-auto px-4 sm:px-8 lg:px-12">
@@ -95,10 +134,6 @@ export const FeaturesSection = () => {
                     Kami memastikan kayu tebangan tidak terbuang sia-sia, melainkan disalurkan langsung ke UMKM lokal untuk diolah menjadi karya bernilai.
                   </p>
                 </div>
-
-                <a href="#alur" className="w-12 h-12 rounded-full border border-white/30 flex items-center justify-center shrink-0 group-hover:bg-[#88d937] group-hover:border-[#88d937] group-hover:text-[#111111] text-white transition-all">
-                  <ArrowUpRight size={20} weight="bold" />
-                </a>
               </div>
 
               {/* Decorative icon */}
@@ -113,16 +148,23 @@ export const FeaturesSection = () => {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.7, delay: 0.3 }}
-              className="flex-1 bg-[#ecefe6] border border-black/5 rounded-2xl p-8 sm:p-10 flex flex-col sm:flex-row items-center gap-8 group shadow-sm"
+              className="flex-1 bg-[#ecefe6] border border-black/5 rounded-2xl p-8 sm:p-10 flex flex-col sm:flex-row items-center gap-8 group shadow-sm relative overflow-hidden cursor-pointer hover:border-[#19382B]/30 transition-all"
             >
+              <Link href="/penanaman" className="absolute inset-0 z-20" />
               <div className="flex-1 space-y-4">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
-                    <Tree size={16} className="text-[#19382B]" weight="fill" />
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
+                      <Tree size={16} className="text-[#19382B]" weight="fill" />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[#111111]">
+                      Transparansi Publik
+                    </span>
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-[#111111]">
-                    Transparansi Publik
-                  </span>
+
+                  <div className="w-10 h-10 rounded-full border border-black/15 flex items-center justify-center shrink-0 group-hover:bg-[#19382B] group-hover:border-[#19382B] group-hover:text-white text-[#111111] transition-all">
+                    <ArrowUpRight size={18} weight="bold" />
+                  </div>
                 </div>
                 <h3 className="text-2xl sm:text-3xl font-bold text-[#111111] leading-tight">
                   Pantau Penanaman Kembali
@@ -132,17 +174,22 @@ export const FeaturesSection = () => {
                 </p>
               </div>
 
-              {/* Visual Data Card */}
+              {/* Dynamic Visual Data Card (Total Laporan x 2) */}
               <div className="w-full sm:w-auto bg-white p-5 rounded-2xl shadow-sm border border-black/5 shrink-0 flex flex-col gap-4">
                 <div className="flex justify-between items-end gap-8">
                   <div>
                     <span className="text-[10px] text-[#111111]/40 font-bold uppercase tracking-widest">Kewajiban Tanam</span>
-                    <div className="text-2xl font-bold text-[#111111]">1,240 <span className="text-xs font-normal text-[#111111]/50">pohon</span></div>
+                    <div className="text-2xl font-bold text-[#111111]">
+                      {kewajibanTanam.toLocaleString("id-ID")} <span className="text-xs font-normal text-[#111111]/50">pohon</span>
+                    </div>
                   </div>
                   <Leaf size={24} className="text-[#19382B]" weight="duotone" />
                 </div>
                 <div className="w-full h-2 bg-[#ecefe6] rounded-full overflow-hidden">
-                  <div className="w-[65%] h-full bg-[#19382B] rounded-full relative" />
+                  <div
+                    className="h-full bg-[#19382B] rounded-full relative transition-all duration-700"
+                    style={{ width: `${progressPercent}%` }}
+                  />
                 </div>
               </div>
             </motion.div>

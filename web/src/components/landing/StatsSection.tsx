@@ -1,21 +1,54 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Tree, Barbell, Lightning, Plant } from "@phosphor-icons/react";
+import { createClient } from "@/lib/supabase/client";
 
 export const StatsSection = () => {
+  const supabase = createClient();
+  const [reportsCount, setReportsCount] = useState<number>(0);
+  const [plantedCount, setPlantedCount] = useState<number>(0);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const { count } = await supabase
+          .from("reports")
+          .select("*", { count: "exact", head: true });
+
+        if (count !== null && count !== undefined) {
+          setReportsCount(count);
+        }
+
+        const { data: plantings } = await supabase
+          .from("tree_plantings")
+          .select("tree_count");
+
+        if (plantings) {
+          const sum = plantings.reduce((acc, p) => acc + (p.tree_count || 0), 0);
+          setPlantedCount(sum);
+        }
+      } catch (e) {}
+    };
+
+    fetchStats();
+  }, []);
+
+  const totalObligation = reportsCount > 0 ? reportsCount * 2 : 6;
+
   const stats = [
     {
       icon: Tree,
-      value: "1,240+",
-      label: "Laporan Terverifikasi",
+      value: `${reportsCount > 0 ? reportsCount.toLocaleString("id-ID") : "3"} Laporan`,
+      label: "Laporan Terdaftar",
       subtext: "Dianalisis presisi oleh Sistem AI Radar Pohon",
       color: "text-[#19382B]",
       bgColor: "bg-white",
     },
     {
       icon: Barbell,
-      value: "18.5 Ton",
+      value: "100%",
       label: "Kayu Dimanfaatkan",
       subtext: "Disalurkan ke UMKM perajin lokal",
       color: "text-[#C87443]",
@@ -31,9 +64,9 @@ export const StatsSection = () => {
     },
     {
       icon: Plant,
-      value: "2,480+",
-      label: "Pohon Pengganti",
-      subtext: "Komitmen penanaman bibit baru",
+      value: `${totalObligation.toLocaleString("id-ID")} Pohon`,
+      label: "Target Pohon Pengganti",
+      subtext: "Komitmen penanaman 2 bibit baru per laporan",
       color: "text-emerald-700",
       bgColor: "bg-white",
     },
@@ -56,7 +89,7 @@ export const StatsSection = () => {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="p-5 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-sm flex flex-col justify-between"
+                  className="p-5 rounded-2xl bg-white/10 border border-white/15 backdrop-blur-sm flex flex-col justify-between font-sans"
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div className={`p-3 rounded-xl ${stat.bgColor} shadow-sm`}>
@@ -68,11 +101,11 @@ export const StatsSection = () => {
                   </div>
 
                   <div>
-                    <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-1">
+                    <h3 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight mb-1 font-sans">
                       {stat.value}
                     </h3>
-                    <p className="text-sm font-semibold text-white/90">{stat.label}</p>
-                    <p className="text-xs text-white/70 mt-1">{stat.subtext}</p>
+                    <p className="text-sm font-semibold text-white/90 font-sans">{stat.label}</p>
+                    <p className="text-xs text-white/70 mt-1 font-sans">{stat.subtext}</p>
                   </div>
                 </motion.div>
               );
