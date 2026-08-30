@@ -16,3 +16,8 @@ api/.env
 .DS_Store
 .vscode/
 *.log
+
+# Proposal & Word Documents
+*.docx
+~$*.docx
+~WRL*.tmp
