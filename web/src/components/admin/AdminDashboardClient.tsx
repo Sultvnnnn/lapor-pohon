@@ -1923,11 +1923,29 @@ export const AdminDashboardClient = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-stretch">
                       {/* Visual Deteksi AI */}
                       <div className="flex flex-col space-y-1.5">
-                        <div className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                        <div
+                          onClick={() => {
+                            const boxes = parseBoundingBoxes(selectedReport);
+                            setPreviewZoomImage(selectedReport.image_url);
+                            setPreviewZoomBoxes(boxes);
+                            setPreviewZoomRiskScore(selectedReport.risk_score);
+                          }}
+                          className="flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-500 cursor-pointer"
+                        >
                           <span>Klik untuk perbesar foto</span>
+                          <span className="text-[#19382B] text-[9px] font-extrabold">🔍 Perbesar</span>
                         </div>
 
-                        <div>
+                        <div
+                          onClick={() => {
+                            const boxes = parseBoundingBoxes(selectedReport);
+                            setPreviewZoomImage(selectedReport.image_url);
+                            setPreviewZoomBoxes(boxes);
+                            setPreviewZoomRiskScore(selectedReport.risk_score);
+                          }}
+                          className="rounded-2xl overflow-hidden border border-black/10 bg-black/5 shadow-xs h-48 sm:h-52 cursor-pointer relative group flex-1"
+                          title="Klik untuk memperbesar foto"
+                        >
                           {(() => {
                             const boxes = parseBoundingBoxes(selectedReport);
                             return (

@@ -83,6 +83,38 @@ export const DashboardSidebar = ({
 
         {/* ── Navigation Links ── */}
         <nav className="flex flex-col gap-3 w-full items-center">
+          {/* Landing Page (Semua Role) */}
+          <div
+            className="relative flex items-center justify-center"
+            onMouseEnter={() => setHoveredItem("landing")}
+            onMouseLeave={() => setHoveredItem(null)}
+          >
+            <Link
+              href="/?from=dashboard"
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+                pathname === "/"
+                  ? "bg-[#19382B] text-white shadow-sm"
+                  : "text-[#111111]/70 hover:bg-[#ecefe6] hover:text-[#19382B] hover:scale-105"
+              }`}
+            >
+              <House size={19} weight={pathname === "/" ? "fill" : "regular"} />
+            </Link>
+
+            <AnimatePresence>
+              {hoveredItem === "landing" && (
+                <motion.div
+                  initial={{ opacity: 0, x: -8, scale: 0.92 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  exit={{ opacity: 0, x: -8, scale: 0.92 }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                  className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-[#19382B] text-white px-3.5 py-2 rounded-xl shadow-sm text-xs font-bold whitespace-nowrap z-[9999] pointer-events-none border border-white/10"
+                >
+                  <div className="absolute top-1/2 -left-1.5 -translate-y-1/2 w-0 h-0 border-y-[5px] border-y-transparent border-r-[7px] border-r-[#19382B]" />
+                  <span>Beranda</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Dashboard / Katalog (Khusus Warga & UMKM, Admin menggunakan /admin) */}
           {!isAdmin && (
@@ -430,6 +462,19 @@ export const DashboardNavbar = ({
             </div>
 
             <div className="flex flex-col gap-1 pt-1">
+              {/* Landing Page (Semua Role) */}
+              <Link
+                href="/?from=dashboard"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors ${
+                  pathname === "/"
+                    ? "bg-[#19382B] text-white shadow-sm"
+                    : "text-[#111111]/80 hover:bg-black/5 hover:text-[#111111]"
+                }`}
+              >
+                <House size={16} weight="bold" />
+                <span>Beranda</span>
+              </Link>
               {!isAdmin && (
                 <Link
                   href="/dashboard"

@@ -1169,7 +1169,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
                     <div className="bg-[#f8f9f5] border border-black/5 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl text-center sm:text-left space-y-0.5">
                       <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#111111]/40 truncate">
-                        Skor Risiko AI
+                        Tingkat Risiko
                       </p>
                       <p className="text-sm sm:text-xl font-extrabold text-[#19382B] whitespace-nowrap">
                         {submittedReport.riskScore <= 1
@@ -1181,7 +1181,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
                     <div className="bg-[#f8f9f5] border border-black/5 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl text-center sm:text-left space-y-0.5">
                       <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#111111]/40 truncate">
-                        Volume Kanopi
+                        Kanopi
                       </p>
                       <p className="text-sm sm:text-xl font-extrabold text-[#19382B] whitespace-nowrap">
                         {submittedReport.canopyVolume} <span className="text-[10px] sm:text-xs font-normal text-[#111111]/50">m³</span>
@@ -1190,7 +1190,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
 
                     <div className="bg-[#f8f9f5] border border-black/5 p-2.5 sm:p-4 rounded-xl sm:rounded-2xl text-center sm:text-left space-y-0.5">
                       <p className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[#111111]/40 truncate">
-                        Biomassa Kayu
+                        Biomassa
                       </p>
                       <p className="text-sm sm:text-xl font-extrabold text-[#19382B] whitespace-nowrap">
                         {submittedReport.biomassEstimate} <span className="text-[10px] sm:text-xs font-normal text-[#111111]/50">kg</span>
@@ -1201,8 +1201,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   {/* Bounding Box Image Visualizer (Gambar di bagian bawah) */}
                   <div className="space-y-2">
                     <p className="text-xs font-bold uppercase tracking-wider text-[#111111]/50 flex items-center justify-between">
-                      <span>Visualisasi Deteksi Objek ({submittedReport.detections} Objek Terdeteksi)</span>
-                      <span className="text-[#19382B] text-[10px] font-extrabold">🔍 Klik Perbesar</span>
+                      <span>Hasil Analisis (Ketuk Untuk Perbesar)</span>
                     </p>
                     <div
                       onClick={() => {
@@ -1220,7 +1219,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                       />
                       <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1 pointer-events-none">
                         <Eye size={16} weight="bold" />
-                        <span>Klik Perbesar</span>
+                        <span>Perbesar</span>
                       </div>
                     </div>
                   </div>
@@ -1240,7 +1239,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                   className="flex-1 bg-[#19382B] text-white hover:bg-[#234A39] py-3 rounded-full text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2"
                 >
                   <Camera size={16} weight="bold" />
-                  <span>Potret & Lapor Pohon Lain</span>
+                  <span>Lapor Pohon Lainnya</span>
                 </button>
                 <button
                   type="button"
@@ -1326,7 +1325,7 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                             </div>
 
                             {/* Cycling Text Messages */}
-                            <div className="space-y-1 text-white">
+                            <div className="text-white">
                               <AnimatePresence mode="wait">
                                 <motion.h4
                                   key={loadingMessageIndex}
@@ -1339,10 +1338,6 @@ export const ReportForm = ({ onReportSubmitted }: ReportFormProps = {}) => {
                                   {loadingMessages[loadingMessageIndex]}
                                 </motion.h4>
                               </AnimatePresence>
-
-                              <p className="text-[11px] text-white/80 font-semibold drop-shadow-xs">
-                                {submitStepLabels[submitStep] || "Sistem AI sedang memproses foto..."}
-                              </p>
                             </div>
                           </div>
                         )}
