@@ -1176,13 +1176,13 @@ export const AdminDashboardClient = ({
                   }`}
               >
                 <MapTrifold size={16} weight="bold" />
-                <span>Peta Sebaran Pohon Rawan</span>
+                <span>Peta Sebaran</span>
               </button>
             </div>
           </div>
 
           {/* Row 2: Unified Controls & Filter Bar — 1 Single Horizontal Row (Icon Reload + Search + Filter Data) */}
-          <div className="flex items-center gap-2.5 overflow-x-auto pb-1 pt-1.5 border-t border-gray-100 text-xs scrollbar-none overflow-y-visible">
+          <div className="flex items-center gap-2.5 overflow-x-auto pb-2.5 pt-1.5 border-t border-gray-100 text-xs custom-horizontal-scrollbar overflow-y-visible">
             {/* 1. Reload Button (Dua Mode: Text di Desktop, Icon di Mobile) */}
             <button
               type="button"
@@ -2521,7 +2521,7 @@ export const AdminDashboardClient = ({
                       <span className="text-[10px] font-bold text-[#111111]/50 block">Nama Usaha UMKM:</span>
                       <strong className="text-[#19382B] font-black text-xs flex items-center gap-1">
                         <span>🏢</span>
-                        <span>{selectedHandoverItem.claimed_by_business_name || "Kerajinan Kayu Mutiara Jati"}</span>
+                        <span>{selectedHandoverItem.claimed_by_business_name || selectedHandoverItem.claimed_by_name || "UMKM Terdaftar"}</span>
                       </strong>
                       <span className="text-[11px] font-bold text-[#111111] block pt-0.5">
                         Penanggung Jawab: {selectedHandoverItem.claimed_by_name || "Pengguna UMKM"}

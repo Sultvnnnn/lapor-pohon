@@ -188,7 +188,53 @@ export function PanduanUmkmClient() {
         </div>
       </div>
 
-      {/* ── 3. Call to Action ── */}
+      {/* ── 3. Panduan Lengkap Pengisian Profil & Detail Usaha UMKM ── */}
+      <div className="bg-[#f8f9f5] border border-black/8 rounded-2xl p-5 sm:p-6 space-y-4 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#19382B] text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
+            <Storefront size={20} weight="fill" />
+          </div>
+          <div>
+            <h3 className="font-bold text-sm sm:text-base text-[#111111] leading-snug">
+              Cara Melengkapi Detail &amp; Profil Usaha UMKM
+            </h3>
+            <p className="text-xs text-gray-500 font-medium">
+              Lengkapi data profil usaha Anda agar nama usaha tercetak otomatis pada Tiket Digital dan Surat Jalan.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+          <div className="bg-white border border-black/5 rounded-xl p-3.5 space-y-1.5 shadow-2xs">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#19382B] block">
+              1. Akses Ikon Profil
+            </span>
+            <p className="text-xs text-gray-600 font-medium leading-relaxed">
+              Klik tombol avatar / ikon profil lingkaran pengguna pada navigasi aplikasi di sebelah kiri atau atas.
+            </p>
+          </div>
+
+          <div className="bg-white border border-black/5 rounded-xl p-3.5 space-y-1.5 shadow-2xs">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#19382B] block">
+              2. Isi Formulir Profil Usaha
+            </span>
+            <p className="text-xs text-gray-600 font-medium leading-relaxed">
+              Isikan <strong>Nama Usaha</strong>, <strong>Jenis Olahan Kayu</strong> (seperti mebel atau kerajinan), dan <strong>Nomor WhatsApp</strong> aktif.
+            </p>
+          </div>
+
+          <div className="bg-white border border-black/5 rounded-xl p-3.5 space-y-1.5 shadow-2xs">
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-[#19382B] block">
+              3. Simpan Profil Usaha
+            </span>
+            <p className="text-xs text-gray-600 font-medium leading-relaxed">
+              Tekan tombol <strong>Simpan Profil</strong>. Nama usaha Anda akan otomatis langsung muncul di Dashboard dan Tiket Klaim.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── 4. Call to Action ── */}
       <div className="bg-[#19382B] text-white rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between gap-6 shadow-sm">
         <div className="space-y-1.5 text-center sm:text-left">
           <h3 className="text-lg sm:text-xl font-bold text-white">

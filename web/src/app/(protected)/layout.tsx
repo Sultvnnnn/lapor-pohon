@@ -40,13 +40,13 @@ export default async function ProtectedLayout({
       {/* Desktop Sidebar (visible on md: 768px+) */}
       <DashboardSidebar userEmail={user.email} userRole={normalizedRole} />
 
-      {/* Mobile Top Header (sticky on top-4, identical to landing page) */}
-      <div className="md:hidden w-full sticky top-4 z-30 pt-2 pb-1 mobile-header-wrapper">
+      {/* Mobile Top Header */}
+      <div className="md:hidden w-full sticky top-4 z-40 px-3 pt-2 pb-1 mobile-header-wrapper">
         <DashboardNavbar userEmail={user.email} userRole={normalizedRole} />
       </div>
 
       {/* Main Content Area */}
-      <main className="flex-1 min-w-0 max-w-[1300px] w-full mx-auto px-3 sm:px-8 lg:px-12 py-4 sm:py-8">
+      <main className="flex-1 min-w-0 max-w-[1300px] w-full mx-auto px-3.5 sm:px-8 lg:px-12 pt-7 sm:pt-8 pb-8 sm:pb-12">
         {children}
       </main>
     </div>

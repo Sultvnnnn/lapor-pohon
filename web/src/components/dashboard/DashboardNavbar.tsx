@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -397,8 +397,12 @@ export const DashboardNavbar = ({
   const isAdmin = normalizedRole === "admin";
   const isUmkm = normalizedRole === "umkm" || normalizedRole.includes("umkm");
 
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
   return (
-    <header className="sticky top-4 z-30 w-full px-4 sm:px-6 flex flex-col items-center pointer-events-none font-sans md:hidden relative">
+    <header className="w-full flex flex-col items-center pointer-events-none font-sans relative">
       <nav className="pointer-events-auto w-full max-w-[1100px] bg-white/95 backdrop-blur-md border border-black/10 text-[#111111] rounded-full p-1.5 pl-3 pr-2 flex items-center justify-between gap-2 transition-all shadow-sm">
         <Link
           href={isUmkm ? "/dashboard" : isAdmin ? "/admin" : "/?from=dashboard"}
@@ -444,21 +448,28 @@ export const DashboardNavbar = ({
                   setIsMobileMenuOpen(false);
                 }
               }}
-              className={`flex items-center gap-3 p-3 rounded-xl bg-white/70 border border-black/5 transition-all ${
-                isUmkm ? "hover:bg-[#19382B]/5 cursor-pointer" : ""
+              className={`flex items-center justify-between gap-3 p-3 rounded-xl bg-[#f8f9f5] border border-black/10 transition-all ${
+                isUmkm ? "hover:bg-[#19382B]/10 cursor-pointer active:scale-98" : ""
               }`}
             >
-              <div className="w-8 h-8 rounded-full bg-[#19382B] text-white flex items-center justify-center text-xs font-bold uppercase shrink-0">
-                {userEmail ? userEmail[0] : "U"}
+              <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
+                <div className="w-8 h-8 rounded-full bg-[#19382B] text-[#88d937] flex items-center justify-center text-xs font-bold uppercase shrink-0">
+                  {userEmail ? userEmail[0] : "U"}
+                </div>
+                <div className="overflow-hidden min-w-0 flex-1">
+                  <p className="font-semibold text-xs text-[#111111] truncate">
+                    {userEmail || "Pengguna"}
+                  </p>
+                  <p className="text-[10px] text-[#19382B] font-bold">
+                    {isUmkm ? "Kelola profil usaha UMKM" : `Peran: ${normalizedRole || "Warga"}`}
+                  </p>
+                </div>
               </div>
-              <div className="overflow-hidden min-w-0 flex-1">
-                <p className="font-semibold text-xs text-[#111111] truncate">
-                  {userEmail || "Pengguna"}
-                </p>
-                <p className="text-[10px] text-[#19382B] font-medium">
-                  {isUmkm ? "Kelola profil usaha UMKM" : `Peran: ${normalizedRole || "Warga"}`}
-                </p>
-              </div>
+              {isUmkm && (
+                <span className="bg-[#19382B] text-[#88d937] text-[10px] font-extrabold px-2.5 py-1 rounded-full shrink-0 shadow-2xs border border-[#88d937]/30">
+                  Ubah Profil
+                </span>
+              )}
             </div>
 
             <div className="flex flex-col gap-1 pt-1">

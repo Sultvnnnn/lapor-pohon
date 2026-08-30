@@ -378,7 +378,7 @@ export function AdminSerahTerimaClient({
                   <div className="space-y-1 text-xs">
                     <div className="font-bold text-[#19382B] flex items-center gap-1.5">
                       <Storefront size={14} className="shrink-0 text-[#19382B]" />
-                      <span>{item.claimed_by_business_name || "Kerajinan Kayu Mutiara Jati"}</span>
+                      <span>{item.claimed_by_business_name || item.claimed_by_name || "UMKM Terdaftar"}</span>
                     </div>
                     <div className="text-[11px] text-[#111111]/70">
                       Pemilik: {item.claimed_by_name || "Pengguna UMKM"} • WA: {item.claimed_by_phone || "0812-3456-7890"}

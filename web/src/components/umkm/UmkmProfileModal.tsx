@@ -5,11 +5,23 @@ import { motion } from "framer-motion";
 import { Storefront, X } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 
+import { createPortal } from "react-dom";
+
 interface UmkmProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   userEmail?: string;
 }
+
+const ClientPortal = ({ children }: { children: React.ReactNode }) => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
+  return createPortal(children, document.body);
+};
 
 export function UmkmProfileModal({
   isOpen,
@@ -17,9 +29,9 @@ export function UmkmProfileModal({
   userEmail,
 }: UmkmProfileModalProps) {
   const supabase = createClient();
-  const [businessName, setBusinessName] = useState("Kerajinan Kayu Mutiara Jati");
-  const [businessType, setBusinessType] = useState("Kerajinan Kayu & Ukir");
-  const [phone, setPhone] = useState("0812-3456-7890");
+  const [businessName, setBusinessName] = useState("");
+  const [businessType, setBusinessType] = useState("");
+  const [phone, setPhone] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -101,7 +113,8 @@ export function UmkmProfileModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md font-sans pointer-events-auto">
+    <ClientPortal>
+      <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md font-sans pointer-events-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -200,5 +213,6 @@ export function UmkmProfileModal({
         </form>
       </motion.div>
     </div>
+    </ClientPortal>
   );
 }

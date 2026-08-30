@@ -145,3 +145,24 @@ body.modal-open header.sticky,
 body.modal-open .mobile-header-wrapper {
   display: none !important;
 }
+
+/* Custom visible horizontal scrollbar for filter bars - Ultra Thin & Subtle Minimalist */
+.custom-horizontal-scrollbar::-webkit-scrollbar {
+  height: 2px !important;
+  display: block !important;
+}
+.custom-horizontal-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04) !important;
+  border-radius: 9999px !important;
+}
+.custom-horizontal-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(25, 56, 43, 0.4) !important;
+  border-radius: 9999px !important;
+}
+.custom-horizontal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(25, 56, 43, 0.7) !important;
+}
+.custom-horizontal-scrollbar {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(25, 56, 43, 0.4) rgba(0, 0, 0, 0.04) !important;
+}

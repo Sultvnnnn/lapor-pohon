@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { SemarangRiskMap, ReportItem } from "./SemarangRiskMap";
 import { UmkmReportModal } from "./UmkmReportModal";
+import { UmkmProfileModal } from "./UmkmProfileModal";
 import { ReportDetailModal } from "./ReportDetailModal";
 import { WoodCatalogCard, BiomassCatalogItem } from "./WoodCatalogCard";
 import { LocationMapModal } from "../dashboard/LocationMapModal";
@@ -41,6 +42,7 @@ export const UmkmDashboardClient = ({
   const [reports, setReports] = useState<ReportItem[]>(initialReports);
   const [catalogs, setCatalogs] = useState<BiomassCatalogItem[]>([]);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [selectedReportDetail, setSelectedReportDetail] = useState<ReportItem | null>(null);
 
   const [claimingId, setClaimingId] = useState<string | null>(null);
@@ -85,9 +87,9 @@ export const UmkmDashboardClient = ({
   const [activeTab, setActiveTab] = useState<"katalog" | "peta" | "penindakan">("katalog");
 
   // Data Profil Usaha UMKM (Nama Usaha, Jenis Usaha, Telepon)
-  const [businessName, setBusinessName] = useState<string>("Kerajinan Kayu Mutiara Jati");
-  const [businessType, setBusinessType] = useState<string>("Kerajinan Kayu & Ukir");
-  const [phone, setPhone] = useState<string>("0812-3456-7890");
+  const [businessName, setBusinessName] = useState<string>("");
+  const [businessType, setBusinessType] = useState<string>("");
+  const [phone, setPhone] = useState<string>("");
   const [confirmClaimItem, setConfirmClaimItem] = useState<BiomassCatalogItem | null>(null);
 
   useEffect(() => {
@@ -570,14 +572,16 @@ export const UmkmDashboardClient = ({
         className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 sm:gap-8"
       >
         <div className="space-y-1.5 min-w-0 max-w-md">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
-            <span className="inline-flex items-center gap-1.5 bg-[#ecefe6] text-[#19382B] px-3 py-1 rounded-full text-[10px] font-bold border border-black/5">
-              <Storefront size={13} weight="fill" />
-              <span>{displayName}</span>
-            </span>
-          </div>
+          {displayName && (
+            <div className="flex items-center gap-2 flex-wrap mb-1">
+              <span className="inline-flex items-center gap-1.5 bg-[#ecefe6] text-[#19382B] px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold border border-black/5">
+                <Storefront size={13} weight="fill" />
+                <span>{displayName}</span>
+              </span>
+            </div>
+          )}
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#111111] leading-tight">
-            Dashboard UMKM <span className="font-serif italic font-medium text-[#19382B]">{businessName}</span>
+            Dashboard UMKM {businessName ? <span className="font-serif italic font-medium text-[#19382B]">{businessName}</span> : null}
           </h1>
           <p className="text-xs sm:text-sm text-[#111111]/60 leading-relaxed font-medium">
             Dapatkan pasokan kayu tebangan gratis untuk bahan baku usaha Anda.
@@ -620,8 +624,8 @@ export const UmkmDashboardClient = ({
           </div>
 
           {/* Filter Radius Usaha & GPS Bar (Scrollable on Mobile) */}
-          <div className="space-y-3 pt-3 border-t border-gray-100 text-xs">
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 max-w-full shrink-0">
+          <div className="space-y-2 pt-3 border-t border-gray-100 text-xs">
+            <div className="flex items-center gap-2 overflow-x-auto custom-horizontal-scrollbar pb-2 pt-0.5 max-w-full shrink-0">
               <span className="font-bold text-[#111111]/60 flex items-center gap-1.5 shrink-0">
                 <Funnel size={14} weight="bold" className="text-[#19382B]" />
                 Filter:
@@ -661,8 +665,19 @@ export const UmkmDashboardClient = ({
                 className="flex items-center justify-center gap-1.5 text-xs font-bold bg-[#ecefe6] text-[#19382B] hover:bg-[#dce8d0] px-3.5 py-1.5 rounded-full transition-all shadow-2xs shrink-0 cursor-pointer border border-black/5"
               >
                 <MapTrifold weight="bold" className="w-3.5 h-3.5 text-[#19382B]" />
-                <span>Pilih / Cari di Peta</span>
+                <span>PILIH DI PETA</span>
               </button>
+
+              {radiusKm !== null && (
+                <button
+                  type="button"
+                  onClick={() => setRadiusKm(null)}
+                  className="flex items-center justify-center gap-1 text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 px-3 py-1.5 rounded-full transition-all shrink-0 cursor-pointer border border-red-200"
+                >
+                  <X weight="bold" className="w-3.5 h-3.5" />
+                  <span>Reset Filter</span>
+                </button>
+              )}
 
               <button
                 type="button"
@@ -675,7 +690,7 @@ export const UmkmDashboardClient = ({
               </button>
             </div>
 
-            <div className="text-[11px] font-medium text-[#111111]/70 leading-normal break-words">
+            <div className="text-[11px] font-medium text-[#111111]/70 leading-normal pt-0.5">
               {userAddressName ? (
                 <span className="text-[#19382B] font-bold">Lokasi usaha: {userAddressName}</span>
               ) : (
@@ -848,6 +863,11 @@ export const UmkmDashboardClient = ({
           saveUserLocation(lat, lng, addr);
           showToast(`Lokasi usaha diset ke: ${addr}`, "GPS Usaha", "success");
         }}
+      />
+      <UmkmProfileModal
+        isOpen={isProfileModalOpen}
+        onClose={() => setIsProfileModalOpen(false)}
+        userEmail={displayName}
       />
     </div>
   );

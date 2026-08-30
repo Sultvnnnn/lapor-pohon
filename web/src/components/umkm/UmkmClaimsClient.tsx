@@ -168,10 +168,10 @@ export function UmkmClaimsClient({
       >
         <div className="space-y-1">
           <h1 className="text-2xl sm:text-3xl font-bold text-[#111111] tracking-tight">
-            Klaim &amp; tiket digital saya
+            Tiket Pengambilan
           </h1>
           <p className="text-xs sm:text-sm text-[#111111]/60 font-medium">
-            Pantau pasokan kayu yang telah kamu klaim dan gunakan tiket digital untuk penjemputan di lokasi tebangan.
+            Cek status kayu yang Anda klaim dan tunjukkan tiket ini saat pengambilan di lokasi.
           </p>
         </div>
 
