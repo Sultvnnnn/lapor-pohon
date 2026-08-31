@@ -4,6 +4,7 @@ import {
   AdminDashboardClient,
   AdminReportItem,
 } from "@/components/admin/AdminDashboardClient";
+import { resolveReporterName } from "@/lib/resolveReporterName";
 
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
@@ -44,20 +45,26 @@ export default async function AdminDashboardPage() {
   // Fetch profiles to map names server-side safely without schema cache relation dependency
   const { data: profiles } = await supabase
     .from("profiles")
-    .select("id, full_name, email");
+    .select("id, full_name, email, username");
 
-  const profileMap = new Map<string, { full_name: string; email: string }>();
+  const profileRecord: Record<string, { full_name: string; username: string; email: string }> = {};
   if (profiles) {
     profiles.forEach((p) => {
-      profileMap.set(p.id, { full_name: p.full_name || "", email: p.email || "" });
+      profileRecord[p.id] = {
+        full_name: p.full_name || "",
+        username: p.username || "",
+        email: p.email || "",
+      };
     });
   }
 
-  const reports = (rawReports || []).map((r) => {
-    const prof = profileMap.get(r.user_id);
+  const reports = (rawReports || []).map((r: any) => {
+    const joinedProf = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+    const prof = joinedProf || profileRecord[r.user_id];
+    const resolvedName = resolveReporterName({ ...r, profiles: prof }, profileRecord);
     return {
       ...r,
-      reporter_name: prof?.full_name || r.reporter_name || "",
+      reporter_name: resolvedName,
       reporter_email: prof?.email || r.reporter_email || "",
       profiles: prof || null,
     };

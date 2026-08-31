@@ -93,5 +93,14 @@ ADD COLUMN IF NOT EXISTS tree_type TEXT;
 ALTER TABLE public.reports 
 ADD COLUMN IF NOT EXISTS handover_status TEXT DEFAULT 'WAITING_PICKUP';
 
--- ── 7. MUAT ULANG CACHE SKEMA POSTGREST SUPABASE ──
+-- ── 7. ATUR RLS POLICY UNTUK TABEL PROFILES (PULL USERNAME & FULL_NAME) ──
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow select for authenticated users" ON public.profiles;
+CREATE POLICY "Allow select for authenticated users"
+ON public.profiles FOR SELECT
+TO authenticated
+USING (true);
+
+-- ── 8. MUAT ULANG CACHE SKEMA POSTGREST SUPABASE ──
 NOTIFY pgrst, 'reload schema';

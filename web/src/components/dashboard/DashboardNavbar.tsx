@@ -38,9 +38,12 @@ export const DashboardSidebar = ({
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const handleSignOut = async () => {
-    await supabaseClient.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    try {
+      await supabaseClient.auth.signOut();
+    } catch (e) {
+      console.error("Sign out error:", e);
+    }
+    window.location.href = "/login";
   };
 
   const normalizedRole = userRole ? String(userRole).toLowerCase().trim() : "";
@@ -424,9 +427,12 @@ export const DashboardNavbar = ({
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   const handleSignOut = async () => {
-    await supabaseClient.auth.signOut();
-    router.push("/login");
-    router.refresh();
+    try {
+      await supabaseClient.auth.signOut();
+    } catch (e) {
+      console.error("Sign out error:", e);
+    }
+    window.location.href = "/login";
   };
 
   const normalizedRole = userRole ? String(userRole).toLowerCase().trim() : "";

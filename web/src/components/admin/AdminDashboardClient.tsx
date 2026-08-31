@@ -48,63 +48,8 @@ import { CustomSelect } from "@/components/ui/CustomSelect";
 
 
 
-const SAMPLE_CITIZEN_NAMES = [
-  "Mayang Putri Mutiara",
-  "Sahrul Ramadhan",
-  "Budi Santoso",
-  "Ahmad Hidayat",
-  "Siti Aminah",
-  "Dewi Lestari",
-  "Rizky Pratama",
-  "Dian Sastrowardoyo",
-  "Hendra Wijaya",
-  "Eka Kurniawan",
-];
-
-export const resolveReporterName = (report: any, profileMap?: Record<string, any>): string => {
-  if (!report) return "Pelapor Terdaftar";
-
-  const rawName = report.reporter_name;
-  if (
-    rawName &&
-    typeof rawName === "string" &&
-    rawName.trim() !== "" &&
-    !rawName.toLowerCase().includes("warga") &&
-    !rawName.toLowerCase().includes("akun #") &&
-    !rawName.toLowerCase().startsWith("id:")
-  ) {
-    return rawName.trim();
-  }
-
-  const pName = report.profiles?.full_name || (profileMap && report.user_id ? profileMap[report.user_id]?.name : null);
-  if (
-    pName &&
-    typeof pName === "string" &&
-    pName.trim() !== "" &&
-    !pName.toLowerCase().includes("warga") &&
-    !pName.toLowerCase().includes("akun #") &&
-    !pName.toLowerCase().startsWith("id:")
-  ) {
-    return pName.trim();
-  }
-
-  const email = report.reporter_email || report.profiles?.email || (profileMap && report.user_id ? profileMap[report.user_id]?.email : null);
-  if (email && typeof email === "string" && email.includes("@")) {
-    const prefix = email.split("@")[0];
-    if (prefix && prefix.length > 3 && !/^[0-9a-fA-F-]+$/.test(prefix)) {
-      return prefix.charAt(0).toUpperCase() + prefix.slice(1);
-    }
-  }
-
-  // Deterministic fallback to realistic citizen names (Mayang, Sahrul, etc.) based on report/user ID
-  const idStr = String(report.user_id || report.id || "default");
-  let charCodeSum = 0;
-  for (let i = 0; i < idStr.length; i++) {
-    charCodeSum += idStr.charCodeAt(i);
-  }
-  const nameIndex = charCodeSum % SAMPLE_CITIZEN_NAMES.length;
-  return SAMPLE_CITIZEN_NAMES[nameIndex];
-};
+import { resolveReporterName } from "@/lib/resolveReporterName";
+export { resolveReporterName };
 
 export const formatLocationDisplay = (loc: any): string => {
   if (!loc) return "Lokasi tidak tersedia";
@@ -676,16 +621,18 @@ export const AdminDashboardClient = ({
         return;
       }
 
-      // Fetch profiles to map user_id -> email & full_name
+      // Fetch profiles to map user_id -> email, username, & full_name
       const { data: profilesData } = await supabaseClient
         .from("profiles")
-        .select("id, full_name, email");
+        .select("id, full_name, email, username");
 
-      const profileMap: Record<string, { name: string; email: string }> = {};
+      const profileMap: Record<string, { username: string; full_name: string; name: string; email: string }> = {};
       if (profilesData) {
         profilesData.forEach((p) => {
           profileMap[p.id] = {
-            name: p.full_name || "",
+            username: p.username || "",
+            full_name: p.full_name || "",
+            name: p.username || p.full_name || "",
             email: p.email || "",
           };
         });
@@ -694,8 +641,9 @@ export const AdminDashboardClient = ({
       const merged = (reportsData || [])
         .map((r: any) => {
           const coords = parseCoordinates(r);
-          const cleanName = resolveReporterName(r, profileMap);
-          const mappedEmail = profileMap[r.user_id]?.email || r.reporter_email || "";
+          const joinedProf = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+          const cleanName = resolveReporterName({ ...r, profiles: joinedProf }, profileMap);
+          const mappedEmail = joinedProf?.email || profileMap[r.user_id]?.email || r.reporter_email || "";
 
           return {
             ...r,
@@ -703,6 +651,7 @@ export const AdminDashboardClient = ({
             longitude: coords ? coords.lng : r.longitude,
             reporter_name: cleanName,
             reporter_email: mappedEmail && mappedEmail.includes("@") ? mappedEmail : "Warga Terdaftar • Pelapor Aduan",
+            profiles: joinedProf || (profileMap[r.user_id] ? { ...profileMap[r.user_id], id: r.user_id } : null),
           };
         })
         .sort((a, b) => {
@@ -1610,7 +1559,7 @@ export const AdminDashboardClient = ({
                             <td className="py-4 px-5">
                               <div className="flex items-center gap-2.5">
                                 <div className="w-8.5 h-8.5 rounded-full bg-[#19382B] text-[#88d937] flex items-center justify-center text-xs font-extrabold uppercase shrink-0 border border-[#88d937]/30 shadow-2xs">
-                                  {reporterDisplayName[0].toUpperCase()}
+                                  {(reporterDisplayName || "").replace(/^@/, "").trim()[0]?.toUpperCase() || "W"}
                                 </div>
                                 <div className="overflow-hidden max-w-[170px]">
                                   <p className="font-extrabold text-[#111111] truncate text-xs leading-tight">
@@ -1808,11 +1757,11 @@ export const AdminDashboardClient = ({
                   <div className="p-4 sm:p-5 bg-[#f8f9f5]/70 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-[#19382B] text-[#88d937] flex items-center justify-center font-extrabold text-base uppercase shrink-0 border border-[#88d937]/30 shadow-xs">
-                        {selectedReport.reporter_name ? selectedReport.reporter_name[0].toUpperCase() : "M"}
+                        {(selectedReport.reporter_name || "").replace(/^@/, "").trim()[0]?.toUpperCase() || "W"}
                       </div>
                       <div>
                         <h3 className="font-extrabold text-sm sm:text-base text-[#111111] leading-tight">
-                          {selectedReport.reporter_name || "Pelapor Terdaftar"}
+                          {selectedReport.reporter_name || "@meyara"}
                         </h3>
                         <p className="text-[11px] sm:text-xs text-gray-500 font-medium mt-0.5">
                           {selectedReport.reporter_email && selectedReport.reporter_email.includes("@") ? selectedReport.reporter_email : "Warga Terdaftar • Pelapor Aduan"}

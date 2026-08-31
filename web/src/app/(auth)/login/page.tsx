@@ -27,16 +27,17 @@ export default function LoginPage() {
     let targetEmail = usernameOrEmail.trim();
 
     if (!targetEmail.includes("@")) {
-      const foundEmail = await getEmailByUsername(targetEmail);
-      if (!foundEmail) {
-        setErrorMessage("Username tidak ditemukan.");
-        setIsLoading(false);
-        return;
+      try {
+        const foundEmail = await getEmailByUsername(targetEmail);
+        if (foundEmail) {
+          targetEmail = foundEmail;
+        }
+      } catch (err) {
+        console.error("Username lookup error:", err);
       }
-      targetEmail = foundEmail;
     }
 
-    const { error } = await supabaseClient.auth.signInWithPassword({
+    const { data: signInData, error } = await supabaseClient.auth.signInWithPassword({
       email: targetEmail,
       password,
     });
@@ -47,8 +48,26 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/dashboard");
-    router.refresh();
+    let targetUrl = "/dashboard";
+    const user = signInData?.user;
+
+    if (user) {
+      try {
+        const { data: profile } = await supabaseClient
+          .from("profiles")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profile && String(profile.role).toLowerCase().trim() === "admin") {
+          targetUrl = "/admin";
+        }
+      } catch (err) {
+        console.error("Fetch profile role error:", err);
+      }
+    }
+
+    window.location.href = targetUrl;
   };
 
   const handleGoogleLogin = async () => {
